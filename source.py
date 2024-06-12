@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 import traceback
 import re
 from typing import Dict, Any
-from threading import Thread
+from threading import Thread, Event
 from socket import gaierror
 from ssl import SSLEOFError
 from googleapiclient.errors import HttpError
@@ -22,7 +22,6 @@ import os
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 import asyncio
-from threading import Event
 
 
 SLEEP_GOOGLE = 20
