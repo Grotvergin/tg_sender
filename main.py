@@ -1,12 +1,10 @@
 from source import *
 
-# TODO ПРОСМОТР НЕПОДПИСАННЫХ КАНАЛОВ (ПРИВАТНЫЙ СЛУЧАЙ)
-# TODO ПРОВЕРКА УВЕЛИЧЕНИЯ ПРОСМОТРОВ
-# TODO ОТМЕНА ДЕЙСТВИЯ (В  МЕНЮ)
-
 
 def Main() -> None:
     AuthorizeAccounts()
+    global FINISHED_REQS
+    FINISHED_REQS = LoadFinishedRequests()
     Thread(target=BotPolling, daemon=True).start()
     loop = asyncio.get_event_loop()
     loop.create_task(ProcessRequests())
@@ -59,49 +57,6 @@ async def IncreasePostViews(post_link: str, views_needed: int) -> int:
     return cnt_success_views
 
 
-def PostView(message: telebot.types.Message) -> None:
-    Stamp('Post link inserting procedure', 'i')
-    expected_format = r'https://t\.me/'
-    if not re.match(expected_format, message.text):
-        BOT.send_message(message.chat.id, "❌ Ссылка на пост не похожа на корректную. Пожалуйста, проверьте формат ссылки.")
-        BOT.register_next_step_handler(message, PostView)
-    else:
-        global CUR_REQ
-        cut_link = '/'.join(message.text.split('/')[-2:])
-        CUR_REQ = {'order_type': 'Просмотры', 'initiator': f'{message.from_user.id} ({message.from_user.username})', 'link': cut_link}
-        BOT.send_message(message.from_user.id, f'❔ Введите желаемое количество просмотров (доступно *{len(ACCOUNTS)}* аккаунтов):', parse_mode='Markdown')
-        BOT.register_next_step_handler(message, ViewsNumber)
-
-
-def ViewsNumber(message: telebot.types.Message) -> None:
-    Stamp('Number inserting procedure', 'i')
-    try:
-        if 0 < int(message.text) <= len(ACCOUNTS):
-            CUR_REQ['planned'] = int(message.text)
-            BOT.send_message(message.from_user.id, "❔ Введите промежуток времени (в минутах), в течение которого будут происходить просмотры:")
-            BOT.register_next_step_handler(message, ViewsPeriod)
-        else:
-            BOT.send_message(message.chat.id, "❌ Введено некорректное число. Попробуйте ещё раз:")
-            BOT.register_next_step_handler(message, ViewsNumber)
-    except ValueError:
-        BOT.send_message(message.chat.id, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, ViewsNumber)
-
-
-def ViewsPeriod(message: telebot.types.Message) -> None:
-    Stamp('Time inserting procedure', 'i')
-    try:
-        minutes = int(message.text)
-        CUR_REQ['start'] = datetime.now()
-        CUR_REQ['finish'] = datetime.now() + timedelta(minutes=minutes)
-        REQS_QUEUE.append(CUR_REQ)
-        BOT.send_message(message.from_user.id, "✅ Заявка принята. Начинаю выполнение просмотров...")
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    except ValueError:
-        BOT.send_message(message.chat.id, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, ViewsPeriod)
-
-
 async def PerformSubscription(link: str, amount: int, channel_type: str) -> int:
     Stamp('Subscription procedure started', 'b')
     cnt_success_subs = 0
@@ -143,7 +98,7 @@ async def ProcessRequests() -> None:
                     req['current'] = current + cnt_success
             else:
                 if req['current'] < req['planned']:
-                    to_add = req['planned'] - req['current']
+                    to_add = req['planned'] - req.get('current', 0)
                     if req['order_type'] == 'Подписка':
                         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'])
                     else:
@@ -151,70 +106,105 @@ async def ProcessRequests() -> None:
                     req['current'] += cnt_success
                 else:
                     REQS_QUEUE.remove(req)
+                    FINISHED_REQS.append(req)
+                    SaveFinishedRequests(FINISHED_REQS)
                     BOT.send_message(req['initiator'].split(' ')[0], f"✅ Заявка выполнена:")
                     BOT.send_message(req['initiator'].split(' ')[0], PrintRequest(req), parse_mode='Markdown')
-        Sleep(LONG_SLEEP)
+        Sleep(LONG_SLEEP, 0.3)
+
+
+def PostView(message: telebot.types.Message) -> None:
+    Stamp('Post link inserting procedure', 'i')
+    if not re.match(LINK_FORMAT, message.text):
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            ShowButtons(message, CANCEL_BTN, "❌ Ссылка на пост не похожа на корректную. "
+                                              "Пожалуйста, проверьте формат ссылки "
+                                              "(https://t.me/channel_name_or_hash/post_id)")
+            BOT.register_next_step_handler(message, PostView)
+    else:
+        global CUR_REQ
+        cut_link = '/'.join(message.text.split('/')[-2:])
+        CUR_REQ = {'order_type': 'Просмотры', 'initiator': f'{message.from_user.id} ({message.from_user.username})', 'link': cut_link}
+        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество просмотров (доступно {len(ACCOUNTS)} аккаунтов):')
+        BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
 def ChannelSub(message: telebot.types.Message) -> None:
-    Stamp('Link inserting procedure', 'i')
-    expected_format = r'https://t\.me/'
-    if not re.match(expected_format, message.text):
-        BOT.send_message(message.chat.id, "❌ Ссылка на канал не похожа на корректную. "
-                                          "Пожалуйста, проверьте формат ссылки (https://t.me/channel_name_or_hash)")
+    Stamp('Channel link inserting procedure', 'i')
+    global CUR_REQ
+    if message.text == CANCEL_BTN[0]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif not message.text[0] == '@' and not re.match(LINK_FORMAT, message.text):
+        ShowButtons(message, CANCEL_BTN, "❌ Ссылка на канал не похожа на корректную. "
+                                         "Пожалуйста, проверьте формат ссылки "
+                                         "(https://t.me/channel_name_or_hash или @channel_name)")
         BOT.register_next_step_handler(message, ChannelSub)
     else:
-        global CUR_REQ
-        cut_link = message.text.split('/')[-1]
         CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.id} ({message.from_user.username})'}
-        if cut_link[0] == '+':
-            CUR_REQ['link'] = cut_link[1:]
+        cut_link = message.text.split('/')[-1]
+        if cut_link[0] == '@':
+            CUR_REQ['channel_type'] = 'public'
+            cut_link = cut_link[1:]
+        elif cut_link[0] == '+':
+            cut_link = cut_link[1:]
             CUR_REQ['channel_type'] = 'private'
         else:
-            CUR_REQ['link'] = cut_link
             CUR_REQ['channel_type'] = 'public'
-        BOT.send_message(message.from_user.id, f'❔ Введите желаемое количество подписок'
-                                               f'(доступно *{len(ACCOUNTS)}* аккаунтов):', parse_mode='Markdown')
-        BOT.register_next_step_handler(message, SubscribersNumber)
+        CUR_REQ['link'] = cut_link
+        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество подписок'
+                                               f'(доступно {len(ACCOUNTS)} аккаунтов):')
+        BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
-def SubscribersNumber(message: telebot.types.Message) -> None:
-    Stamp('Number inserting procedure', 'i')
-    try:
-        if 0 < int(message.text) <= len(ACCOUNTS):
-            CUR_REQ['planned'] = int(message.text)
-            BOT.send_message(message.from_user.id, "❔ Введите промежуток времени (в минутах), "
-                                                   f"в течение которого будут происходить подписки:")
-            BOT.register_next_step_handler(message, SubscriptionPeriod)
-        else:
-            BOT.send_message(message.chat.id, "❌ Введено некорректное число. Попробуйте ещё раз:")
-            BOT.register_next_step_handler(message, SubscribersNumber)
-    except ValueError:
-        BOT.send_message(message.chat.id, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, SubscribersNumber)
-
-
-def SubscriptionPeriod(message: telebot.types.Message) -> None:
+def RequestPeriod(message: telebot.types.Message) -> None:
     Stamp('Time inserting procedure', 'i')
     try:
-        minutes = int(message.text)
-        CUR_REQ['start'] = datetime.now()
-        CUR_REQ['finish'] = datetime.now() + timedelta(minutes=minutes)
-        REQS_QUEUE.append(CUR_REQ)
-        BOT.send_message(message.from_user.id, "✅ Заявка принята. Начинаю выполнение подписок...")
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if 0 < int(message.text) < MAX_MINS:
+                CUR_REQ['start'] = datetime.now()
+                CUR_REQ['finish'] = datetime.now() + timedelta(minutes=int(message.text))
+                REQS_QUEUE.append(CUR_REQ)
+                BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
+                ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+            else:
+                ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
+                BOT.register_next_step_handler(message, RequestPeriod)
     except ValueError:
-        BOT.send_message(message.chat.id, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, SubscriptionPeriod)
+        ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
+        BOT.register_next_step_handler(message, RequestPeriod)
+
+
+def NumberInsertingProcedure(message: telebot.types.Message) -> None:
+    Stamp('Number inserting procedure', 'i')
+    try:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if 0 < int(message.text) <= len(ACCOUNTS):
+                CUR_REQ['planned'] = int(message.text)
+                ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
+                                                       "в течение которого будет выполняться заявка:")
+                BOT.register_next_step_handler(message, RequestPeriod)
+            else:
+
+                ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
+                BOT.register_next_step_handler(message, NumberInsertingProcedure)
+    except ValueError:
+        ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
+        BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
 def SendActiveRequests(message: telebot.types.Message) -> None:
     if REQS_QUEUE:
-        BOT.send_message(message.from_user.id, f' ⚒ Показываю {len(REQS_QUEUE)} активные заявки:')
+        BOT.send_message(message.from_user.id, f' ⏳ Показываю {len(REQS_QUEUE)} активные заявки:')
         for req in REQS_QUEUE:
             BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='Markdown')
-        else:
-            BOT.send_message(message.from_user.id, '🔍 Нет активных заявок')
+    else:
+        BOT.send_message(message.from_user.id, '🔍 Нет активных заявок')
 
 
 def PrintRequest(req: dict) -> str:
@@ -227,6 +217,42 @@ def PrintRequest(req: dict) -> str:
            f"*Инициатор заявки*: {req['initiator']}"
 
 
+def SaveFinishedRequests(finished_requests: list) -> None:
+    Stamp('Saving finished requests', 'i')
+    serialized_requests = []
+    for req in finished_requests:
+        req_copy = req.copy()
+        req_copy['start'] = req['start'].isoformat()
+        req_copy['finish'] = req['finish'].isoformat()
+        serialized_requests.append(req_copy)
+    with open(FINISHED_REQS_FILE, 'w', encoding='utf-8') as file:
+        json.dump(serialized_requests, file, ensure_ascii=False, indent=4)
+
+
+def LoadFinishedRequests() -> list:
+    Stamp('Trying to load finished requests', 'i')
+    if os.path.exists(FINISHED_REQS_FILE):
+        with open(FINISHED_REQS_FILE, 'r', encoding='utf-8') as file:
+            if os.path.getsize(FINISHED_REQS_FILE) > 0:
+                loaded_requests = json.load(file)
+                for req in loaded_requests:
+                    req['start'] = datetime.fromisoformat(req['start'])
+                    req['finish'] = datetime.fromisoformat(req['finish'])
+                return loaded_requests
+            else:
+                Stamp('Finished requests file is empty', 'i')
+    return []
+
+
+def SendFinishedRequests(message: telebot.types.Message) -> None:
+    if FINISHED_REQS:
+        BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
+        for req in FINISHED_REQS:
+            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='Markdown')
+    else:
+        BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')
+
+
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: telebot.types.Message) -> None:
     Stamp(f'User {message.from_user.id} requested {message.text}', 'i')
@@ -234,13 +260,18 @@ def MessageAccept(message: telebot.types.Message) -> None:
         BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[0]:
-        BOT.send_message(message.from_user.id, '❔ Введите ссылку на канал (например, https://t.me/channel_name):')
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (например, https://t.me/channel_name_or_hash):')
         BOT.register_next_step_handler(message, ChannelSub)
     elif message.text == WELCOME_BTNS[1]:
-        BOT.send_message(message.from_user.id, '❔ Отправьте ссылку на пост, на котором необходимо увеличить просмотры:')
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (например, https://t.me/channel_name_or_hash/post_id):')
         BOT.register_next_step_handler(message, PostView)
     elif message.text == WELCOME_BTNS[2]:
         SendActiveRequests(message)
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif message.text == WELCOME_BTNS[3]:
+        SendFinishedRequests(message)
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')

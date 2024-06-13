@@ -22,11 +22,13 @@ import os
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest
 import asyncio
+import json
 
 
 SLEEP_GOOGLE = 20
 BOT = telebot.TeleBot(TOKEN)
-WELCOME_BTNS = ('Подписаться на канал 🔔', 'Увеличить просмотры поста 📈', 'Активные заявки 📅')
+WELCOME_BTNS = ('Подписаться на канал 🔔', 'Увеличить просмотры поста 📈', 'Активные заявки 📅', 'Выполненные заявки 📋')
+CANCEL_BTN = ('Вернуться в меню ↩️',)
 REQS_QUEUE = []
 CUR_REQ = {}
 ACCOUNTS = []
@@ -35,7 +37,10 @@ random.seed()
 CREDS = service_account.Credentials.from_service_account_file('keys.json', scopes=['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'])
 CUR_ACC_INDEX = 0
 LONG_SLEEP = 15
-SHORT_SLEEP = 2
+SHORT_SLEEP = 1
+LINK_FORMAT = r'https://t\.me/'
+MAX_MINS = 300
+FINISHED_REQS_FILE = 'finished.json'
 
 
 def Stamp(message: str, level: str) -> None:
