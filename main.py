@@ -97,13 +97,13 @@ async def ProcessRequests() -> None:
                         cnt_success = await IncreasePostViews(req['link'], to_add)
                     req['current'] = current + cnt_success
             else:
-                if req['current'] < req['planned']:
+                if req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
                     if req['order_type'] == 'Подписка':
                         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'])
                     else:
                         cnt_success = await IncreasePostViews(req['link'], to_add)
-                    req['current'] += cnt_success
+                    req['current'] = req.get('current', 0) + cnt_success
                 else:
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
