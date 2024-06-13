@@ -20,7 +20,7 @@ import ssl
 from telethon.sync import TelegramClient
 import os
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import ImportChatInviteRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest
 import asyncio
 
 
