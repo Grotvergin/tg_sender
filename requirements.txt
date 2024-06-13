@@ -1,4 +1,6 @@
-pyTelegramBotAPI==4.14.1
 colorama==0.4.3
-google_api_python_client==2.107.0
+google_api_python_client==2.133.0
 httplib2==0.22.0
+protobuf==5.27.1
+pyTelegramBotAPI==4.19.1
+Telethon==1.36.0
