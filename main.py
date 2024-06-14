@@ -3,10 +3,12 @@ from source import *
 
 def Main() -> None:
     AuthorizeAccounts()
-    global FINISHED_REQS
-    FINISHED_REQS = LoadFinishedRequests()
+    global FINISHED_REQS, AUTO_REQS_DICT
+    FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
+    AUTO_REQS_DICT = LoadRequestsFromFile('automatic', 'auto.json')
+    RefreshEventHandler()
     Thread(target=BotPolling, daemon=True).start()
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     loop.create_task(ProcessRequests())
     try:
         loop.run_forever()
@@ -20,14 +22,14 @@ def BotPolling():
             BOT.polling(none_stop=True, interval=1)
         except Exception as e:
             Stamp(f'{e}', 'e')
-            Stamp(traceback.format_exc(), 'e')
+            Stamp(format_exc(), 'e')
 
 
 def AuthorizeAccounts():
     Stamp('Authorization procedure started', 'b')
-    data = GetSector('A2', 'D500', service, 'Авторизованные', SHEET_ID)
+    data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
     for account in data:
-        session = os.path.join(os.getcwd(), 'sessions', f'session_{account[0]}')
+        session = join(getcwd(), 'sessions', f'session_{account[0]}')
         client = TelegramClient(session, account[1], account[2])
         Stamp(f'Account {account[0]}', 'i')
         try:
@@ -83,10 +85,12 @@ async def ProcessRequests() -> None:
     while True:
         Stamp('Pending requests', 'i')
         for req in REQS_QUEUE:
-            if datetime.now() < req['finish']:
-                duration = (req['finish'] - req['start']).total_seconds()
+            finish = datetime.strptime(req['finish'], TIME_FORMAT)
+            start = datetime.strptime(req['start'], TIME_FORMAT)
+            if datetime.now() < finish:
+                duration = (finish - start).total_seconds()
                 interval = duration / req['planned']
-                elapsed = (datetime.now() - req['start']).total_seconds()
+                elapsed = (datetime.now() - start).total_seconds()
                 expected = int(elapsed / interval)
                 current = req.get('current', 0)
                 to_add = expected - current
@@ -107,21 +111,43 @@ async def ProcessRequests() -> None:
                 else:
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
-                    SaveFinishedRequests(FINISHED_REQS)
+                    SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
                     BOT.send_message(req['initiator'].split(' ')[0], f"✅ Заявка выполнена:")
                     BOT.send_message(req['initiator'].split(' ')[0], PrintRequest(req), parse_mode='Markdown')
         Sleep(LONG_SLEEP, 0.3)
 
 
-def PostView(message: telebot.types.Message) -> None:
+def RefreshEventHandler():
+    Stamp(f'Setting up event handler with channels {", ".join(AUTO_REQS_DICT.keys())}', 'i')
+    if ACCOUNTS:
+        ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=list(AUTO_REQS_DICT.keys())))
+        Stamp("Event handler for new messages set up", 's')
+    else:
+        Stamp("No accounts available to set up event handler", 'e')
+
+
+async def EventHandler(event):
+    Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
+    REQS_QUEUE.append({
+        'order_type': 'Просмотры',
+        'initiator': f'Автоматическая от {AUTO_REQS_DICT[event.chat.username]['initiator']}',
+        'link': f'{event.chat.username}/{event.message.id}',
+        'start': datetime.now(),
+        'finish': datetime.now() + timedelta(AUTO_REQS_DICT[event.chat.username]['time_limit']),
+        'planned': AUTO_REQS_DICT[event.chat.username]['annual_subs'],
+    })
+    BOT.send_message(f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка на просмотры создана')
+    Stamp(f'Added automatic request for channel {event.chat.username}', 's')
+
+
+def PostView(message: Message) -> None:
     Stamp('Post link inserting procedure', 'i')
-    if not re.match(LINK_FORMAT, message.text):
+    if not match(LINK_FORMAT, message.text):
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             ShowButtons(message, CANCEL_BTN, "❌ Ссылка на пост не похожа на корректную. "
-                                              "Пожалуйста, проверьте формат ссылки "
-                                              "(https://t.me/channel_name_or_hash/post_id)")
+                                              "Пожалуйста, проверьте формат ссылки (https://t.me/name/post_id)")
             BOT.register_next_step_handler(message, PostView)
     else:
         global CUR_REQ
@@ -131,15 +157,15 @@ def PostView(message: telebot.types.Message) -> None:
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
-def ChannelSub(message: telebot.types.Message) -> None:
+def ChannelSub(message: Message) -> None:
     Stamp('Channel link inserting procedure', 'i')
     global CUR_REQ
     if message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif not message.text[0] == '@' and not re.match(LINK_FORMAT, message.text):
+    elif not message.text[0] == '@' and not match(LINK_FORMAT, message.text):
         ShowButtons(message, CANCEL_BTN, "❌ Ссылка на канал не похожа на корректную. "
                                          "Пожалуйста, проверьте формат ссылки "
-                                         "(https://t.me/channel_name_or_hash или @channel_name)")
+                                         "(https://t.me/name_or_hash или @name)")
         BOT.register_next_step_handler(message, ChannelSub)
     else:
         CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.id} ({message.from_user.username})'}
@@ -158,15 +184,100 @@ def ChannelSub(message: telebot.types.Message) -> None:
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
-def RequestPeriod(message: telebot.types.Message) -> None:
+def AutomaticChannelView(message: Message) -> None:
+    Stamp('Automatic channel link inserting procedure', 'i')
+    if message.text == CANCEL_BTN[0]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif not message.text[0] == '@' and not match(LINK_FORMAT, message.text):
+        ShowButtons(message, CANCEL_BTN, "❌ Ссылка на канал не похожа на корректную. "
+                                         "Пожалуйста, проверьте формат ссылки "
+                                         "(https://t.me/name или @name)")
+        BOT.register_next_step_handler(message, AutomaticChannelView)
+    else:
+        global CUR_REQ
+        CUR_REQ = {'initiator': f'{message.from_user.id} ({message.from_user.username})'}
+        cut_link = message.text.split('/')[-1]
+        if cut_link[0] == '@':
+            cut_link = cut_link[1:]
+        CUR_REQ['link'] = cut_link
+        ShowButtons(message, CANCEL_BTN, f'❔ Введите количество аккаунтов, которые '
+                                         f'будут автоматически просматривать новую публикацию '
+                                               f'(доступно {len(ACCOUNTS)} аккаунтов):')
+        BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+
+
+def AutomaticNumberProcedure(message: Message) -> None:
+    Stamp('Automatic number inserting procedure', 'i')
+    try:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if 0 < int(message.text) <= len(ACCOUNTS):
+                CUR_REQ['annual_subs'] = int(message.text)
+                ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
+                                                 f"по истечении которого {int(message.text)} аккаунтов просмотрят новую публикацию:")
+                BOT.register_next_step_handler(message, AutomaticPeriod)
+            else:
+                ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
+                BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+    except ValueError:
+        ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
+        BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+
+
+def AutomaticPeriod(message: Message) -> None:
+    Stamp('Automatic time inserting procedure', 'i')
+    try:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if 0 < int(message.text) < MAX_MINS:
+                CUR_REQ['approved'] = datetime.now().strftime(TIME_FORMAT)
+                CUR_REQ['time_limit'] = int(message.text)
+                AUTO_REQS_DICT[CUR_REQ['link']] = {'initiator': CUR_REQ['initiator'],
+                                                   'time_limit': CUR_REQ['time_limit'],
+                                                   'approved': CUR_REQ['approved'],
+                                                   'annual_subs': CUR_REQ['annual_subs']}
+                SaveRequestsToFile(AUTO_REQS_DICT, 'automatic', 'auto.json')
+                RefreshEventHandler()
+                BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {CUR_REQ['link']}...")
+                ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+            else:
+                ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
+                BOT.register_next_step_handler(message, AutomaticPeriod)
+    except ValueError:
+        ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
+        BOT.register_next_step_handler(message, AutomaticPeriod)
+
+
+def SaveRequestsToFile(requests: list | dict, msg: str, file: str) -> None:
+    Stamp(f'Saving {msg} requests', 'i')
+    with open(file, 'w', encoding='utf-8') as f:
+        dump(requests, f, ensure_ascii=False, indent=4)
+
+
+def LoadRequestsFromFile(msg: str, file: str) -> list | dict:
+    Stamp(f'Trying to load {msg} requests', 'i')
+    if exists(file):
+        with open(file, 'r', encoding='utf-8') as f:
+            if getsize(file) > 0:
+                return load(f)
+            else:
+                Stamp(f'File with {msg} requests is empty', 'w')
+    else:
+        Stamp(f'No file with {msg} requests found', 'w')
+    return []
+
+
+def RequestPeriod(message: Message) -> None:
     Stamp('Time inserting procedure', 'i')
     try:
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) < MAX_MINS:
-                CUR_REQ['start'] = datetime.now()
-                CUR_REQ['finish'] = datetime.now() + timedelta(minutes=int(message.text))
+                CUR_REQ['start'] = datetime.now().strftime(TIME_FORMAT)
+                CUR_REQ['finish'] = (datetime.now() + timedelta(minutes=int(message.text))).strftime(TIME_FORMAT)
                 REQS_QUEUE.append(CUR_REQ)
                 BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
@@ -178,7 +289,7 @@ def RequestPeriod(message: telebot.types.Message) -> None:
         BOT.register_next_step_handler(message, RequestPeriod)
 
 
-def NumberInsertingProcedure(message: telebot.types.Message) -> None:
+def NumberInsertingProcedure(message: Message) -> None:
     Stamp('Number inserting procedure', 'i')
     try:
         if message.text == CANCEL_BTN[0]:
@@ -190,7 +301,6 @@ def NumberInsertingProcedure(message: telebot.types.Message) -> None:
                                                        "в течение которого будет выполняться заявка:")
                 BOT.register_next_step_handler(message, RequestPeriod)
             else:
-
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
                 BOT.register_next_step_handler(message, NumberInsertingProcedure)
     except ValueError:
@@ -198,7 +308,7 @@ def NumberInsertingProcedure(message: telebot.types.Message) -> None:
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
-def SendActiveRequests(message: telebot.types.Message) -> None:
+def SendActiveRequests(message: Message) -> None:
     if REQS_QUEUE:
         BOT.send_message(message.from_user.id, f' ⏳ Показываю {len(REQS_QUEUE)} активные заявки:')
         for req in REQS_QUEUE:
@@ -208,8 +318,8 @@ def SendActiveRequests(message: telebot.types.Message) -> None:
 
 
 def PrintRequest(req: dict) -> str:
-    return f"*Начало*: {req['start'].strftime('%Y-%m-%d %H:%M')}\n" \
-           f"*Конец*: {req['finish'].strftime('%Y-%m-%d %H:%M')}\n" \
+    return f"*Начало*: {req['start']}\n" \
+           f"*Конец*: {req['finish']}\n" \
            f"*Тип заявки*: {req['order_type']}\n" \
            f"*Желаемое количество*: {req['planned']}\n" \
            f"*Выполненное количество*: {req.get('current', 0)}\n" \
@@ -217,34 +327,7 @@ def PrintRequest(req: dict) -> str:
            f"*Инициатор заявки*: {req['initiator']}"
 
 
-def SaveFinishedRequests(finished_requests: list) -> None:
-    Stamp('Saving finished requests', 'i')
-    serialized_requests = []
-    for req in finished_requests:
-        req_copy = req.copy()
-        req_copy['start'] = req['start'].isoformat()
-        req_copy['finish'] = req['finish'].isoformat()
-        serialized_requests.append(req_copy)
-    with open(FINISHED_REQS_FILE, 'w', encoding='utf-8') as file:
-        json.dump(serialized_requests, file, ensure_ascii=False, indent=4)
-
-
-def LoadFinishedRequests() -> list:
-    Stamp('Trying to load finished requests', 'i')
-    if os.path.exists(FINISHED_REQS_FILE):
-        with open(FINISHED_REQS_FILE, 'r', encoding='utf-8') as file:
-            if os.path.getsize(FINISHED_REQS_FILE) > 0:
-                loaded_requests = json.load(file)
-                for req in loaded_requests:
-                    req['start'] = datetime.fromisoformat(req['start'])
-                    req['finish'] = datetime.fromisoformat(req['finish'])
-                return loaded_requests
-            else:
-                Stamp('Finished requests file is empty', 'i')
-    return []
-
-
-def SendFinishedRequests(message: telebot.types.Message) -> None:
+def SendFinishedRequests(message: Message) -> None:
     if FINISHED_REQS:
         BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
         for req in FINISHED_REQS:
@@ -254,16 +337,16 @@ def SendFinishedRequests(message: telebot.types.Message) -> None:
 
 
 @BOT.message_handler(content_types=['text'])
-def MessageAccept(message: telebot.types.Message) -> None:
+def MessageAccept(message: Message) -> None:
     Stamp(f'User {message.from_user.id} requested {message.text}', 'i')
     if message.text == '/start':
         BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[0]:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (например, https://t.me/channel_name_or_hash):')
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name_or_hash или @name):')
         BOT.register_next_step_handler(message, ChannelSub)
     elif message.text == WELCOME_BTNS[1]:
-        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (например, https://t.me/channel_name_or_hash/post_id):')
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
         BOT.register_next_step_handler(message, PostView)
     elif message.text == WELCOME_BTNS[2]:
         SendActiveRequests(message)
@@ -271,6 +354,10 @@ def MessageAccept(message: telebot.types.Message) -> None:
     elif message.text == WELCOME_BTNS[3]:
         SendFinishedRequests(message)
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif message.text == WELCOME_BTNS[4]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал,для которого будут '
+                                         'отслеживаться новые публикации (https://t.me/name или @name):')
+        BOT.register_next_step_handler(message, AutomaticChannelView)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
