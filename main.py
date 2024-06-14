@@ -1,17 +1,21 @@
 from source import *
 
+#TODO ОТМЕНА/АКТИВНЫЕ АВТОМАТИЧЕСКОЙ ПОДПИСКИ
+#TODO ПРОКИНУТЬ КОД ЧЕРЕЗ БОТА
+#TODO ВОЗМОЖНОСТЬ ОБНОВИТЬ АВТОРИЗАЦИЮ
+#TODO ПОДПИСКА СЛЕДЯЩИМ АККАУНТОМ НА КАНАЛ
 
-def Main() -> None:
-    AuthorizeAccounts()
+
+async def Main() -> None:
+    await AuthorizeAccounts()
     global FINISHED_REQS, AUTO_REQS_DICT
     FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
     AUTO_REQS_DICT = LoadRequestsFromFile('automatic', 'auto.json')
-    RefreshEventHandler()
-    Thread(target=BotPolling, daemon=True).start()
     loop = get_event_loop()
-    loop.create_task(ProcessRequests())
+    refresh_task = create_task(RefreshEventHandler())
+    process_task = create_task(ProcessRequests())
     try:
-        loop.run_forever()
+        await gather(refresh_task, process_task)
     finally:
         loop.close()
 
@@ -25,7 +29,7 @@ def BotPolling():
             Stamp(format_exc(), 'e')
 
 
-def AuthorizeAccounts():
+async def AuthorizeAccounts():
     Stamp('Authorization procedure started', 'b')
     data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
     for account in data:
@@ -36,7 +40,7 @@ def AuthorizeAccounts():
             password = account[3] if account[3] != '-' else None
         except IndexError:
             password = None
-        client.start(phone=account[0], password=password)
+        await client.start(phone=account[0], password=password)
         ACCOUNTS.append(client)
     Stamp('All accounts authorized', 'b')
 
@@ -112,18 +116,20 @@ async def ProcessRequests() -> None:
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
-                    BOT.send_message(req['initiator'].split(' ')[0], f"✅ Заявка выполнена:")
-                    BOT.send_message(req['initiator'].split(' ')[0], PrintRequest(req), parse_mode='Markdown')
-        Sleep(LONG_SLEEP, 0.3)
+                    BOT.send_message(req['initiator'].split(' ')[-2], f"✅ Заявка выполнена:")
+                    BOT.send_message(req['initiator'].split(' ')[-2], PrintRequest(req), parse_mode='Markdown')
+        await AsyncSleep(LONG_SLEEP, 0.5)
 
 
-def RefreshEventHandler():
-    Stamp(f'Setting up event handler with channels {", ".join(AUTO_REQS_DICT.keys())}', 'i')
-    if ACCOUNTS:
-        ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=list(AUTO_REQS_DICT.keys())))
-        Stamp("Event handler for new messages set up", 's')
-    else:
-        Stamp("No accounts available to set up event handler", 'e')
+async def RefreshEventHandler():
+    while True:
+        Stamp(f'Setting up event handler with channels {", ".join(AUTO_REQS_DICT.keys())}', 'i')
+        if ACCOUNTS:
+            ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=list(AUTO_REQS_DICT.keys())))
+            Stamp("Event handler for new messages set up", 's')
+        else:
+            Stamp("No accounts available to set up event handler", 'e')
+        await AsyncSleep(LONG_SLEEP * 5)
 
 
 async def EventHandler(event):
@@ -132,11 +138,12 @@ async def EventHandler(event):
         'order_type': 'Просмотры',
         'initiator': f'Автоматическая от {AUTO_REQS_DICT[event.chat.username]['initiator']}',
         'link': f'{event.chat.username}/{event.message.id}',
-        'start': datetime.now(),
-        'finish': datetime.now() + timedelta(AUTO_REQS_DICT[event.chat.username]['time_limit']),
+        'start': datetime.now().strftime(TIME_FORMAT),
+        'finish': (datetime.now() + timedelta(minutes=AUTO_REQS_DICT[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
         'planned': AUTO_REQS_DICT[event.chat.username]['annual_subs'],
     })
-    BOT.send_message(f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка на просмотры создана')
+    BOT.send_message(AUTO_REQS_DICT[event.chat.username]['initiator'].split(' ')[0],
+                     f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка на просмотры создана')
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
 
@@ -239,7 +246,6 @@ def AutomaticPeriod(message: Message) -> None:
                                                    'approved': CUR_REQ['approved'],
                                                    'annual_subs': CUR_REQ['annual_subs']}
                 SaveRequestsToFile(AUTO_REQS_DICT, 'automatic', 'auto.json')
-                RefreshEventHandler()
                 BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {CUR_REQ['link']}...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
@@ -366,4 +372,5 @@ def MessageAccept(message: Message) -> None:
 
 
 if __name__ == '__main__':
-    Main()
+    Thread(target=BotPolling, daemon=True).start()
+    run(Main())

@@ -19,7 +19,7 @@ from telethon import events
 from random import randint, seed
 from time import sleep
 from json import load, dump
-from asyncio import get_event_loop
+from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather
 from os.path import exists, join, getsize
 from os import getcwd
 
@@ -114,3 +114,9 @@ def Sleep(timer: int, ratio: float = 0.0) -> None:
     rand_time = randint(int((1 - ratio) * timer), int((1 + ratio) * timer))
     Stamp(f'Sleeping {rand_time} seconds', 'l')
     sleep(rand_time)
+
+
+async def AsyncSleep(timer: int, ratio: float = 0.0) -> None:
+    rand_time = randint(int((1 - ratio) * timer), int((1 + ratio) * timer))
+    Stamp(f'Sleeping asynchronously {rand_time} seconds', 'l')
+    await async_sleep(rand_time)
