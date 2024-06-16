@@ -14,7 +14,8 @@ from telebot import TeleBot
 from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from telethon.sync import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest
+from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden
 from telethon import events
 from random import randint, seed
 from time import sleep
@@ -31,7 +32,8 @@ WELCOME_BTNS = ('Подписаться на канал 🔔',
                 'Активные заявки 📅',
                 'Выполненные заявки 📋',
                 'Автоматические просмотры 👀')
-CANCEL_BTN = ('Вернуться в меню ↩️',)
+CANCEL_BTN = ('В меню ↩️',)
+AUTO_VIEWS_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []

@@ -1,9 +1,7 @@
 from source import *
 
-#TODO ОТМЕНА/АКТИВНЫЕ АВТОМАТИЧЕСКОЙ ПОДПИСКИ
 #TODO ПРОКИНУТЬ КОД ЧЕРЕЗ БОТА
 #TODO ВОЗМОЖНОСТЬ ОБНОВИТЬ АВТОРИЗАЦИЮ
-#TODO ПОДПИСКА СЛЕДЯЩИМ АККАУНТОМ НА КАНАЛ
 
 
 async def Main() -> None:
@@ -63,12 +61,15 @@ async def IncreasePostViews(post_link: str, views_needed: int) -> int:
     return cnt_success_views
 
 
-async def PerformSubscription(link: str, amount: int, channel_type: str) -> int:
+async def PerformSubscription(link: str, amount: int, channel_type: str, acc_index: int = None) -> int:
     Stamp('Subscription procedure started', 'b')
     cnt_success_subs = 0
     global CUR_ACC_INDEX
     for _ in range(amount):
-        acc = ACCOUNTS[CUR_ACC_INDEX]
+        if acc_index:
+            acc = ACCOUNTS[acc_index]
+        else:
+            acc = ACCOUNTS[CUR_ACC_INDEX]
         try:
             if channel_type == 'public':
                 channel = await acc.get_entity(link)
@@ -124,12 +125,35 @@ async def ProcessRequests() -> None:
 async def RefreshEventHandler():
     while True:
         Stamp(f'Setting up event handler with channels {", ".join(AUTO_REQS_DICT.keys())}', 'i')
-        if ACCOUNTS:
+        if ACCOUNTS and AUTO_REQS_DICT:
+            already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
+            print(already_subscribed)
+            list_for_subscription = [chan for chan in list(AUTO_REQS_DICT.keys()) if chan not in already_subscribed]
+            print(list_for_subscription)
+            for chan in list_for_subscription:
+                await PerformSubscription(chan, 1, 'public', 0)
+            ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=list(AUTO_REQS_DICT.keys())))
             Stamp("Event handler for new messages set up", 's')
         else:
-            Stamp("No accounts available to set up event handler", 'e')
-        await AsyncSleep(LONG_SLEEP * 5)
+            Stamp("No accounts available/no need to set up event handler", 'w')
+        await AsyncSleep(LONG_SLEEP * 15, 0.5)
+
+
+async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
+    Stamp(f'Trying to get all channels for account', 'i')
+    result = await account(GetDialogsRequest(
+        offset_date=None,
+        offset_id=0,
+        offset_peer=InputPeerEmpty(),
+        limit=1000,
+        hash=0
+    ))
+    channels = []
+    for chat in result.chats:
+        if isinstance(chat, ChannelForbidden) or isinstance(chat, Channel):
+            channels.append(chat.username)
+    return channels
 
 
 async def EventHandler(event):
@@ -333,6 +357,14 @@ def PrintRequest(req: dict) -> str:
            f"*Инициатор заявки*: {req['initiator']}"
 
 
+def PrintAutomaticRequest(chan: str) -> str:
+    return (f"*Канал*: {chan}\n"
+            f"*Инициатор заявки*: {AUTO_REQS_DICT[chan]['initiator']}\n"
+            f"*Временной интервал*: {AUTO_REQS_DICT[chan]['time_limit']}\n"
+            f"*Создана*: {AUTO_REQS_DICT[chan]['approved']}\n"
+            f"*Просмотров на публикацию*: {AUTO_REQS_DICT[chan]['annual_subs']}")
+
+
 def SendFinishedRequests(message: Message) -> None:
     if FINISHED_REQS:
         BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
@@ -340,6 +372,38 @@ def SendFinishedRequests(message: Message) -> None:
             BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='Markdown')
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')
+
+
+def DeleteAutomaticRequest(message: Message) -> None:
+    if message.text in AUTO_REQS_DICT.keys():
+        del AUTO_REQS_DICT[message.text]
+        SaveRequestsToFile(AUTO_REQS_DICT, 'automatic', 'auto.json')
+        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка для канала {message.text} удалена')
+    else:
+        BOT.send_message(message.from_user.id, '❌ Не нашёл автоматической заявки на такой канал')
+    ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+
+
+def AutomaticChannelDispatcher(message: Message) -> None:
+    if message.text == AUTO_VIEWS_BTNS[0]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал, для которого будут '
+                                         'отслеживаться новые публикации (https://t.me/name или @name):')
+        BOT.register_next_step_handler(message, AutomaticChannelView)
+    elif message.text == AUTO_VIEWS_BTNS[1]:
+        BOT.send_message(message.from_user.id, '❔ Введите имя канала, для которого нужно отменить '
+                                               'отслеживание публикаций (name):')
+        BOT.register_next_step_handler(message, DeleteAutomaticRequest)
+    elif message.text == AUTO_VIEWS_BTNS[2]:
+        for chan in AUTO_REQS_DICT.keys():
+            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan), parse_mode='Markdown')
+        ShowButtons(message, AUTO_VIEWS_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
+    elif message.text == AUTO_VIEWS_BTNS[3]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    else:
+        BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+
 
 
 @BOT.message_handler(content_types=['text'])
@@ -361,9 +425,8 @@ def MessageAccept(message: Message) -> None:
         SendFinishedRequests(message)
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал,для которого будут '
-                                         'отслеживаться новые публикации (https://t.me/name или @name):')
-        BOT.register_next_step_handler(message, AutomaticChannelView)
+        ShowButtons(message, AUTO_VIEWS_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
