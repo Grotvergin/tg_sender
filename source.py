@@ -16,11 +16,12 @@ from telethon.sync import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden
-from telethon import events
+from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError
+from telethon.events import NewMessage
 from random import randint, seed
-from time import sleep
+from time import sleep, time
 from json import load, dump
-from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather
+from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather, Future, ensure_future
 from os.path import exists, join, getsize
 from os import getcwd
 
@@ -30,7 +31,8 @@ WELCOME_BTNS = ('Подписаться на канал 🔔',
                 'Увеличить просмотры поста 📈',
                 'Активные заявки 📅',
                 'Выполненные заявки 📋',
-                'Автоматические заявки ⏳')
+                'Автоматические заявки ⏳',
+                'Авторизация аккаунтов 🔐')
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
@@ -40,6 +42,7 @@ FINISHED_REQS = []
 CUR_REQ = {}
 AUTO_SUBS_DICT = {}
 AUTO_REPS_DICT = {}
+CODE = None
 init()
 seed()
 CREDS = Credentials.from_service_account_file('keys.json', scopes=['https://www.googleapis.com/auth/spreadsheets'])
@@ -49,6 +52,8 @@ SHORT_SLEEP = 1
 LINK_FORMAT = r'https://t\.me/'
 MAX_MINS = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
+ADMIN_CHAT_ID = 386988582
+MAX_WAIT_CODE = 60
 
 
 def Stamp(message: str, level: str) -> None:

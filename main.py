@@ -1,9 +1,6 @@
 from source import *
 
-
-# TODO ПРОКИНУТЬ КОД ЧЕРЕЗ БОТА
-# TODO ВОЗМОЖНОСТЬ ОБНОВИТЬ АВТОРИЗАЦИЮ
-# TODO ФУНКЦИЯ ОБРАБОТКИ РЕПОСТОВ В ОЧЕРЕДИ
+# TODO ССЫЛКА УМЕНЬШЕНИЕ
 
 
 async def Main() -> None:
@@ -30,19 +27,56 @@ def BotPolling():
             Stamp(format_exc(), 'e')
 
 
+def WaitForCode() -> int | None:
+    global CODE
+    start = time()
+    while not CODE:
+        Sleep(1)
+        if (time() - start) > MAX_WAIT_CODE:
+            return
+    code = CODE
+    CODE = None
+    return code
+
+
 async def AuthorizeAccounts():
     Stamp('Authorization procedure started', 'b')
+    BOT.send_message(ADMIN_CHAT_ID, '🔺 Начата процедура авторизации...\n')
     data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
     for account in data:
-        session = join(getcwd(), 'sessions', f'session_{account[0]}')
+        session = join(getcwd(), 'sessions', f'{account[0]}')
         client = TelegramClient(session, account[1], account[2])
         Stamp(f'Account {account[0]}', 'i')
         try:
             password = account[3] if account[3] != '-' else None
         except IndexError:
             password = None
-        await client.start(phone=account[0], password=password)
+        await client.connect()
+        if not await client.is_user_authorized():
+            try:
+                await client.send_code_request(account[0])
+                BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {account[0]} в течение {MAX_WAIT_CODE} секунд:')
+                code = WaitForCode()
+                if code:
+                    await client.sign_in(account[0], code)
+                else:
+                    BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода. Процедура авторизации завершается.')
+                    Stamp('Too long code waiting', 'w')
+                    return
+            except PhoneCodeInvalidError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}. Попробуйте еще раз.')
+                continue
+            except SessionPasswordNeededError:
+                if password:
+                    await client.sign_in(password=password)
+                else:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {account[0]}.')
+                    continue
+            except PhoneNumberInvalidError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
+                continue
         ACCOUNTS.append(client)
+    BOT.send_message(ADMIN_CHAT_ID, '🔻 Процедура авторизации завершена!\n')
     Stamp('All accounts authorized', 'b')
 
 
@@ -89,6 +123,26 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
     return cnt_success_subs
 
 
+async def RepostMessage(post_link: str, reposts_needed: int) -> int:
+    Stamp('Reposting procedure started', 'b')
+    cnt_success_reposts = 0
+    global CUR_ACC_INDEX
+    for _ in range(reposts_needed):
+        acc = ACCOUNTS[CUR_ACC_INDEX]
+        try:
+            entity = await acc.get_entity(post_link.split('/')[0])
+            message_id = int(post_link.split('/')[1])
+            await acc.forward_messages('me', message_id, entity)
+            cnt_success_reposts += 1
+            Stamp(f"Reposted post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except Exception as e:
+            Stamp(f"Failed to repost {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
+        CUR_ACC_INDEX = (CUR_ACC_INDEX + 1) % len(ACCOUNTS)
+        await AsyncSleep(SHORT_SLEEP, 0.5)
+    Stamp('Reposting procedure finished', 'b')
+    return cnt_success_reposts
+
+
 async def ProcessRequests() -> None:
     while True:
         Stamp('Pending requests', 'i')
@@ -105,16 +159,20 @@ async def ProcessRequests() -> None:
                 if to_add > 0:
                     if req['order_type'] == 'Подписка':
                         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'])
-                    else:
+                    elif req['order_type'] == 'Просмотры':
                         cnt_success = await IncreasePostViews(req['link'], to_add)
+                    else:
+                        cnt_success = await RepostMessage(req['link'], to_add)
                     req['current'] = current + cnt_success
             else:
                 if req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
                     if req['order_type'] == 'Подписка':
                         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'])
-                    else:
+                    elif req['order_type'] == 'Просмотры':
                         cnt_success = await IncreasePostViews(req['link'], to_add)
+                    else:
+                        cnt_success = await RepostMessage(req['link'], to_add)
                     req['current'] = req.get('current', 0) + cnt_success
                 else:
                     REQS_QUEUE.remove(req)
@@ -127,7 +185,7 @@ async def ProcessRequests() -> None:
 
 async def RefreshEventHandler():
     while True:
-        channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_SUBS_DICT.keys())
+        channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
         if ACCOUNTS and channels:
             Stamp(f'Setting up event handler with channels {", ".join(channels)}', 'i')
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
@@ -135,7 +193,7 @@ async def RefreshEventHandler():
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             ACCOUNTS[0].remove_event_handler(EventHandler)
-            ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=channels))
+            ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channels))
             Stamp("Event handler for new messages set up", 's')
         else:
             Stamp("No accounts available/no need to set up event handler", 'w')
@@ -166,8 +224,8 @@ async def EventHandler(event):
         dict_name = item['dict']
         order_type = item['order_type']
         if event.chat.username in dict_name:
-            rand_amount = randint(int(1 - dict_name[event.chat.username]['spread'] * dict_name[event.chat.username]['annual']),
-                                  int(1 + dict_name[event.chat.username]['spread'] * dict_name[event.chat.username]['annual']))
+            rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
+                                  int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
             REQS_QUEUE.append({'order_type': order_type,
                                'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
                                'link': f'{event.chat.username}/{event.message.id}',
@@ -427,7 +485,7 @@ def AutomaticChoice(message: Message) -> None:
     elif message.text == AUTO_CHOICE[1]:
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_reps.json')
-    elif message.text == AUTO_CHOICE[1]:
+    elif message.text == AUTO_CHOICE[2]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
@@ -448,7 +506,7 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
         for chan in data.keys():
             BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='Markdown')
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, file)
     elif message.text == AUTO_BTNS[3]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
@@ -458,6 +516,7 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
 
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
+    global CODE
     Stamp(f'User {message.from_user.id} requested {message.text}', 'i')
     if message.text == '/start':
         BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
@@ -477,8 +536,14 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChoice)
+    elif message.text == WELCOME_BTNS[5]:
+        global ADMIN_CHAT_ID
+        ADMIN_CHAT_ID = message.from_user.id
+        run(AuthorizeAccounts())
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif message.text.isdigit() and len(message.text) == 5:
+        CODE = int(message.text)
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
