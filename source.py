@@ -25,20 +25,21 @@ from os.path import exists, join, getsize
 from os import getcwd
 
 
-SLEEP_GOOGLE = 20
 BOT = TeleBot(TOKEN)
 WELCOME_BTNS = ('Подписаться на канал 🔔',
                 'Увеличить просмотры поста 📈',
                 'Активные заявки 📅',
                 'Выполненные заявки 📋',
-                'Автоматические просмотры 👀')
+                'Автоматические заявки ⏳')
 CANCEL_BTN = ('В меню ↩️',)
-AUTO_VIEWS_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
+AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
+AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
 CUR_REQ = {}
-AUTO_REQS_DICT = {}
+AUTO_SUBS_DICT = {}
+AUTO_REPS_DICT = {}
 init()
 seed()
 CREDS = Credentials.from_service_account_file('keys.json', scopes=['https://www.googleapis.com/auth/spreadsheets'])
@@ -75,7 +76,7 @@ def BuildService() -> Resource:
         service = build('sheets', 'v4', credentials=CREDS)
     except (HttpError, TimeoutError, ServerNotFoundError, gaierror, SSLEOFError) as err:
         Stamp(f'Status = {err} on building service', 'e')
-        Sleep(SLEEP_GOOGLE)
+        Sleep(LONG_SLEEP)
         BuildService()
     else:
         Stamp('Built service successfully', 's')
@@ -102,7 +103,7 @@ def GetSector(start: str, finish: str, service: Resource, sheet_name: str, sheet
         res = service.spreadsheets().values().get(spreadsheetId=sheet_id, range=f'{sheet_name}!{start}:{finish}').execute().get('values', [])
     except (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError) as err:
         Stamp(f'Status = {err} on getting sector from {start} to {finish} from sheet {sheet_name}', 'e')
-        Sleep(SLEEP_GOOGLE)
+        Sleep(LONG_SLEEP)
         res = GetSector(start, finish, service, sheet_name, sheet_id)
     else:
         if not res:

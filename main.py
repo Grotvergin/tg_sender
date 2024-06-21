@@ -1,14 +1,17 @@
 from source import *
 
-#TODO ПРОКИНУТЬ КОД ЧЕРЕЗ БОТА
-#TODO ВОЗМОЖНОСТЬ ОБНОВИТЬ АВТОРИЗАЦИЮ
+
+# TODO ПРОКИНУТЬ КОД ЧЕРЕЗ БОТА
+# TODO ВОЗМОЖНОСТЬ ОБНОВИТЬ АВТОРИЗАЦИЮ
+# TODO ФУНКЦИЯ ОБРАБОТКИ РЕПОСТОВ В ОЧЕРЕДИ
 
 
 async def Main() -> None:
     await AuthorizeAccounts()
-    global FINISHED_REQS, AUTO_REQS_DICT
+    global FINISHED_REQS, AUTO_SUBS_DICT, AUTO_REPS_DICT
     FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
-    AUTO_REQS_DICT = LoadRequestsFromFile('automatic', 'auto.json')
+    AUTO_SUBS_DICT = LoadRequestsFromFile('automatic subs', 'auto_subs.json')
+    AUTO_REPS_DICT = LoadRequestsFromFile('automatic reps', 'auto_reps.json')
     loop = get_event_loop()
     refresh_task = create_task(RefreshEventHandler())
     process_task = create_task(ProcessRequests())
@@ -124,16 +127,15 @@ async def ProcessRequests() -> None:
 
 async def RefreshEventHandler():
     while True:
-        Stamp(f'Setting up event handler with channels {", ".join(AUTO_REQS_DICT.keys())}', 'i')
-        if ACCOUNTS and AUTO_REQS_DICT:
+        channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_SUBS_DICT.keys())
+        if ACCOUNTS and channels:
+            Stamp(f'Setting up event handler with channels {", ".join(channels)}', 'i')
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
-            print(already_subscribed)
-            list_for_subscription = [chan for chan in list(AUTO_REQS_DICT.keys()) if chan not in already_subscribed]
-            print(list_for_subscription)
+            list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             ACCOUNTS[0].remove_event_handler(EventHandler)
-            ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=list(AUTO_REQS_DICT.keys())))
+            ACCOUNTS[0].add_event_handler(EventHandler, events.NewMessage(chats=channels))
             Stamp("Event handler for new messages set up", 's')
         else:
             Stamp("No accounts available/no need to set up event handler", 'w')
@@ -158,16 +160,22 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
 
 async def EventHandler(event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-    REQS_QUEUE.append({
-        'order_type': 'Просмотры',
-        'initiator': f'Автоматическая от {AUTO_REQS_DICT[event.chat.username]['initiator']}',
-        'link': f'{event.chat.username}/{event.message.id}',
-        'start': datetime.now().strftime(TIME_FORMAT),
-        'finish': (datetime.now() + timedelta(minutes=AUTO_REQS_DICT[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
-        'planned': AUTO_REQS_DICT[event.chat.username]['annual_subs'],
-    })
-    BOT.send_message(AUTO_REQS_DICT[event.chat.username]['initiator'].split(' ')[0],
-                     f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка на просмотры создана')
+    dicts_list = ({'dict': AUTO_SUBS_DICT, 'order_type': 'Просмотры'}, {'dict': AUTO_REPS_DICT, 'order_type': 'Репосты'})
+    user_id = None
+    for item in dicts_list:
+        dict_name = item['dict']
+        order_type = item['order_type']
+        if event.chat.username in dict_name:
+            rand_amount = randint(int(1 - dict_name[event.chat.username]['spread'] * dict_name[event.chat.username]['annual']),
+                                  int(1 + dict_name[event.chat.username]['spread'] * dict_name[event.chat.username]['annual']))
+            REQS_QUEUE.append({'order_type': order_type,
+                               'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
+                               'link': f'{event.chat.username}/{event.message.id}',
+                               'start': datetime.now().strftime(TIME_FORMAT),
+                               'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
+                               'planned': rand_amount})
+            user_id = dict_name[event.chat.username]['initiator'].split(' ')[0]
+    BOT.send_message(user_id, f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка создана')
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
 
@@ -178,7 +186,7 @@ def PostView(message: Message) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             ShowButtons(message, CANCEL_BTN, "❌ Ссылка на пост не похожа на корректную. "
-                                              "Пожалуйста, проверьте формат ссылки (https://t.me/name/post_id)")
+                                             "Пожалуйста, проверьте формат ссылки (https://t.me/name/post_id)")
             BOT.register_next_step_handler(message, PostView)
     else:
         global CUR_REQ
@@ -211,11 +219,11 @@ def ChannelSub(message: Message) -> None:
             CUR_REQ['channel_type'] = 'public'
         CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество подписок'
-                                               f'(доступно {len(ACCOUNTS)} аккаунтов):')
+                                         f'(доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
-def AutomaticChannelView(message: Message) -> None:
+def AutomaticChannelAction(message: Message, file: str) -> None:
     Stamp('Automatic channel link inserting procedure', 'i')
     if message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
@@ -223,7 +231,7 @@ def AutomaticChannelView(message: Message) -> None:
         ShowButtons(message, CANCEL_BTN, "❌ Ссылка на канал не похожа на корректную. "
                                          "Пожалуйста, проверьте формат ссылки "
                                          "(https://t.me/name или @name)")
-        BOT.register_next_step_handler(message, AutomaticChannelView)
+        BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     else:
         global CUR_REQ
         CUR_REQ = {'initiator': f'{message.from_user.id} ({message.from_user.username})'}
@@ -232,52 +240,75 @@ def AutomaticChannelView(message: Message) -> None:
             cut_link = cut_link[1:]
         CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите количество аккаунтов, которые '
-                                         f'будут автоматически просматривать новую публикацию '
-                                               f'(доступно {len(ACCOUNTS)} аккаунтов):')
-        BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+                                         f'будут автоматически совершать действие с новой публикацией '
+                                         f'(доступно {len(ACCOUNTS)} аккаунтов):')
+        BOT.register_next_step_handler(message, AutomaticNumberProcedure, file)
 
 
-def AutomaticNumberProcedure(message: Message) -> None:
+def AutomaticNumberProcedure(message: Message, file: str) -> None:
     Stamp('Automatic number inserting procedure', 'i')
     try:
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) <= len(ACCOUNTS):
-                CUR_REQ['annual_subs'] = int(message.text)
-                ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
-                                                 f"по истечении которого {int(message.text)} аккаунтов просмотрят новую публикацию:")
-                BOT.register_next_step_handler(message, AutomaticPeriod)
+                CUR_REQ['annual'] = int(message.text)
+                ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), отведённый на действие")
+                BOT.register_next_step_handler(message, AutomaticPeriod, file)
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
-                BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+                BOT.register_next_step_handler(message, AutomaticNumberProcedure, file)
     except ValueError:
         ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, AutomaticNumberProcedure)
+        BOT.register_next_step_handler(message, AutomaticNumberProcedure, file)
 
 
-def AutomaticPeriod(message: Message) -> None:
+def InsertSpread(message: Message, path: str) -> None:
+    Stamp('Automatic spread inserting procedure', 'i')
+    try:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if 0 <= int(message.text) < 100:
+                CUR_REQ['spread'] = int(message.text)
+                CUR_REQ['approved'] = datetime.now().strftime(TIME_FORMAT)
+                record = {'initiator': CUR_REQ['initiator'],
+                          'time_limit': CUR_REQ['time_limit'],
+                          'approved': CUR_REQ['approved'],
+                          'annual': CUR_REQ['annual'],
+                          'spread': CUR_REQ['spread']}
+                if path == 'auto_subs.json':
+                    AUTO_SUBS_DICT[CUR_REQ['link']] = record
+                    SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', 'auto_subs.json')
+                else:
+                    AUTO_REPS_DICT[CUR_REQ['link']] = record
+                    SaveRequestsToFile(AUTO_REPS_DICT, 'automatic reps', 'auto_reps.json')
+                BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {CUR_REQ['link']}...")
+                ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+            else:
+                ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
+                BOT.register_next_step_handler(message, InsertSpread, path)
+    except ValueError:
+        ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
+        BOT.register_next_step_handler(message, InsertSpread, path)
+
+
+def AutomaticPeriod(message: Message, path: str) -> None:
     Stamp('Automatic time inserting procedure', 'i')
     try:
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) < MAX_MINS:
-                CUR_REQ['approved'] = datetime.now().strftime(TIME_FORMAT)
                 CUR_REQ['time_limit'] = int(message.text)
-                AUTO_REQS_DICT[CUR_REQ['link']] = {'initiator': CUR_REQ['initiator'],
-                                                   'time_limit': CUR_REQ['time_limit'],
-                                                   'approved': CUR_REQ['approved'],
-                                                   'annual_subs': CUR_REQ['annual_subs']}
-                SaveRequestsToFile(AUTO_REQS_DICT, 'automatic', 'auto.json')
-                BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {CUR_REQ['link']}...")
-                ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+                BOT.send_message(message.from_user.id, '❔ Введите разброс (в %, от 0 до 100), с которым рассчитается количество')
+                BOT.register_next_step_handler(message, InsertSpread, path)
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
-                BOT.register_next_step_handler(message, AutomaticPeriod)
+                BOT.register_next_step_handler(message, AutomaticPeriod, path)
     except ValueError:
         ShowButtons(message, CANCEL_BTN, "❌ Пожалуйста, введите только число. Попробуйте ещё раз:")
-        BOT.register_next_step_handler(message, AutomaticPeriod)
+        BOT.register_next_step_handler(message, AutomaticPeriod, path)
 
 
 def SaveRequestsToFile(requests: list | dict, msg: str, file: str) -> None:
@@ -328,7 +359,7 @@ def NumberInsertingProcedure(message: Message) -> None:
             if 0 < int(message.text) <= len(ACCOUNTS):
                 CUR_REQ['planned'] = int(message.text)
                 ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
-                                                       "в течение которого будет выполняться заявка:")
+                                                 "в течение которого будет выполняться заявка:")
                 BOT.register_next_step_handler(message, RequestPeriod)
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
@@ -357,12 +388,13 @@ def PrintRequest(req: dict) -> str:
            f"*Инициатор заявки*: {req['initiator']}"
 
 
-def PrintAutomaticRequest(chan: str) -> str:
+def PrintAutomaticRequest(chan: str, data: dict) -> str:
     return (f"*Канал*: {chan}\n"
-            f"*Инициатор заявки*: {AUTO_REQS_DICT[chan]['initiator']}\n"
-            f"*Временной интервал*: {AUTO_REQS_DICT[chan]['time_limit']}\n"
-            f"*Создана*: {AUTO_REQS_DICT[chan]['approved']}\n"
-            f"*Просмотров на публикацию*: {AUTO_REQS_DICT[chan]['annual_subs']}")
+            f"*Инициатор заявки*: {data[chan]['initiator']}\n"
+            f"*Временной интервал*: {data[chan]['time_limit']}\n"
+            f"*Создана*: {data[chan]['approved']}\n"
+            f"*На публикацию*: {data[chan]['annual']}\n"
+            f"*Разброс*: {data[chan]['spread']}%")
 
 
 def SendFinishedRequests(message: Message) -> None:
@@ -374,36 +406,54 @@ def SendFinishedRequests(message: Message) -> None:
         BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')
 
 
-def DeleteAutomaticRequest(message: Message) -> None:
-    if message.text in AUTO_REQS_DICT.keys():
-        del AUTO_REQS_DICT[message.text]
-        SaveRequestsToFile(AUTO_REQS_DICT, 'automatic', 'auto.json')
-        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка для канала {message.text} удалена')
+def DeleteAutomaticRequest(message: Message, path: str) -> None:
+    if message.text in AUTO_SUBS_DICT.keys() and path == 'auto_subs.json':
+        del AUTO_SUBS_DICT[message.text]
+        SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', path)
+        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на просмотры для канала {message.text} удалена')
+    elif message.text in AUTO_REPS_DICT.keys() and path == 'auto_reps.json':
+        del AUTO_REPS_DICT[message.text]
+        SaveRequestsToFile(AUTO_REPS_DICT, 'automatic reps', path)
+        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на репосты для канала {message.text} удалена')
     else:
         BOT.send_message(message.from_user.id, '❌ Не нашёл автоматической заявки на такой канал')
     ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
-def AutomaticChannelDispatcher(message: Message) -> None:
-    if message.text == AUTO_VIEWS_BTNS[0]:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал, для которого будут '
-                                         'отслеживаться новые публикации (https://t.me/name или @name):')
-        BOT.register_next_step_handler(message, AutomaticChannelView)
-    elif message.text == AUTO_VIEWS_BTNS[1]:
-        BOT.send_message(message.from_user.id, '❔ Введите имя канала, для которого нужно отменить '
-                                               'отслеживание публикаций (name):')
-        BOT.register_next_step_handler(message, DeleteAutomaticRequest)
-    elif message.text == AUTO_VIEWS_BTNS[2]:
-        for chan in AUTO_REQS_DICT.keys():
-            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan), parse_mode='Markdown')
-        ShowButtons(message, AUTO_VIEWS_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
-    elif message.text == AUTO_VIEWS_BTNS[3]:
+def AutomaticChoice(message: Message) -> None:
+    if message.text == AUTO_CHOICE[0]:
+        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_subs.json')
+    elif message.text == AUTO_CHOICE[1]:
+        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_reps.json')
+    elif message.text == AUTO_CHOICE[1]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
+
+def AutomaticChannelDispatcher(message: Message, file: str) -> None:
+    if message.text == AUTO_BTNS[0]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал, для которого будет создана'
+                                         'автоматическая заявка (https://t.me/name или @name):')
+        BOT.register_next_step_handler(message, AutomaticChannelAction, file)
+    elif message.text == AUTO_BTNS[1]:
+        BOT.send_message(message.from_user.id, '❔ Введите имя канала, для которого нужно отменить '
+                                               'автоматическую заявку (name):')
+        BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
+    elif message.text == AUTO_BTNS[2]:
+        data = AUTO_SUBS_DICT if file == 'auto_subs.json' else AUTO_REPS_DICT
+        for chan in data.keys():
+            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='Markdown')
+        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
+    elif message.text == AUTO_BTNS[3]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    else:
+        BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
 @BOT.message_handler(content_types=['text'])
@@ -425,8 +475,8 @@ def MessageAccept(message: Message) -> None:
         SendFinishedRequests(message)
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
-        ShowButtons(message, AUTO_VIEWS_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher)
+        ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
