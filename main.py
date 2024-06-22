@@ -1,5 +1,7 @@
 from source import *
 
+#TODO PARSE MODE HTML
+
 
 async def Main() -> None:
     await AuthorizeAccounts()
@@ -29,7 +31,8 @@ def WaitForCode() -> int | None:
     global CODE
     start = time()
     while not CODE:
-        Sleep(1)
+        sleep(1)
+        Stamp('Waiting for code...', 'l')
         if (time() - start) > MAX_WAIT_CODE:
             return
     code = CODE
@@ -37,20 +40,19 @@ def WaitForCode() -> int | None:
     return code
 
 
-def ListFiles(directory: str) -> list[str]:
-    files = []
-    for root, dirs, file_names in walk(directory):
-        for file_name in file_names:
-            files.append(join(root, file_name))
-    return files
+def AuthCallback() -> int:
+    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код подтверждения в течение {MAX_WAIT_CODE} секунд:')
+    code = WaitForCode()
+    if not code:
+        raise TimeoutError('Too long code waiting')
+    return code
 
 
-async def AuthorizeAccounts():
+async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
     data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
     this_run_auth = [client.session.filename for client in ACCOUNTS]
-    general_auth = ListFiles('sessions')
     for account in data:
         session = join(getcwd(), 'sessions', f'{account[0]}')
         if session + '.session' in this_run_auth:
@@ -63,41 +65,30 @@ async def AuthorizeAccounts():
                 password = account[3] if account[3] != '-' else None
             except IndexError:
                 password = None
-            if session + '.session' in general_auth:
-                Stamp(f'Found existing session file for account {account[0]}', 'i')
-                await client.start(phone=account[0], password=password)
-            else:
-                Stamp(f'No session file found for account {account[0]}. Trying to authorize...', 'w')
-                await client.connect()
-                if not await client.is_user_authorized():
-                    try:
-                        await client.send_code_request(account[0])
-                        BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {account[0]} в течение {MAX_WAIT_CODE} секунд:')
-                        code = WaitForCode()
-                        if code:
-                            await client.sign_in(account[0], code, password=None)
-                        else:
-                            BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода. Процедура авторизации завершается.')
-                            Stamp('Too long code waiting', 'w')
-                            return
-                    except PhoneCodeInvalidError:
-                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.')
-                        continue
-                    except PhoneCodeExpiredError:
-                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {account[0]}.')
-                        continue
-                    except SessionPasswordNeededError:
-                        BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {account[0]}.')
-                        continue
-                    except PhoneNumberInvalidError:
-                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
-                        continue
-                try:
-                    client.start(phone=account[0], password=password)
-                    ACCOUNTS.append(client)
-                except Exception as e:
-                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {account[0]}: {str(e)}')
-                    continue
+            try:
+                await client.start(phone=account[0], password=password, code_callback=AuthCallback)
+                ACCOUNTS.append(client)
+                Stamp(f'Account {account[0]} authorized', 's')
+            except PhoneCodeInvalidError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.')
+                Stamp(f'Invalid code for {account[0]}', 'e')
+                continue
+            except PhoneCodeExpiredError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {account[0]}.')
+                Stamp(f'Code expired for {account[0]}', 'e')
+                continue
+            except SessionPasswordNeededError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {account[0]}.')
+                Stamp(f'2FA needed for {account[0]}', 'w')
+                continue
+            except PhoneNumberInvalidError:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
+                Stamp(f'Invalid phone number {account[0]}', 'e')
+                continue
+            except Exception as e:
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {account[0]}: {str(e)}')
+                Stamp(f'Error while starting client for {account[0]}: {e}', 'e')
+                continue
     BOT.send_message(ADMIN_CHAT_ID, '🔹Процедура авторизации завершена!\n')
     ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     Stamp('All accounts authorized', 'b')
@@ -201,8 +192,8 @@ async def ProcessRequests() -> None:
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
-                    BOT.send_message(req['initiator'].split(' ')[-2], f"✅ Заявка выполнена:")
-                    BOT.send_message(req['initiator'].split(' ')[-2], PrintRequest(req), parse_mode='Markdown')
+                    BOT.send_message(req['initiator'].split(' ')[-1], f"✅ Заявка выполнена:")
+                    BOT.send_message(req['initiator'].split(' ')[-1], PrintRequest(req))
         await AsyncSleep(LONG_SLEEP, 0.5)
 
 
@@ -234,7 +225,7 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
     ))
     channels = []
     for chat in result.chats:
-        if isinstance(chat, ChannelForbidden) or isinstance(chat, Channel):
+        if isinstance(chat, Channel):
             channels.append(chat.username)
     return channels
 
@@ -262,7 +253,7 @@ async def EventHandler(event):
                                'start': datetime.now().strftime(TIME_FORMAT),
                                'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
                                'planned': rand_amount})
-            user_id = dict_name[event.chat.username]['initiator'].split(' ')[0]
+            user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     BOT.send_message(user_id, f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка создана')
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
@@ -279,7 +270,7 @@ def AcceptPost(message: Message, order_type: str) -> None:
     else:
         global CUR_REQ
         cut_link = '/'.join(message.text.split('/')[-2:])
-        CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.id} ({message.from_user.username})', 'link': cut_link}
+        CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.username} – {message.from_user.id}', 'link': cut_link}
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
@@ -295,7 +286,7 @@ def ChannelSub(message: Message) -> None:
                                          "(https://t.me/name_or_hash или @name)")
         BOT.register_next_step_handler(message, ChannelSub)
     else:
-        CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.id} ({message.from_user.username})'}
+        CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.username} – {message.from_user.id}'}
         cut_link = message.text.split('/')[-1]
         if cut_link[0] == '@':
             CUR_REQ['channel_type'] = 'public'
@@ -322,7 +313,7 @@ def AutomaticChannelAction(message: Message, file: str) -> None:
         BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     else:
         global CUR_REQ
-        CUR_REQ = {'initiator': f'{message.from_user.id} ({message.from_user.username})'}
+        CUR_REQ = {'initiator': f'{message.from_user.username} – {message.from_user.id}'}
         cut_link = message.text.split('/')[-1]
         if cut_link[0] == '@':
             cut_link = cut_link[1:]
@@ -461,35 +452,42 @@ def SendActiveRequests(message: Message) -> None:
     if REQS_QUEUE:
         BOT.send_message(message.from_user.id, f' ⏳ Показываю {len(REQS_QUEUE)} активные заявки:')
         for req in REQS_QUEUE:
-            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='Markdown')
+            BOT.send_message(message.from_user.id, PrintRequest(req))
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет активных заявок')
 
 
+# def EscapeMarkdown(text: str) -> str:
+#     escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+#     for char in escape_chars:
+#         text = text.replace(char, '\{char}')
+#     return text
+
+
 def PrintRequest(req: dict) -> str:
-    return f"*Начало*: {req['start']}\n" \
-           f"*Конец*: {req['finish']}\n" \
-           f"*Тип заявки*: {req['order_type']}\n" \
-           f"*Желаемое количество*: {req['planned']}\n" \
-           f"*Выполненное количество*: {req.get('current', 0)}\n" \
-           f"*Ссылка*: {req['link']}\n" \
-           f"*Инициатор заявки*: {req['initiator']}"
+    return (f"*Начало*: {req['start']}\n"
+                          f"*Конец*: {req['finish']}\n"
+                          f"*Тип*: {req['order_type']}\n"
+                          f"*Желаемое*: {req['planned']}\n"
+                          f"*Выполненное*: {req.get('current', 0)}\n"
+                          f"*Ссылка*: {req['link']}\n"
+                          f"*Инициатор*: {req['initiator']}")
 
 
 def PrintAutomaticRequest(chan: str, data: dict) -> str:
     return (f"*Канал*: {chan}\n"
-            f"*Инициатор заявки*: {data[chan]['initiator']}\n"
-            f"*Временной интервал*: {data[chan]['time_limit']}\n"
-            f"*Создана*: {data[chan]['approved']}\n"
-            f"*На публикацию*: {data[chan]['annual']}\n"
-            f"*Разброс*: {data[chan]['spread']}%")
+                          f"*Инициатор*: {data[chan]['initiator']}\n"
+                          f"*Временной интервал*: {data[chan]['time_limit']}\n"
+                          f"*Создана*: {data[chan]['approved']}\n"
+                          f"*На публикацию*: {data[chan]['annual']}\n"
+                          f"*Разброс*: {data[chan]['spread']}%")
 
 
 def SendFinishedRequests(message: Message) -> None:
     if FINISHED_REQS:
         BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
         for req in FINISHED_REQS:
-            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='Markdown')
+            BOT.send_message(message.from_user.id, PrintRequest(req))
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')
 
@@ -534,7 +532,7 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
     elif message.text == AUTO_BTNS[2]:
         data = AUTO_SUBS_DICT if file == 'auto_subs.json' else AUTO_REPS_DICT
         for chan in data.keys():
-            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='Markdown')
+            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data))
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, file)
     elif message.text == AUTO_BTNS[3]:
