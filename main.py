@@ -67,7 +67,7 @@ async def AuthorizeAccounts():
                     Stamp('Too long code waiting', 'w')
                     return
             except PhoneCodeInvalidError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.)
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.')
                 continue
             except PhoneCodeExpiredError:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {account[0]}.')
