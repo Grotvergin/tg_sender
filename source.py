@@ -24,7 +24,7 @@ from time import sleep, time
 from json import load, dump
 from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather, run_coroutine_threadsafe, set_event_loop, new_event_loop
 from os.path import exists, join, getsize
-from os import getcwd
+from os import getcwd, listdir, walk
 
 
 BOT = TeleBot(TOKEN)

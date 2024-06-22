@@ -37,55 +37,67 @@ def WaitForCode() -> int | None:
     return code
 
 
+def ListFiles(directory: str) -> list[str]:
+    files = []
+    for root, dirs, file_names in walk(directory):
+        for file_name in file_names:
+            files.append(join(root, file_name))
+    return files
+
+
 async def AuthorizeAccounts():
     Stamp('Authorization procedure started', 'b')
     BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
     data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
-    authorized_sessions = [client.session.filename for client in ACCOUNTS]
+    this_run_auth = [client.session.filename for client in ACCOUNTS]
+    general_auth = ListFiles('sessions')
     for account in data:
         session = join(getcwd(), 'sessions', f'{account[0]}')
-        if session + '.session' in authorized_sessions:
-            Stamp(f'Account {account[0]} already authorized', 'i')
+        if session + '.session' in this_run_auth:
+            Stamp(f'Account {account[0]} already authorized', 's')
             continue
-
-        client = TelegramClient(session, account[1], account[2])
-        Stamp(f'Account {account[0]}', 'i')
-        try:
-            password = account[3] if account[3] != '-' else None
-        except IndexError:
-            password = None
-        await client.connect()
-        if not await client.is_user_authorized():
+        else:
+            Stamp(f'Processing account {account[0]}', 'i')
+            client = TelegramClient(session, account[1], account[2])
             try:
-                await client.send_code_request(account[0])
-                BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {account[0]} в течение {MAX_WAIT_CODE} секунд:')
-                code = WaitForCode()
-                if code:
-                    await client.sign_in(account[0], code)
-                else:
-                    BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода. Процедура авторизации завершается.')
-                    Stamp('Too long code waiting', 'w')
-                    return
-            except PhoneCodeInvalidError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.')
-                continue
-            except PhoneCodeExpiredError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {account[0]}.')
-            except SessionPasswordNeededError:
-                if password:
-                    await client.sign_in(password=password)
-                else:
-                    BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {account[0]}.')
+                password = account[3] if account[3] != '-' else None
+            except IndexError:
+                password = None
+            if session + '.session' in general_auth:
+                Stamp(f'Found existing session file for account {account[0]}', 'i')
+                await client.start(phone=account[0], password=password)
+            else:
+                Stamp(f'No session file found for account {account[0]}. Trying to authorize...', 'w')
+                await client.connect()
+                if not await client.is_user_authorized():
+                    try:
+                        await client.send_code_request(account[0])
+                        BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {account[0]} в течение {MAX_WAIT_CODE} секунд:')
+                        code = WaitForCode()
+                        if code:
+                            await client.sign_in(account[0], code, password=None)
+                        else:
+                            BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода. Процедура авторизации завершается.')
+                            Stamp('Too long code waiting', 'w')
+                            return
+                    except PhoneCodeInvalidError:
+                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {account[0]}.')
+                        continue
+                    except PhoneCodeExpiredError:
+                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {account[0]}.')
+                        continue
+                    except SessionPasswordNeededError:
+                        BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {account[0]}.')
+                        continue
+                    except PhoneNumberInvalidError:
+                        BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
+                        continue
+                try:
+                    client.start(phone=account[0], password=password)
+                    ACCOUNTS.append(client)
+                except Exception as e:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {account[0]}: {str(e)}')
                     continue
-            except PhoneNumberInvalidError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
-                continue
-        try:
-            client.start(phone=account[0], password=password)
-            ACCOUNTS.append(client)
-        except Exception as e:
-            BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при запуске клиента для {account[0]}: {str(e)}')
-            continue
     BOT.send_message(ADMIN_CHAT_ID, '🔹Процедура авторизации завершена!\n')
     ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     Stamp('All accounts authorized', 'b')
