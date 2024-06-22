@@ -2,7 +2,7 @@ from secret import *
 from colorama import Fore, Style, init
 from datetime import datetime, timedelta
 from traceback import format_exc
-from re import match
+from re import match, compile
 from threading import Thread
 from googleapiclient.errors import HttpError
 from ssl import SSLEOFError
@@ -21,21 +21,19 @@ from telethon.events import NewMessage
 from random import randint, seed
 from time import sleep, time
 from json import load, dump
-from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather, Future, ensure_future
+from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather, run_coroutine_threadsafe, set_event_loop, new_event_loop
 from os.path import exists, join, getsize
 from os import getcwd
 
 
 BOT = TeleBot(TOKEN)
-WELCOME_BTNS = ('Подписаться на канал 🔔',
-                'Увеличить просмотры поста 📈',
-                'Активные заявки 📅',
-                'Выполненные заявки 📋',
+WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
                 'Авторизация аккаунтов 🔐')
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
+SINGLE_BTNS = ('Активные 📅', 'Выполненные заявки 📋', 'Подписки 🔔', 'Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
@@ -53,7 +51,8 @@ LINK_FORMAT = r'https://t\.me/'
 MAX_MINS = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 ADMIN_CHAT_ID = 386988582
-MAX_WAIT_CODE = 60
+MAX_WAIT_CODE = 120
+LINK_DECREASE_RATIO = 3
 
 
 def Stamp(message: str, level: str) -> None:
@@ -88,8 +87,12 @@ def BuildService() -> Resource:
         return service
 
 
-def ShowButtons(message: Message, buttons: tuple, answer: str) -> None:
+def ShowButtons(message: Message | int, buttons: tuple, answer: str) -> None:
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+    if type(message) == Message:
+        user_id = message.from_user.id
+    else:
+        user_id = message
     if len(buttons) % 2 == 0:
         for i in range(0, len(buttons), 2):
             row_buttons = buttons[i:i + 2]
@@ -99,7 +102,7 @@ def ShowButtons(message: Message, buttons: tuple, answer: str) -> None:
             row_buttons = buttons[i:i + 2]
             markup.row(*[KeyboardButton(btn) for btn in row_buttons])
         markup.row(KeyboardButton(buttons[-1]))
-    BOT.send_message(message.from_user.id, answer, reply_markup=markup)
+    BOT.send_message(user_id, answer, reply_markup=markup)
 
 
 def GetSector(start: str, finish: str, service: Resource, sheet_name: str, sheet_id: str) -> list:

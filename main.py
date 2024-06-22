@@ -1,7 +1,5 @@
 from source import *
 
-# TODO ССЫЛКА УМЕНЬШЕНИЕ
-
 
 async def Main() -> None:
     await AuthorizeAccounts()
@@ -41,10 +39,15 @@ def WaitForCode() -> int | None:
 
 async def AuthorizeAccounts():
     Stamp('Authorization procedure started', 'b')
-    BOT.send_message(ADMIN_CHAT_ID, '🔺 Начата процедура авторизации...\n')
+    BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
     data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
+    authorized_sessions = [client.session.filename for client in ACCOUNTS]
     for account in data:
         session = join(getcwd(), 'sessions', f'{account[0]}')
+        if session + '.session' in authorized_sessions:
+            Stamp(f'Account {account[0]} already authorized', 'i')
+            continue
+
         client = TelegramClient(session, account[1], account[2])
         Stamp(f'Account {account[0]}', 'i')
         try:
@@ -76,7 +79,8 @@ async def AuthorizeAccounts():
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
                 continue
         ACCOUNTS.append(client)
-    BOT.send_message(ADMIN_CHAT_ID, '🔻 Процедура авторизации завершена!\n')
+    BOT.send_message(ADMIN_CHAT_ID, '🔹Процедура авторизации завершена!\n')
+    ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     Stamp('All accounts authorized', 'b')
 
 
@@ -197,7 +201,7 @@ async def RefreshEventHandler():
             Stamp("Event handler for new messages set up", 's')
         else:
             Stamp("No accounts available/no need to set up event handler", 'w')
-        await AsyncSleep(LONG_SLEEP * 15, 0.5)
+        await AsyncSleep(LONG_SLEEP * 5, 0.5)
 
 
 async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
@@ -216,6 +220,11 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
     return channels
 
 
+def ContainsLink(text: str) -> bool:
+    url_pattern = compile(r'http[s]?')
+    return bool(url_pattern.search(text))
+
+
 async def EventHandler(event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
     dicts_list = ({'dict': AUTO_SUBS_DICT, 'order_type': 'Просмотры'}, {'dict': AUTO_REPS_DICT, 'order_type': 'Репосты'})
@@ -224,6 +233,8 @@ async def EventHandler(event):
         dict_name = item['dict']
         order_type = item['order_type']
         if event.chat.username in dict_name:
+            if order_type == 'Репосты' and ContainsLink(event.message.message):
+                dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
             REQS_QUEUE.append({'order_type': order_type,
@@ -237,7 +248,7 @@ async def EventHandler(event):
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
 
-def PostView(message: Message) -> None:
+def AcceptPost(message: Message, order_type: str) -> None:
     Stamp('Post link inserting procedure', 'i')
     if not match(LINK_FORMAT, message.text):
         if message.text == CANCEL_BTN[0]:
@@ -245,12 +256,12 @@ def PostView(message: Message) -> None:
         else:
             ShowButtons(message, CANCEL_BTN, "❌ Ссылка на пост не похожа на корректную. "
                                              "Пожалуйста, проверьте формат ссылки (https://t.me/name/post_id)")
-            BOT.register_next_step_handler(message, PostView)
+            BOT.register_next_step_handler(message, AcceptPost, order_type)
     else:
         global CUR_REQ
         cut_link = '/'.join(message.text.split('/')[-2:])
-        CUR_REQ = {'order_type': 'Просмотры', 'initiator': f'{message.from_user.id} ({message.from_user.username})', 'link': cut_link}
-        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество просмотров (доступно {len(ACCOUNTS)} аккаунтов):')
+        CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.id} ({message.from_user.username})', 'link': cut_link}
+        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
@@ -514,6 +525,32 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
+def SingleChoice(message: Message) -> None:
+    if message.text == SINGLE_BTNS[0]:
+        SendActiveRequests(message)
+        ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, SingleChoice)
+    elif message.text == SINGLE_BTNS[1]:
+        SendFinishedRequests(message)
+        ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, SingleChoice)
+    elif message.text == SINGLE_BTNS[2]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name_or_hash или @name):')
+        BOT.register_next_step_handler(message, ChannelSub)
+    elif message.text == SINGLE_BTNS[3]:
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
+        BOT.register_next_step_handler(message, AcceptPost, 'Просмотры')
+    elif message.text == SINGLE_BTNS[4]:
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
+        BOT.register_next_step_handler(message, AcceptPost, 'Репосты')
+    elif message.text == SINGLE_BTNS[5]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    else:
+        BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
+        ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, SingleChoice)
+
+
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
     global CODE
@@ -522,24 +559,16 @@ def MessageAccept(message: Message) -> None:
         BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[0]:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name_or_hash или @name):')
-        BOT.register_next_step_handler(message, ChannelSub)
+        ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, SingleChoice)
     elif message.text == WELCOME_BTNS[1]:
-        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
-        BOT.register_next_step_handler(message, PostView)
-    elif message.text == WELCOME_BTNS[2]:
-        SendActiveRequests(message)
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text == WELCOME_BTNS[3]:
-        SendFinishedRequests(message)
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChoice)
-    elif message.text == WELCOME_BTNS[5]:
+    elif message.text == WELCOME_BTNS[2]:
         global ADMIN_CHAT_ID
         ADMIN_CHAT_ID = message.from_user.id
-        run(AuthorizeAccounts())
+        # RunCoroutine(LogoutAccounts)
+        RunCoroutine(AuthorizeAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5:
@@ -547,6 +576,15 @@ def MessageAccept(message: Message) -> None:
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+
+
+def RunCoroutine(coroutine):
+    loop = new_event_loop()  # Создаем новый цикл событий
+    set_event_loop(loop)     # Устанавливаем его как текущий
+    try:
+        loop.run_until_complete(coroutine())  # Запускаем асинхронную функцию
+    finally:
+        loop.close()  # Закрываем цикл после выполнения
 
 
 if __name__ == '__main__':
