@@ -80,7 +80,12 @@ async def AuthorizeAccounts():
             except PhoneNumberInvalidError:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {account[0]}.')
                 continue
-        ACCOUNTS.append(client)
+        try:
+            client.start(phone=account[0], password=password)
+            ACCOUNTS.append(client)
+        except Exception as e:
+            BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при запуске клиента для {account[0]}: {str(e)}')
+            continue
     BOT.send_message(ADMIN_CHAT_ID, '🔹Процедура авторизации завершена!\n')
     ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     Stamp('All accounts authorized', 'b')
@@ -581,12 +586,12 @@ def MessageAccept(message: Message) -> None:
 
 
 def RunCoroutine(coroutine):
-    loop = new_event_loop()  # Создаем новый цикл событий
-    set_event_loop(loop)     # Устанавливаем его как текущий
+    loop = new_event_loop()
+    set_event_loop(loop)
     try:
-        loop.run_until_complete(coroutine())  # Запускаем асинхронную функцию
+        loop.run_until_complete(coroutine())
     finally:
-        loop.close()  # Закрываем цикл после выполнения
+        loop.close()
 
 
 if __name__ == '__main__':
