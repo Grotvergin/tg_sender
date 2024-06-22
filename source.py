@@ -17,6 +17,7 @@ from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden
 from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError
+from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 from telethon.events import NewMessage
 from random import randint, seed
 from time import sleep, time
