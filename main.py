@@ -4,7 +4,7 @@ from source import *
 async def Main() -> None:
     global FINISHED_REQS, AUTO_SUBS_DICT, AUTO_REPS_DICT
     FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
-    AUTO_SUBS_DICT = LoadRequestsFromFile('automatic subs', 'auto_subs.json')
+    AUTO_SUBS_DICT = LoadRequestsFromFile('automatic subs', 'auto_views.json')
     AUTO_REPS_DICT = LoadRequestsFromFile('automatic reps', 'auto_reps.json')
     loop = get_event_loop()
     refresh_task = create_task(RefreshEventHandler())
@@ -365,9 +365,9 @@ def InsertSpread(message: Message, path: str) -> None:
                           'approved': CUR_REQ['approved'],
                           'annual': CUR_REQ['annual'],
                           'spread': CUR_REQ['spread']}
-                if path == 'auto_subs.json':
+                if path == 'auto_views.json':
                     AUTO_SUBS_DICT[CUR_REQ['link']] = record
-                    SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', 'auto_subs.json')
+                    SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', 'auto_views.json')
                 else:
                     AUTO_REPS_DICT[CUR_REQ['link']] = record
                     SaveRequestsToFile(AUTO_REPS_DICT, 'automatic reps', 'auto_reps.json')
@@ -495,7 +495,7 @@ def SendFinishedRequests(message: Message) -> None:
 
 
 def DeleteAutomaticRequest(message: Message, path: str) -> None:
-    if message.text in AUTO_SUBS_DICT.keys() and path == 'auto_subs.json':
+    if message.text in AUTO_SUBS_DICT.keys() and path == 'auto_views.json':
         del AUTO_SUBS_DICT[message.text]
         SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', path)
         BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на просмотры для канала {message.text} удалена')
@@ -511,7 +511,7 @@ def DeleteAutomaticRequest(message: Message, path: str) -> None:
 def AutomaticChoice(message: Message) -> None:
     if message.text == AUTO_CHOICE[0]:
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_subs.json')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_views.json')
     elif message.text == AUTO_CHOICE[1]:
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, 'auto_reps.json')
@@ -532,9 +532,12 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
                                                'автоматическую заявку (name):')
         BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
     elif message.text == AUTO_BTNS[2]:
-        data = AUTO_SUBS_DICT if file == 'auto_subs.json' else AUTO_REPS_DICT
-        for chan in data.keys():
-            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='HTML')
+        data = AUTO_SUBS_DICT if file == 'auto_views.json' else AUTO_REPS_DICT
+        if data.keys():
+            for chan in data.keys():
+                BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='HTML')
+        else:
+            BOT.send_message(message.from_user.id, '🔍 Нет автоматических заявок')
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, file)
     elif message.text == AUTO_BTNS[3]:
