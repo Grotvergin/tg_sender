@@ -1,10 +1,7 @@
 from source import *
 
-#TODO PARSE MODE HTML
-
 
 async def Main() -> None:
-    await AuthorizeAccounts()
     global FINISHED_REQS, AUTO_SUBS_DICT, AUTO_REPS_DICT
     FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
     AUTO_SUBS_DICT = LoadRequestsFromFile('automatic subs', 'auto_subs.json')
@@ -12,8 +9,9 @@ async def Main() -> None:
     loop = get_event_loop()
     refresh_task = create_task(RefreshEventHandler())
     process_task = create_task(ProcessRequests())
+    auth_task = create_task(CheckRefreshAuth())
     try:
-        await gather(refresh_task, process_task)
+        await gather(refresh_task, process_task, auth_task)
     finally:
         loop.close()
 
@@ -32,7 +30,7 @@ def WaitForCode() -> int | None:
     start = time()
     while not CODE:
         sleep(1)
-        Stamp('Waiting for code...', 'l')
+        Stamp('Waiting for code', 'l')
         if (time() - start) > MAX_WAIT_CODE:
             return
     code = CODE
@@ -40,10 +38,21 @@ def WaitForCode() -> int | None:
     return code
 
 
-def AuthCallback() -> int:
-    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код подтверждения в течение {MAX_WAIT_CODE} секунд:')
+async def CheckRefreshAuth() -> None:
+    global ADMIN_CHAT_ID
+    while True:
+        if ADMIN_CHAT_ID is not None:
+            Stamp('Admin chat ID is set, authorizing accounts', 'i')
+            await AuthorizeAccounts()
+            ADMIN_CHAT_ID = None
+        await async_sleep(SHORT_SLEEP)
+
+
+def AuthCallback(number: str) -> int:
+    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {number} в течение {MAX_WAIT_CODE} секунд:')
     code = WaitForCode()
     if not code:
+        BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода для {number}!')
         raise TimeoutError('Too long code waiting')
     return code
 
@@ -66,7 +75,7 @@ async def AuthorizeAccounts() -> None:
             except IndexError:
                 password = None
             try:
-                await client.start(phone=account[0], password=password, code_callback=AuthCallback)
+                await client.start(phone=account[0], password=password, code_callback=lambda: AuthCallback(account[0]))
                 ACCOUNTS.append(client)
                 Stamp(f'Account {account[0]} authorized', 's')
             except PhoneCodeInvalidError:
@@ -193,7 +202,7 @@ async def ProcessRequests() -> None:
                     FINISHED_REQS.append(req)
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
                     BOT.send_message(req['initiator'].split(' ')[-1], f"✅ Заявка выполнена:")
-                    BOT.send_message(req['initiator'].split(' ')[-1], PrintRequest(req))
+                    BOT.send_message(req['initiator'].split(' ')[-1], PrintRequest(req), parse_mode='HTML')
         await AsyncSleep(LONG_SLEEP, 0.5)
 
 
@@ -211,7 +220,7 @@ async def RefreshEventHandler():
             Stamp("Event handler for new messages set up", 's')
         else:
             Stamp("No accounts available/no need to set up event handler", 'w')
-        await AsyncSleep(LONG_SLEEP * 5, 0.5)
+        await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
 async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
@@ -452,42 +461,35 @@ def SendActiveRequests(message: Message) -> None:
     if REQS_QUEUE:
         BOT.send_message(message.from_user.id, f' ⏳ Показываю {len(REQS_QUEUE)} активные заявки:')
         for req in REQS_QUEUE:
-            BOT.send_message(message.from_user.id, PrintRequest(req))
+            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='HTML')
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет активных заявок')
 
 
-# def EscapeMarkdown(text: str) -> str:
-#     escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-#     for char in escape_chars:
-#         text = text.replace(char, '\{char}')
-#     return text
-
-
 def PrintRequest(req: dict) -> str:
-    return (f"*Начало*: {req['start']}\n"
-                          f"*Конец*: {req['finish']}\n"
-                          f"*Тип*: {req['order_type']}\n"
-                          f"*Желаемое*: {req['planned']}\n"
-                          f"*Выполненное*: {req.get('current', 0)}\n"
-                          f"*Ссылка*: {req['link']}\n"
-                          f"*Инициатор*: {req['initiator']}")
+    return (f"<b>Начало</b>: {req['start']}\n"
+                          f"<b>Конец</b>: {req['finish']}\n"
+                          f"<b>Тип</b>: {req['order_type']}\n"
+                          f"<b>Желаемое</b>: {req['planned']}\n"
+                          f"<b>Выполненное</b>: {req.get('current', 0)}\n"
+                          f"<b>Ссылка</b>: {req['link']}\n"
+                          f"<b>Инициатор</b>: {req['initiator']}")
 
 
 def PrintAutomaticRequest(chan: str, data: dict) -> str:
-    return (f"*Канал*: {chan}\n"
-                          f"*Инициатор*: {data[chan]['initiator']}\n"
-                          f"*Временной интервал*: {data[chan]['time_limit']}\n"
-                          f"*Создана*: {data[chan]['approved']}\n"
-                          f"*На публикацию*: {data[chan]['annual']}\n"
-                          f"*Разброс*: {data[chan]['spread']}%")
+    return (f"<b>Канал</b>: {chan}\n"
+                          f"<b>Инициатор</b>: {data[chan]['initiator']}\n"
+                          f"<b>Временной интервал</b>: {data[chan]['time_limit']}\n"
+                          f"<b>Создана</b>: {data[chan]['approved']}\n"
+                          f"<b>На публикацию</b>: {data[chan]['annual']}\n"
+                          f"<b>Разброс</b>: {data[chan]['spread']}%")
 
 
 def SendFinishedRequests(message: Message) -> None:
     if FINISHED_REQS:
         BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
         for req in FINISHED_REQS:
-            BOT.send_message(message.from_user.id, PrintRequest(req))
+            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='HTML')
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')
 
@@ -532,7 +534,7 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
     elif message.text == AUTO_BTNS[2]:
         data = AUTO_SUBS_DICT if file == 'auto_subs.json' else AUTO_REPS_DICT
         for chan in data.keys():
-            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data))
+            BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='HTML')
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, file)
     elif message.text == AUTO_BTNS[3]:
@@ -570,7 +572,7 @@ def SingleChoice(message: Message) -> None:
 
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
-    global CODE
+    global CODE, ADMIN_CHAT_ID
     Stamp(f'User {message.from_user.id} requested {message.text}', 'i')
     if message.text == '/start':
         BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
@@ -582,10 +584,7 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == WELCOME_BTNS[2]:
-        global ADMIN_CHAT_ID
         ADMIN_CHAT_ID = message.from_user.id
-        # RunCoroutine(LogoutAccounts)
-        RunCoroutine(AuthorizeAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5:
@@ -593,15 +592,6 @@ def MessageAccept(message: Message) -> None:
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-
-
-def RunCoroutine(coroutine):
-    loop = new_event_loop()
-    set_event_loop(loop)
-    try:
-        loop.run_until_complete(coroutine())
-    finally:
-        loop.close()
 
 
 if __name__ == '__main__':
