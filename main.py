@@ -78,11 +78,13 @@ async def AuthorizeAccounts() -> None:
             continue
         else:
             Stamp(f'Processing account {num}', 'i')
-            client = TelegramClient(session, api_id, api_hash)
+            client = TelegramClient(session, api_id, api_hash, proxy=PROXIES[index % len(PROXIES)])
             try:
                 await client.start(phone=num, password=password, code_callback=lambda: AuthCallback(num))
                 ACCOUNTS.append(client)
                 Stamp(f'Account {num} authorized', 's')
+                BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
+                Sleep(LONG_SLEEP, 0.5)
             except PhoneCodeInvalidError:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
                 Stamp(f'Invalid code for {num}', 'e')
@@ -103,7 +105,7 @@ async def AuthorizeAccounts() -> None:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
                 Stamp(f'Error while starting client for {num}: {e}', 'e')
                 continue
-    BOT.send_message(ADMIN_CHAT_ID, '🔹Процедура авторизации завершена!\n')
+    BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
     ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     Stamp('All accounts authorized', 'b')
 

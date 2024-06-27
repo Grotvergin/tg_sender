@@ -26,6 +26,12 @@ from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gath
 from os.path import exists, join, getsize
 from os import getcwd
 
+# If proxy won't help, may try the following:
+# - Enter device data
+# - Enter system version
+# - Press "Yes, it's me"
+# - Enable/disable 2FA
+
 
 BOT = TeleBot(TOKEN)
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
