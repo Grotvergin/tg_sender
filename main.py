@@ -60,7 +60,7 @@ def AuthCallback(number: str) -> int:
 async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
-    data = GetSector('A2', 'D500', BuildService(), 'Авторизованные', SHEET_ID)
+    data = GetSector('A2', 'H500', BuildService(), 'Авторизованные', SHEET_ID)
     this_run_auth = [client.session.filename for client in ACCOUNTS]
     for index, account in enumerate(data):
         try:
