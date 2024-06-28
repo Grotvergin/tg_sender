@@ -69,7 +69,7 @@ async def AuthorizeAccounts() -> None:
             api_hash = account[2]
             password_tg = account[3] if account[3] != '-' else None
             ip = account[4]
-            port = account[5]
+            port = int(account[5])
             login = account[6]
             password_proxy = account[7]
         except IndexError:
@@ -107,7 +107,7 @@ async def AuthorizeAccounts() -> None:
                 continue
             except Exception as e:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
-                Stamp(f'Error while starting client for {num}: {e}', 'e')
+                Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
                 continue
     BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
     ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
