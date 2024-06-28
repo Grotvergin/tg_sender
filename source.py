@@ -25,6 +25,7 @@ from json import load, dump
 from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gather, set_event_loop, new_event_loop
 from os.path import exists, join, getsize
 from os import getcwd
+from socks import SOCKS5
 
 # If proxy won't help, may try the following:
 # - Enter device data

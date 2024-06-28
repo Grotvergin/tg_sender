@@ -67,7 +67,11 @@ async def AuthorizeAccounts() -> None:
             num = account[0]
             api_id = account[1]
             api_hash = account[2]
-            password = account[3] if account[3] != '-' else None
+            password_tg = account[3] if account[3] != '-' else None
+            ip = account[4]
+            port = account[5]
+            login = account[6]
+            password_proxy = account[7]
         except IndexError:
             Stamp(f'Invalid account data: {account}', 'e')
             BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')
@@ -78,9 +82,9 @@ async def AuthorizeAccounts() -> None:
             continue
         else:
             Stamp(f'Processing account {num}', 'i')
-            client = TelegramClient(session, api_id, api_hash, proxy=PROXIES[index % len(PROXIES)])
+            client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
             try:
-                await client.start(phone=num, password=password, code_callback=lambda: AuthCallback(num))
+                await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
                 ACCOUNTS.append(client)
                 Stamp(f'Account {num} authorized', 's')
                 BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
