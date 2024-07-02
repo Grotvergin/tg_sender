@@ -88,7 +88,7 @@ async def AuthorizeAccounts() -> None:
                 ACCOUNTS.append(client)
                 Stamp(f'Account {num} authorized', 's')
                 BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
-                Sleep(LONG_SLEEP, 0.5)
+                Sleep(SHORT_SLEEP, 0.5)
             except PhoneCodeInvalidError:
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
                 Stamp(f'Invalid code for {num}', 'e')
