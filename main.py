@@ -114,10 +114,11 @@ async def AuthorizeAccounts() -> None:
     Stamp('All accounts authorized', 'b')
 
 
-async def IncreasePostViews(post_link: str, views_needed: int, acc: TelegramClient) -> int:
+async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -> int:
     Stamp('View increasing procedure started', 'b')
     cnt_success_views = 0
-    for _ in range(views_needed):
+    for i in range(views_needed):
+        acc = ACCOUNTS[acc_index + i]
         try:
             await acc(GetMessagesViewsRequest(peer=post_link.split('/')[0], id=[int(post_link.split('/')[1])], increment=True))
             cnt_success_views += 1
@@ -129,10 +130,11 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc: TelegramClie
     return cnt_success_views
 
 
-async def PerformSubscription(link: str, amount: int, channel_type: str, acc: TelegramClient) -> int:
+async def PerformSubscription(link: str, amount: int, channel_type: str, acc_index: int) -> int:
     Stamp('Subscription procedure started', 'b')
     cnt_success_subs = 0
-    for _ in range(amount):
+    for i in range(amount):
+        acc = ACCOUNTS[acc_index + i]
         try:
             if channel_type == 'public':
                 channel = await acc.get_entity(link)
@@ -148,10 +150,11 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc: Te
     return cnt_success_subs
 
 
-async def RepostMessage(post_link: str, reposts_needed: int, acc: TelegramClient) -> int:
+async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> int:
     Stamp('Reposting procedure started', 'b')
     cnt_success_reposts = 0
-    for _ in range(reposts_needed):
+    for i in range(reposts_needed):
+        acc = ACCOUNTS[acc_index + i]
         try:
             entity = await acc.get_entity(post_link.split('/')[0])
             message_id = int(post_link.split('/')[1])
@@ -180,22 +183,22 @@ async def ProcessRequests() -> None:
                 to_add = expected - current
                 if to_add > 0:
                     if req['order_type'] == 'Подписка':
-                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
                     elif req['order_type'] == 'Просмотры':
-                        cnt_success = await IncreasePostViews(req['link'], to_add, ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
                     else:
-                        cnt_success = await RepostMessage(req['link'], to_add, ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
                     req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
                     req['current'] = current + cnt_success
             else:
                 if req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
                     if req['order_type'] == 'Подписка':
-                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
                     elif req['order_type'] == 'Просмотры':
-                        cnt_success = await IncreasePostViews(req['link'], to_add, ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
                     else:
-                        cnt_success = await RepostMessage(req['link'], to_add, ACCOUNTS[req['cur_acc_index']])
+                        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
                     req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
                     req['current'] = req.get('current', 0) + cnt_success
                 else:
@@ -215,7 +218,7 @@ async def RefreshEventHandler():
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
             list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
             for chan in list_for_subscription:
-                await PerformSubscription(chan, 1, 'public', ACCOUNTS[0])
+                await PerformSubscription(chan, 1, 'public', 0)
             ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channels))
             Stamp("Event handler for new messages set up", 's')
