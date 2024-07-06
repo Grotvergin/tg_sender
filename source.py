@@ -27,12 +27,6 @@ from os.path import exists, join, getsize
 from os import getcwd
 from socks import SOCKS5
 
-# If proxy won't help, may try the following:
-# - Enter device data
-# - Enter system version
-# - Press "Yes, it's me"
-# - Enable/disable 2FA
-
 
 BOT = TeleBot(TOKEN)
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
@@ -52,14 +46,13 @@ CODE = None
 init()
 seed()
 CREDS = Credentials.from_service_account_file('keys.json', scopes=['https://www.googleapis.com/auth/spreadsheets'])
-CUR_ACC_INDEX = 0
 LONG_SLEEP = 15
 SHORT_SLEEP = 1
 LINK_FORMAT = r'https://t\.me/'
 MAX_MINS = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
-ADMIN_CHAT_ID = 386988582
-MAX_WAIT_CODE = 120
+ADMIN_CHAT_ID = MY_TG_ID
+MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 
 
