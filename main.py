@@ -532,7 +532,7 @@ def AutomaticChoice(message: Message) -> None:
 def AutomaticChannelDispatcher(message: Message, file: str) -> None:
     if message.text == AUTO_BTNS[0]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал, для которого будет создана'
-                                         'автоматическая заявка (https://t.me/name или @name):')
+                                         ' автоматическая заявка (https://t.me/name или @name):')
         BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     elif message.text == AUTO_BTNS[1]:
         BOT.send_message(message.from_user.id, '❔ Введите имя канала, для которого нужно отменить '
