@@ -118,7 +118,7 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
     Stamp('View increasing procedure started', 'b')
     cnt_success_views = 0
     for i in range(views_needed):
-        acc = ACCOUNTS[acc_index + i]
+        acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
             await acc(GetMessagesViewsRequest(peer=post_link.split('/')[0], id=[int(post_link.split('/')[1])], increment=True))
             cnt_success_views += 1
@@ -134,7 +134,7 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
     Stamp('Subscription procedure started', 'b')
     cnt_success_subs = 0
     for i in range(amount):
-        acc = ACCOUNTS[acc_index + i]
+        acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
             if channel_type == 'public':
                 channel = await acc.get_entity(link)
@@ -154,7 +154,7 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
     Stamp('Reposting procedure started', 'b')
     cnt_success_reposts = 0
     for i in range(reposts_needed):
-        acc = ACCOUNTS[acc_index + i]
+        acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
             entity = await acc.get_entity(post_link.split('/')[0])
             message_id = int(post_link.split('/')[1])
