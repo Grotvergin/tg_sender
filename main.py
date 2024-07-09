@@ -59,58 +59,61 @@ def AuthCallback(number: str) -> int:
 
 async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
-    BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
-    data = GetSector('A2', 'H500', BuildService(), 'Авторизованные', SHEET_ID)
-    this_run_auth = [client.session.filename for client in ACCOUNTS]
-    for index, account in enumerate(data):
-        try:
-            num = account[0]
-            api_id = account[1]
-            api_hash = account[2]
-            password_tg = account[3] if account[3] != '-' else None
-            ip = account[4]
-            port = int(account[5])
-            login = account[6]
-            password_proxy = account[7]
-        except IndexError:
-            Stamp(f'Invalid account data: {account}', 'e')
-            BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')
-            continue
-        session = join(getcwd(), 'sessions', f'{num}')
-        if session + '.session' in this_run_auth:
-            Stamp(f'Account {num} already authorized', 's')
-            continue
-        else:
-            Stamp(f'Processing account {num}', 'i')
-            client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
+    try:
+        BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
+        data = GetSector('A2', 'H500', BuildService(), 'Авторизованные', SHEET_ID)
+        this_run_auth = [client.session.filename for client in ACCOUNTS]
+        for index, account in enumerate(data):
             try:
-                await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
-                ACCOUNTS.append(client)
-                Stamp(f'Account {num} authorized', 's')
-                BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
-                Sleep(SHORT_SLEEP, 0.5)
-            except PhoneCodeInvalidError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
-                Stamp(f'Invalid code for {num}', 'e')
+                num = account[0]
+                api_id = account[1]
+                api_hash = account[2]
+                password_tg = account[3] if account[3] != '-' else None
+                ip = account[4]
+                port = int(account[5])
+                login = account[6]
+                password_proxy = account[7]
+            except IndexError:
+                Stamp(f'Invalid account data: {account}', 'e')
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')
                 continue
-            except PhoneCodeExpiredError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {num}.')
-                Stamp(f'Code expired for {num}', 'e')
+            session = join(getcwd(), 'sessions', f'{num}')
+            if session + '.session' in this_run_auth:
+                Stamp(f'Account {num} already authorized', 's')
                 continue
-            except SessionPasswordNeededError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {num}.')
-                Stamp(f'2FA needed for {num}', 'w')
-                continue
-            except PhoneNumberInvalidError:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {num}.')
-                Stamp(f'Invalid phone number {num}', 'e')
-                continue
-            except Exception as e:
-                BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
-                Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
-                continue
-    BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
-    ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
+            else:
+                Stamp(f'Processing account {num}', 'i')
+                client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
+                try:
+                    await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
+                    ACCOUNTS.append(client)
+                    Stamp(f'Account {num} authorized', 's')
+                    BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
+                    Sleep(SHORT_SLEEP, 0.5)
+                except PhoneCodeInvalidError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
+                    Stamp(f'Invalid code for {num}', 'e')
+                    continue
+                except PhoneCodeExpiredError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {num}.')
+                    Stamp(f'Code expired for {num}', 'e')
+                    continue
+                except SessionPasswordNeededError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {num}.')
+                    Stamp(f'2FA needed for {num}', 'w')
+                    continue
+                except PhoneNumberInvalidError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {num}.')
+                    Stamp(f'Invalid phone number {num}', 'e')
+                    continue
+                except Exception as e:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
+                    Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
+                    continue
+        BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
+        ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
+    except Exception as e:
+        Stamp(f'Unknown exception in authorization: {e}', 'w')
     Stamp('All accounts authorized', 'b')
 
 
