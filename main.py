@@ -49,11 +49,13 @@ async def CheckRefreshAuth() -> None:
 
 
 def AuthCallback(number: str) -> int:
-    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {number} в течение {MAX_WAIT_CODE} секунд:')
+    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {number} в течение {MAX_WAIT_CODE} секунд '
+                                    f'(либо "-" для пропуска этого аккаунта):')
     code = WaitForCode()
     if not code:
-        BOT.send_message(ADMIN_CHAT_ID, '❌ Превышено время ожидания кода для {number}!')
         raise TimeoutError('Too long code waiting')
+    elif code == '-':
+        raise SkippedCodeInsertion
     return code
 
 
@@ -106,14 +108,22 @@ async def AuthorizeAccounts() -> None:
                     BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {num}.')
                     Stamp(f'Invalid phone number {num}', 'e')
                     continue
+                except SkippedCodeInsertion:
+                    Stamp(f'Skipping code insertion {num}', 'w')
+                    BOT.send_message(ADMIN_CHAT_ID, f'👌 Пропускаем аккаунт {num}...')
+                    continue
+                except TimeoutError:
+                    Stamp('Too long code waiting', 'w')
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Превышено время ожидания кода для {num}!')
+                    continue
                 except Exception as e:
-                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
                     Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
                     continue
         BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
         ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     except Exception as e:
-        Stamp(f'Unknown exception in authorization: {e}', 'w')
+        Stamp(f'Unknown exception in authorization procedure: {e}', 'w')
     Stamp('All accounts authorized', 'b')
 
 
@@ -598,6 +608,9 @@ def MessageAccept(message: Message) -> None:
         BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == WELCOME_BTNS[2]:
         ADMIN_CHAT_ID = message.from_user.id
+    elif message.text == WELCOME_BTNS[3]:
+        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов')
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5:

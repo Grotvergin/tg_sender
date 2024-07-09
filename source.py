@@ -31,7 +31,8 @@ from socks import SOCKS5
 BOT = TeleBot(TOKEN)
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
-                'Авторизация аккаунтов 🔐')
+                'Авторизация аккаунтов 🔐',
+                'Активные аккаунты 🦾')
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
@@ -54,6 +55,10 @@ TIME_FORMAT = '%Y-%m-%d %H:%M'
 ADMIN_CHAT_ID = MY_TG_ID
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
+
+
+class SkippedCodeInsertion(Exception):
+    pass
 
 
 def Stamp(message: str, level: str) -> None:
