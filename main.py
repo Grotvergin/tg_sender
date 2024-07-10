@@ -661,7 +661,7 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[2]:
         ADMIN_CHAT_ID = message.from_user.id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов')
+        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов {vars(ACCOUNTS[0])}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
