@@ -153,7 +153,10 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
                 channel = await acc.get_entity(link)
                 await acc(JoinChannelRequest(channel))
             else:
-                await acc(ImportChatInviteRequest(link))
+                try:
+                    await acc(ImportChatInviteRequest(link))
+                except InviteRequestSentError:
+                    Stamp('Caught InviteSendRequest error, continuing', 'i')
             Stamp(f"Subscribed {acc.session.filename.split('_')[-1]} to {link}", 's')
             cnt_success_subs += 1
         except Exception as e:
@@ -227,9 +230,11 @@ async def RefreshEventHandler():
     while True:
         channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
         if ACCOUNTS and channels:
-            Stamp(f'Setting up event handler with channels {", ".join(channels)}', 'i')
+            Stamp(f'Setting up event handler with channels: {", ".join(channels)}', 'i')
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
+            Stamp(f'Already subscribed channels include: {", ".join(already_subscribed)}', 'i')
             list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
+            Stamp(f'List for subscription includes: {", ".join(list_for_subscription)}')
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             ACCOUNTS[0].remove_event_handler(EventHandler)
@@ -407,7 +412,7 @@ def AutomaticPeriod(message: Message, path: str) -> None:
         else:
             if 0 < int(message.text) < MAX_MINS:
                 CUR_REQ['time_limit'] = int(message.text)
-                BOT.send_message(message.from_user.id, '❔ Введите разброс (в %, от 0 до 100), с которым рассчитается количество')
+                BOT.send_message(message.from_user.id, '❔ Введите разброс (в %, от 0 до 100), с которым рассчитается количество:')
                 BOT.register_next_step_handler(message, InsertSpread, path)
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")
@@ -493,7 +498,7 @@ def PrintRequest(req: dict) -> str:
                           f"<b>Выполненное</b>: {req.get('current', 0)}\n"
                           f"<b>Ссылка</b>: {req['link']}\n"
                           f"<b>Инициатор</b>: {req['initiator']}\n"
-                          f"<b>Индекс аккаунта</b>: {req['cur_acc_index']}")
+                          f"<b>Индекс аккаунта</b>: {req.get('cur_acc_index', 'N/A')}")
 
 
 def PrintAutomaticRequest(chan: str, data: dict) -> str:
@@ -567,6 +572,23 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
+def DeleteSingleRequest(message: Message) -> None:
+    cnt = 0
+    for i, req in enumerate(REQS_QUEUE):
+        if req['link'] == message.text:
+            Stamp(f'Deleting request for {req["link"]}', 'i')
+            del REQS_QUEUE[i]
+            cnt += 1
+    if cnt == 0:
+        Stamp('No deletions made', 'w')
+        BOT.send_message(message.from_user.id, '🛑 Удалений не произошло!')
+    else:
+        Stamp(f'{cnt} requests were deleted', 's')
+        BOT.send_message(message.from_user.id, f'✅ Было удалено {cnt} разовых заявок')
+    ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
+    BOT.register_next_step_handler(message, SingleChoice)
+
+
 def SingleChoice(message: Message) -> None:
     if message.text == SINGLE_BTNS[0]:
         SendActiveRequests(message)
@@ -586,6 +608,9 @@ def SingleChoice(message: Message) -> None:
         ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
         BOT.register_next_step_handler(message, AcceptPost, 'Репосты')
     elif message.text == SINGLE_BTNS[5]:
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку так, как она указана в выводе активных заявок:')
+        BOT.register_next_step_handler(message, DeleteSingleRequest)
+    elif message.text == SINGLE_BTNS[6]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')

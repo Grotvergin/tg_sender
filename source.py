@@ -16,7 +16,7 @@ from telethon.sync import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden
-from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError
+from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError, InviteRequestSentError
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 from telethon.events import NewMessage
 from random import randint, seed
@@ -36,7 +36,7 @@ WELCOME_BTNS = ('Разовые заявки 1️⃣',
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
-SINGLE_BTNS = ('Активные 📅', 'Выполненные заявки 📋', 'Подписки 🔔', 'Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
+SINGLE_BTNS = ('Активные 📅', 'Выполненные заявки 📋', 'Подписки 🔔', 'Просмотры 👀', 'Репосты 📢', 'Удаление ❌', CANCEL_BTN[0])
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
