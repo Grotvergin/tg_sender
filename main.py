@@ -246,7 +246,7 @@ async def RefreshEventHandler():
 
 
 async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
-    Stamp(f'Trying to get all channels for account', 'i')
+    print(f'Trying to get all channels for account')
     result = await account(GetDialogsRequest(
         offset_date=None,
         offset_id=0,
@@ -256,8 +256,9 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
     ))
     channels = []
     for chat in result.chats:
-        print(chat.username)
+        print(vars(chat))
         if isinstance(chat, Channel):
+            print(chat.username)
             channels.append(chat.username)
     return channels
 
