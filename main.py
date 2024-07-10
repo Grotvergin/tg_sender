@@ -645,6 +645,13 @@ def SingleChoice(message: Message) -> None:
         BOT.register_next_step_handler(message, SingleChoice)
 
 
+def ListAccountNumbers() -> str:
+    res = ''
+    for i, acc in enumerate(ACCOUNTS):
+        res += f'{i + 1}) {acc.session.filename.split('/')[-1][:-8]}\n'
+    return res
+
+
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
     global CODE, ADMIN_CHAT_ID
@@ -661,7 +668,7 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[2]:
         ADMIN_CHAT_ID = message.from_user.id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов {ACCOUNTS[0].session.filename}')
+        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
