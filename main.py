@@ -258,11 +258,10 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
     for chat in result.chats:
         if isinstance(chat, Channel):
             if chat.username:
-                print(chat.username)
                 channels.append(chat.username)
             elif chat.usernames:
                 for name in chat.usernames:
-                    print(name.username)
+                    channels.append(name.username)
     return channels
 
 
