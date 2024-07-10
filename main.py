@@ -234,7 +234,7 @@ async def RefreshEventHandler():
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
             Stamp(f'Already subscribed channels include: {", ".join(already_subscribed)}', 'i')
             list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
-            Stamp(f'List for subscription includes: {", ".join(list_for_subscription)}')
+            Stamp(f'List for subscription includes: {", ".join(list_for_subscription)}', 'i')
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             ACCOUNTS[0].remove_event_handler(EventHandler)
