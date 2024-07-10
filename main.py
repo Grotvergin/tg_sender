@@ -56,7 +56,7 @@ def AuthCallback(number: str) -> int:
         raise TimeoutError('Too long code waiting')
     elif code == '-':
         raise SkippedCodeInsertion
-    return code
+    return int(code)
 
 
 async def AuthorizeAccounts() -> None:
@@ -672,8 +672,8 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text.isdigit() and len(message.text) == 5:
-        CODE = int(message.text)
+    elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':
+        CODE = message.text
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
