@@ -237,16 +237,39 @@ async def RefreshEventHandler():
             Stamp(f'List for subscription includes: {", ".join(list_for_subscription)}', 'i')
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
+            channel_ids = await GetChannelIDsByUsernames(ACCOUNTS[0], channels)
             ACCOUNTS[0].remove_event_handler(EventHandler)
-            ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channels))
+            ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Event handler for new messages set up", 's')
         else:
             Stamp("No accounts available/no need to set up event handler", 'w')
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
+async def GetChannelIDsByUsernames(account, usernames: list[str]) -> list[int]:
+    Stamp('Trying to find out ids for all channels for an account', 'i')
+    result = await account(GetDialogsRequest(
+        offset_date=None,
+        offset_id=0,
+        offset_peer=InputPeerEmpty(),
+        limit=1000,
+        hash=0
+    ))
+    ids = []
+    for chat in result.chats:
+        if isinstance(chat, Channel):
+            username = None
+            if chat.username:
+                username = chat.username
+            elif chat.usernames:
+                username = chat.usernames[0].username
+            if username and username in usernames:
+                ids.append(int(chat.id))
+    return ids
+
+
 async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
-    print(f'Trying to get all channels for account')
+    Stamp('Trying to get all channels for an account', 'i')
     result = await account(GetDialogsRequest(
         offset_date=None,
         offset_id=0,
