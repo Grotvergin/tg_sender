@@ -63,7 +63,7 @@ async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     try:
         BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
-        data = GetSector('A2', 'H500', BuildService(), 'Авторизованные', SHEET_ID)
+        data = GetSector('A2', 'H500', BuildService(), 'Тестирование', SHEET_ID)
         this_run_auth = [client.session.filename for client in ACCOUNTS]
         for index, account in enumerate(data):
             try:
@@ -125,6 +125,28 @@ async def AuthorizeAccounts() -> None:
     except Exception as e:
         Stamp(f'Unknown exception in authorization procedure: {e}', 'w')
     Stamp('All accounts authorized', 'b')
+
+
+async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, emoji: str) -> int:
+    Stamp('Reaction adding procedure started', 'b')
+    cnt_success_reactions = 0
+    for i in range(reactions_needed):
+        acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
+        try:
+            entity = await acc.get_entity(post_link.split('/')[0])
+            message_id = int(post_link.split('/')[1])
+            await acc(SendReactionRequest(
+                peer=entity,
+                msg_id=message_id,
+                reaction=[ReactionEmoji(emoticon=emoji)]
+            ))
+            cnt_success_reactions += 1
+            Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except Exception as e:
+            Stamp(f"Failed to add reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
+        await AsyncSleep(SHORT_SLEEP, 0.5)
+    Stamp('Reaction adding procedure finished', 'b')
+    return cnt_success_reactions
 
 
 async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -> int:
@@ -209,12 +231,17 @@ async def ProcessRequests() -> None:
             else:
                 if req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
+                    cnt_success = 0
                     if req['order_type'] == 'Подписка':
                         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
                     elif req['order_type'] == 'Просмотры':
                         cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
-                    else:
+                    elif req['order_type'] == 'Реакции':
+                        cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], '❤️')
+                    elif req['order_type'] == 'Репосты':
                         cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
+                    else:
+                        Stamp('Unknown order type', 'e')
                     req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
                     req['current'] = req.get('current', 0) + cnt_success
                 else:
@@ -638,6 +665,9 @@ def SingleChoice(message: Message) -> None:
         ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку так, как она указана в выводе активных заявок:')
         BOT.register_next_step_handler(message, DeleteSingleRequest)
     elif message.text == SINGLE_BTNS[6]:
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
+        BOT.register_next_step_handler(message, AcceptPost, 'Реакции')
+    elif message.text == SINGLE_BTNS[-1]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
