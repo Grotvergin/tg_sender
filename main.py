@@ -109,7 +109,7 @@ async def AuthorizeAccounts() -> None:
                     Stamp(f'Invalid phone number {num}', 'e')
                     continue
                 except SkippedCodeInsertion:
-                    Stamp(f'Skipping code insertion {num}', 'w')
+                    Stamp(f'Skipping code insertion for {num}', 'w')
                     BOT.send_message(ADMIN_CHAT_ID, f'👌 Пропускаем аккаунт {num}...')
                     continue
                 except TimeoutError:
@@ -132,18 +132,15 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
     cnt_success_reactions = 0
     for i in range(reactions_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
-        try:
-            entity = await acc.get_entity(post_link.split('/')[0])
-            message_id = int(post_link.split('/')[1])
-            await acc(SendReactionRequest(
-                peer=entity,
-                msg_id=message_id,
-                reaction=[ReactionEmoji(emoticon=emoji)]
-            ))
-            cnt_success_reactions += 1
-            Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
-        except Exception as e:
-            Stamp(f"Failed to add reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
+        entity = await acc.get_entity(post_link.split('/')[0])
+        message_id = int(post_link.split('/')[1])
+        await acc(SendReactionRequest(
+            peer=entity,
+            msg_id=message_id,
+            reaction=[ReactionEmoji(emoticon=emoji)]
+        ))
+        cnt_success_reactions += 1
+        Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
         await AsyncSleep(SHORT_SLEEP, 0.5)
     Stamp('Reaction adding procedure finished', 'b')
     return cnt_success_reactions
@@ -206,6 +203,28 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
     return cnt_success_reposts
 
 
+async def ProcessOrder(req: dict, to_add: int, emoji: str = None):
+    if req['order_type'] == 'Подписка':
+        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
+    elif req['order_type'] == 'Просмотры':
+        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
+    elif req['order_type'] == 'Репосты':
+        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
+    elif req['order_type'] == 'Реакции':
+        try:
+            cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], emoji)
+        except ReactionInvalidError as e:
+            Stamp(f"Bad reaction {emoji} for {req['link']}: {e}", 'e')
+            BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {emoji} недоступна для заявки {req['link']}, заявка снимается...")
+            REQS_QUEUE.remove(req)
+            return
+    else:
+        Stamp('Unknown order type', 'e')
+        return
+    req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
+    req['current'] = req.get('current', 0) + cnt_success
+
+
 async def ProcessRequests() -> None:
     while True:
         Stamp('Pending requests', 'i')
@@ -220,43 +239,28 @@ async def ProcessRequests() -> None:
                 current = req.get('current', 0)
                 to_add = expected - current
                 if to_add > 0:
-                    if req['order_type'] == 'Подписка':
-                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
-                    elif req['order_type'] == 'Просмотры':
-                        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
-                    else:
-                        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
-                    req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
-                    req['current'] = current + cnt_success
+                    await ProcessOrder(req, to_add)
             else:
                 if req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
-                    cnt_success = 0
-                    if req['order_type'] == 'Подписка':
-                        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
-                    elif req['order_type'] == 'Просмотры':
-                        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
-                    elif req['order_type'] == 'Реакции':
-                        cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], '❤️')
-                    elif req['order_type'] == 'Репосты':
-                        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
-                    else:
-                        Stamp('Unknown order type', 'e')
-                    req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
-                    req['current'] = req.get('current', 0) + cnt_success
+                    await ProcessOrder(req, to_add)
                 else:
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
-                    BOT.send_message(req['initiator'].split(' ')[-1], f"✅ Заявка выполнена:")
-                    BOT.send_message(req['initiator'].split(' ')[-1], PrintRequest(req), parse_mode='HTML')
+                    user_id = req['initiator'].split(' ')[-1]
+                    BOT.send_message(user_id, f"✅ Заявка выполнена\n\n{PrintRequest(req)}", parse_mode='HTML')
         await AsyncSleep(LONG_SLEEP, 0.5)
 
 
 async def RefreshEventHandler():
     while True:
         channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
-        if ACCOUNTS and channels:
+        if not ACCOUNTS:
+            Stamp("No accounts available to set up event handler", 'w')
+        elif not channels:
+            Stamp("No need to set up event handler (no channels)", 'i')
+        else:
             Stamp(f'Setting up event handler with channels: {", ".join(channels)}', 'i')
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
             Stamp(f'Already subscribed channels include: {", ".join(already_subscribed)}', 'i')
@@ -268,8 +272,6 @@ async def RefreshEventHandler():
             ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Event handler for new messages set up", 's')
-        else:
-            Stamp("No accounts available/no need to set up event handler", 'w')
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
@@ -279,7 +281,7 @@ async def GetChannelIDsByUsernames(account, usernames: list[str]) -> list[int]:
         offset_date=None,
         offset_id=0,
         offset_peer=InputPeerEmpty(),
-        limit=1000,
+        limit=LIMIT_DIALOGS,
         hash=0
     ))
     ids = []

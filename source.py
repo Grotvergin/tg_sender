@@ -16,7 +16,7 @@ from telethon.sync import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest, SendReactionRequest
 from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden, ReactionEmoji
-from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError, InviteRequestSentError
+from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError, InviteRequestSentError, ReactionInvalidError
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 from telethon.events import NewMessage
 from random import randint, seed
@@ -55,6 +55,7 @@ TIME_FORMAT = '%Y-%m-%d %H:%M'
 ADMIN_CHAT_ID = MY_TG_ID
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
+LIMIT_DIALOGS = 1000
 
 
 class SkippedCodeInsertion(Exception):
