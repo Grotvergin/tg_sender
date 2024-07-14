@@ -26,6 +26,7 @@ from asyncio import get_event_loop, run, create_task, sleep as async_sleep, gath
 from os.path import exists, join, getsize
 from os import getcwd
 from socks import SOCKS5
+import emoji as lib_emoji
 
 
 BOT = TeleBot(TOKEN)

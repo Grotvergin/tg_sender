@@ -203,7 +203,7 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
     return cnt_success_reposts
 
 
-async def ProcessOrder(req: dict, to_add: int, emoji: str = None):
+async def ProcessOrder(req: dict, to_add: int):
     if req['order_type'] == 'Подписка':
         cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
     elif req['order_type'] == 'Просмотры':
@@ -212,10 +212,10 @@ async def ProcessOrder(req: dict, to_add: int, emoji: str = None):
         cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
     elif req['order_type'] == 'Реакции':
         try:
-            cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], emoji)
+            cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], req['emoji'])
         except ReactionInvalidError as e:
-            Stamp(f"Bad reaction {emoji} for {req['link']}: {e}", 'e')
-            BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {emoji} недоступна для заявки {req['link']}, заявка снимается...")
+            Stamp(f"Bad reaction {req['emoji']} for {req['link']}: {e}", 'e')
+            BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {req['emoji']} недоступна для заявки {req['link']}, заявка снимается...")
             REQS_QUEUE.remove(req)
             return
     else:
@@ -269,13 +269,14 @@ async def RefreshEventHandler():
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             channel_ids = await GetChannelIDsByUsernames(ACCOUNTS[0], channels)
+            print(channel_ids)
             ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Event handler for new messages set up", 's')
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
-async def GetChannelIDsByUsernames(account, usernames: list[str]) -> list[int]:
+async def GetChannelIDsByUsernames(account, requested_usernames: list[str]) -> list[int]:
     Stamp('Trying to find out ids for all channels for an account', 'i')
     result = await account(GetDialogsRequest(
         offset_date=None,
@@ -287,12 +288,13 @@ async def GetChannelIDsByUsernames(account, usernames: list[str]) -> list[int]:
     ids = []
     for chat in result.chats:
         if isinstance(chat, Channel):
-            username = None
+            chan_usernames = []
             if chat.username:
-                username = chat.username
+                chan_usernames.append(chat.username)
             elif chat.usernames:
-                username = chat.usernames[0].username
-            if username and username in usernames:
+                for name in chat.usernames:
+                    chan_usernames.append(name.username)
+            if any(username in requested_usernames for username in chan_usernames):
                 ids.append(int(chat.id))
     return ids
 
@@ -346,7 +348,7 @@ async def EventHandler(event):
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
 
-def AcceptPost(message: Message, order_type: str) -> None:
+def AcceptPost(message: Message, order_type: str, emoji: str = None) -> None:
     Stamp('Post link inserting procedure', 'i')
     if not match(LINK_FORMAT, message.text):
         if message.text == CANCEL_BTN[0]:
@@ -359,8 +361,23 @@ def AcceptPost(message: Message, order_type: str) -> None:
         global CUR_REQ
         cut_link = '/'.join(message.text.split('/')[-2:])
         CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.username} – {message.from_user.id}', 'link': cut_link}
+        if emoji:
+            CUR_REQ['emoji'] = emoji
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
+
+
+def AcceptEmoji(message: Message) -> None:
+    Stamp('Emoji inserting procedure', 'i')
+    if message.text not in lib_emoji.EMOJI_DATA:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            ShowButtons(message, CANCEL_BTN, "❌ Вы ввели не эмодзи. Пожалуйста, введите только эмодзи")
+            BOT.register_next_step_handler(message, AcceptEmoji)
+    else:
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
+        BOT.register_next_step_handler(message, AcceptPost, 'Реакции', message.text)
 
 
 def ChannelSub(message: Message) -> None:
@@ -548,22 +565,24 @@ def SendActiveRequests(message: Message) -> None:
 
 def PrintRequest(req: dict) -> str:
     return (f"<b>Начало</b>: {req['start']}\n"
-                          f"<b>Конец</b>: {req['finish']}\n"
-                          f"<b>Тип</b>: {req['order_type']}\n"
-                          f"<b>Желаемое</b>: {req['planned']}\n"
-                          f"<b>Выполненное</b>: {req.get('current', 0)}\n"
-                          f"<b>Ссылка</b>: {req['link']}\n"
-                          f"<b>Инициатор</b>: {req['initiator']}\n"
-                          f"<b>Индекс аккаунта</b>: {req.get('cur_acc_index', 'N/A')}")
+            f"<b>Конец</b>: {req['finish']}\n"
+            f"<b>Тип</b>: {req['order_type']}\n"
+            f"<b>Желаемое</b>: {req['planned']}\n"
+            f"<b>Выполненное</b>: {req.get('current', 0)}\n"
+            f"<b>Ссылка</b>: {req['link']}\n"
+            f"<b>Инициатор</b>: {req['initiator']}\n"
+            f"<b>Индекс аккаунта</b>: {req.get('cur_acc_index', 'N/A')}\n"
+            f"<b>Эмодзи</b>: {req.get('emoji', 'N/A')}")
 
 
 def PrintAutomaticRequest(chan: str, data: dict) -> str:
     return (f"<b>Канал</b>: {chan}\n"
-                          f"<b>Инициатор</b>: {data[chan]['initiator']}\n"
-                          f"<b>Временной интервал</b>: {data[chan]['time_limit']}\n"
-                          f"<b>Создана</b>: {data[chan]['approved']}\n"
-                          f"<b>На публикацию</b>: {data[chan]['annual']}\n"
-                          f"<b>Разброс</b>: {data[chan]['spread']}%")
+            f"<b>Инициатор</b>: {data[chan]['initiator']}\n"
+            f"<b>Временной интервал</b>: {data[chan]['time_limit']}\n"
+            f"<b>Создана</b>: {data[chan]['approved']}\n"
+            f"<b>На публикацию</b>: {data[chan]['annual']}\n"
+            f"<b>Разброс</b>: {data[chan]['spread']}%\n"
+            f"<b>Эмодзи</b>: {data[chan].get('emoji', 'N/A')}")
 
 
 def SendFinishedRequests(message: Message) -> None:
@@ -667,8 +686,8 @@ def SingleChoice(message: Message) -> None:
         ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку так, как она указана в выводе активных заявок:')
         BOT.register_next_step_handler(message, DeleteSingleRequest)
     elif message.text == SINGLE_BTNS[6]:
-        ShowButtons(message, CANCEL_BTN, '❔ Отправьте ссылку на пост (https://t.me/name/post_id):')
-        BOT.register_next_step_handler(message, AcceptPost, 'Реакции')
+        ShowButtons(message, CANCEL_BTN, '❔ Отправьте эмодзи:')
+        BOT.register_next_step_handler(message, AcceptEmoji)
     elif message.text == SINGLE_BTNS[-1]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
