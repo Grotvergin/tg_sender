@@ -63,7 +63,7 @@ async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     try:
         BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
-        data = GetSector('A2', 'H500', BuildService(), 'Тестирование', SHEET_ID)
+        data = GetSector('A2', 'H500', BuildService(), SHEET_NAME, SHEET_ID)
         this_run_auth = [client.session.filename for client in ACCOUNTS]
         for index, account in enumerate(data):
             try:
@@ -231,27 +231,34 @@ async def ProcessRequests() -> None:
         for req in REQS_QUEUE:
             finish = datetime.strptime(req['finish'], TIME_FORMAT)
             start = datetime.strptime(req['start'], TIME_FORMAT)
-            if datetime.now() < finish:
+            now = datetime.now()
+
+            if now < finish:
                 duration = (finish - start).total_seconds()
                 interval = duration / req['planned']
-                elapsed = (datetime.now() - start).total_seconds()
+                elapsed = (now - start).total_seconds()
                 expected = int(elapsed / interval)
                 current = req.get('current', 0)
                 to_add = expected - current
                 if to_add > 0:
                     await ProcessOrder(req, to_add)
             else:
-                if req.get('current', 0) < req['planned']:
+                if now < finish + timedelta(minutes=MAX_MINS_REQ) and req.get('current', 0) < req['planned']:
                     to_add = req['planned'] - req.get('current', 0)
                     await ProcessOrder(req, to_add)
                 else:
+                    if req.get('current', 0) < req['planned']:
+                        message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
+                    else:
+                        message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
+
                     REQS_QUEUE.remove(req)
                     FINISHED_REQS.append(req)
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
                     user_id = req['initiator'].split(' ')[-1]
-                    BOT.send_message(user_id, f"✅ Заявка выполнена\n\n{PrintRequest(req)}", parse_mode='HTML')
-        await AsyncSleep(LONG_SLEEP, 0.5)
+                    BOT.send_message(user_id, message, parse_mode='HTML')
 
+        await AsyncSleep(LONG_SLEEP, 0.5)
 
 async def RefreshEventHandler():
     while True:

@@ -57,6 +57,8 @@ ADMIN_CHAT_ID = MY_TG_ID
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
+MAX_MINS_REQ = 20
+SHEET_NAME = 'Авторизованные'
 
 
 class SkippedCodeInsertion(Exception):
