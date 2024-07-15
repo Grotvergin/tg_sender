@@ -132,16 +132,19 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
     cnt_success_reactions = 0
     for i in range(reactions_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
-        entity = await acc.get_entity(post_link.split('/')[0])
-        message_id = int(post_link.split('/')[1])
-        await acc(SendReactionRequest(
-            peer=entity,
-            msg_id=message_id,
-            reaction=[ReactionEmoji(emoticon=emoji)]
-        ))
-        cnt_success_reactions += 1
-        Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
-        await AsyncSleep(SHORT_SLEEP, 0.5)
+        try:
+            entity = await acc.get_entity(post_link.split('/')[0])
+            message_id = int(post_link.split('/')[1])
+            await acc(SendReactionRequest(
+                peer=entity,
+                msg_id=message_id,
+                reaction=[ReactionEmoji(emoticon=emoji)]
+            ))
+            cnt_success_reactions += 1
+            Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except Exception as e:
+            Stamp(f"Failed to add reaction to {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
+        Sleep(SHORT_SLEEP, 0.5)
     Stamp('Reaction adding procedure finished', 'b')
     return cnt_success_reactions
 
