@@ -142,6 +142,8 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
             ))
             cnt_success_reactions += 1
             Stamp(f"Added reaction to post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except ReactionInvalidError as e:
+            raise e
         except Exception as e:
             Stamp(f"Failed to add reaction to {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
@@ -263,6 +265,7 @@ async def ProcessRequests() -> None:
 
         await AsyncSleep(LONG_SLEEP, 0.5)
 
+
 async def RefreshEventHandler():
     while True:
         channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
@@ -279,7 +282,6 @@ async def RefreshEventHandler():
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             channel_ids = await GetChannelIDsByUsernames(ACCOUNTS[0], channels)
-            print(channel_ids)
             ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Event handler for new messages set up", 's')
