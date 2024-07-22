@@ -715,6 +715,83 @@ def ListAccountNumbers() -> str:
     return res
 
 
+def AddAccounts(message: Message) -> None:
+    try:
+        if message.text == CANCEL_BTN[0]:
+            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        else:
+            if message.text.isdigit() and 0 < int(message.text) <= MAX_ACCOUNTS_BUY:
+                BOT.send_message(message.from_user.id, f'🔁 Начинаю процесс добавления {message.text} аккаунтов...')
+                for _ in range(int(message.text)):
+                    req_num = BuyAccount(message)
+                    sms_code = None
+                    cnt_recursion = 0
+                    while not sms_code and cnt_recursion < MAX_RECURSION:
+                        Sleep(LONG_SLEEP)
+                        Stamp(f'Checking for code for number {req_num}', 'i')
+                        BOT.send_message(message.from_user.id, f'🔍 Проверяю код для номера {req_num}...')
+                        sms_code = CheckForSms(message, req_num)
+                        cnt_recursion += 1
+                    if sms_code:
+                        Stamp(f'For number {req_num} found code: {sms_code}', 's')
+                        BOT.send_message(message.from_user.id, f'📩 Для номера {req_num} нашёл код: {sms_code}')
+                    else:
+                        Stamp(f'For number {req_num} code not found', 'e')
+                        BOT.send_message(message.from_user.id, f'❌ Не удалось найти код для номера {req_num}')
+                BOT.send_message(message.from_user.id, f'✅ Было добавлено {message.text} аккаунтов')
+                ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+            else:
+                ShowButtons(message, CANCEL_BTN, '❌ Введено некорректное число. Попробуйте ещё раз:')
+                BOT.register_next_step_handler(message, AddAccounts)
+    except ValueError:
+        ShowButtons(message, CANCEL_BTN, '❌ Пожалуйста, введите только число. Попробуйте ещё раз:')
+        BOT.register_next_step_handler(message, AddAccounts)
+
+
+def BuyAccount(message: Message) -> str | None:
+    try:
+        # ПОМЕНЯТЬ НА ТГ
+        # Проверка на наличие номеров
+        # КНОПКА ПРОВЕРИТЬ СМС
+        # КНОПКА ОТМЕНИТЬ НОМЕР
+        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'drom', 'country': 7, 'number': True, 'lang': 'ru'})
+    except ConnectionError as e:
+        Stamp(f'Failed to connect to the server: {e}', 'e')
+        Sleep(LONG_SLEEP)
+        BOT.send_message(message.from_user.id, '❌ Не удалось связаться с сервером')
+        response = BuyAccount(message)
+    else:
+        if str(response.status_code)[0] == '2':
+            response = response.json()
+            Stamp(f'Bought account: {response["number"]}', 's')
+            BOT.send_message(message.from_user.id, f'🔑 Куплен номер {response['number']} на 15 минут.'
+                                                   f'Через {LONG_SLEEP} секунд проверю смс...')
+            return response['number']
+        else:
+            Stamp(f'Failed to buy account: {response.text}', 'e')
+            BOT.send_message(message.from_user.id, '❌ Не удалось купить аккаунт')
+            response = BuyAccount(message)
+
+
+def CheckForSms(message: Message, req_number: str) -> int | None:
+    try:
+        response = get(URL_SMS, params={'apikey': TOKEN_SIM})
+    except ConnectionError as e:
+        Stamp(f'Failed to connect to the server: {e}', 'e')
+        Sleep(LONG_SLEEP)
+        BOT.send_message(message.from_user.id, '❌ Не удалось связаться с сервером')
+    else:
+        if str(response.status_code)[0] == '2':
+            response = response.json()
+            for item in response:
+                if item['number'] == req_number and 'msg' in item:
+                    return item['msg']
+        else:
+            Stamp(f'Failed to get sms: {response.text}', 'e')
+            BOT.send_message(message.from_user.id, f'❌ Статус {response.status_code} при обновлении смс...')
+    return
+
+
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
     global CODE, ADMIN_CHAT_ID
@@ -733,6 +810,9 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[3]:
         BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    elif message.text == WELCOME_BTNS[4]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
+        BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':

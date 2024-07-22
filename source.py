@@ -27,13 +27,15 @@ from os.path import exists, join, getsize
 from os import getcwd
 from socks import SOCKS5
 import emoji as lib_emoji
+from requests import get
 
 
 BOT = TeleBot(TOKEN)
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
                 'Авторизация аккаунтов 🔐',
-                'Активные аккаунты 🦾')
+                'Активные аккаунты 🦾',
+                'Покупка аккаунтов 💰')
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
@@ -58,7 +60,11 @@ MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
-SHEET_NAME = 'Авторизованные'
+SHEET_NAME = 'Тестирование'
+MAX_ACCOUNTS_BUY = 10
+URL_BUY = 'https://onlinesim.io/api/getNum.php'
+URL_SMS = 'https://onlinesim.io/api/getState.php'
+MAX_RECURSION = 10
 
 
 class SkippedCodeInsertion(Exception):
