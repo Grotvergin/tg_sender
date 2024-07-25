@@ -721,75 +721,88 @@ def AddAccounts(message: Message) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if message.text.isdigit() and 0 < int(message.text) <= MAX_ACCOUNTS_BUY:
+                Stamp(f'Starting the process of {message.text} account addition', 'i')
                 BOT.send_message(message.from_user.id, f'🔁 Начинаю процесс добавления {message.text} аккаунтов...')
-                for _ in range(int(message.text)):
-                    req_num = BuyAccount(message)
-                    sms_code = None
-                    cnt_recursion = 0
-                    while not sms_code and cnt_recursion < MAX_RECURSION:
+                for i in range(int(message.text)):
+                    Stamp(f'Adding {i + 1} account', 'i')
+                    BOT.send_message(message.from_user.id, f'▫️ Добавляю {i + 1}-й аккаунт')
+                    try:
+                        num = BuyAccount(message)
+                    except RecursionError:
+                        Stamp(f'Exiting the function for adding accounts', 'w')
+                        BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
+                                                               'завершаю процесс покупки...')
+                        return
+                    cnt = 0
+                    while cnt < MAX_RECURSION:
                         Sleep(LONG_SLEEP)
-                        Stamp(f'Checking for code for number {req_num}', 'i')
-                        BOT.send_message(message.from_user.id, f'🔍 Проверяю код для номера {req_num}...')
-                        sms_code = CheckForSms(message, req_num)
-                        cnt_recursion += 1
-                    if sms_code:
-                        Stamp(f'For number {req_num} found code: {sms_code}', 's')
-                        BOT.send_message(message.from_user.id, f'📩 Для номера {req_num} нашёл код: {sms_code}')
-                    else:
-                        Stamp(f'For number {req_num} code not found', 'e')
-                        BOT.send_message(message.from_user.id, f'❌ Не удалось найти код для номера {req_num}')
-                BOT.send_message(message.from_user.id, f'✅ Было добавлено {message.text} аккаунтов')
+                        Stamp(f'Checking for all sms', 'i')
+                        BOT.send_message(message.from_user.id, f'🔍 Проверяю пришедшие смс...')
+                        sms_dict = CheckAllSms(message)
+                        cnt += 1
+                        if sms_dict and num in sms_dict:
+                            Stamp('Found incoming sms for recently bought number', 's')
+                            BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
+                            break
+                        else:
+                            Stamp(f'Have not found any incoming sms for {num}', 'e')
+                            BOT.send_message(message.from_user.id, f'❌ Не удалось найти входящих смс для {num}, '
+                                                                   f'пробую ещё раз через {LONG_SLEEP} секунд...')
+                BOT.send_message(message.from_user.id, f'✅ Было обработано {message.text} аккаунтов')
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
-                ShowButtons(message, CANCEL_BTN, '❌ Введено некорректное число. Попробуйте ещё раз:')
+                ShowButtons(message, CANCEL_BTN, f'❌ Введено некорректное число. Введите от 0 до {MAX_ACCOUNTS_BUY}:')
                 BOT.register_next_step_handler(message, AddAccounts)
     except ValueError:
-        ShowButtons(message, CANCEL_BTN, '❌ Пожалуйста, введите только число. Попробуйте ещё раз:')
+        ShowButtons(message, CANCEL_BTN, f'❌ Пожалуйста, введите только число. Введите от 0 до {MAX_ACCOUNTS_BUY}:')
         BOT.register_next_step_handler(message, AddAccounts)
 
 
-def BuyAccount(message: Message) -> str | None:
+@ControlRecursion
+def BuyAccount(message: Message) -> str:
     try:
         # ПОМЕНЯТЬ НА ТГ
         # Проверка на наличие номеров
-        # КНОПКА ПРОВЕРИТЬ СМС
         # КНОПКА ОТМЕНИТЬ НОМЕР
         response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'drom', 'country': 7, 'number': True, 'lang': 'ru'})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server: {e}', 'e')
+        BOT.send_message(message.from_user.id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '
+                                               f'пробую ещё раз через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP)
-        BOT.send_message(message.from_user.id, '❌ Не удалось связаться с сервером')
-        response = BuyAccount(message)
+        num = BuyAccount(message)
     else:
         if str(response.status_code)[0] == '2':
-            response = response.json()
-            Stamp(f'Bought account: {response["number"]}', 's')
-            BOT.send_message(message.from_user.id, f'🔑 Куплен номер {response['number']} на 15 минут.'
-                                                   f'Через {LONG_SLEEP} секунд проверю смс...')
-            return response['number']
+            num = response.json()['number']
+            Stamp(f'Bought account: {num}', 's')
+            BOT.send_message(message.from_user.id, f'📱 Куплен номер {num} на 15 минут,'
+                                                   f'через {LONG_SLEEP} секунд начну проверку смс...')
         else:
             Stamp(f'Failed to buy account: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, '❌ Не удалось купить аккаунт')
-            response = BuyAccount(message)
+            BOT.send_message(message.from_user.id, f'❌ Не удалось купить аккаунт, '
+                                                   f'пробую ещё раз через {LONG_SLEEP} секунд...')
+            Sleep(LONG_SLEEP)
+            num = BuyAccount(message)
+    return num
 
 
-def CheckForSms(message: Message, req_number: str) -> int | None:
+def CheckAllSms(message: Message) -> dict | None:
+    res = {}
     try:
         response = get(URL_SMS, params={'apikey': TOKEN_SIM})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server: {e}', 'e')
-        Sleep(LONG_SLEEP)
-        BOT.send_message(message.from_user.id, '❌ Не удалось связаться с сервером')
+        BOT.send_message(message.from_user.id, f'❌ Не удалось связаться с сервером для получения кодов...')
     else:
         if str(response.status_code)[0] == '2':
-            response = response.json()
-            for item in response:
-                if item['number'] == req_number and 'msg' in item:
-                    return item['msg']
+            Stamp('See some data about sms', 's')
+            for item in response.json():
+                if 'msg' in item:
+                    res[item['number']] = item['msg']
         else:
-            Stamp(f'Failed to get sms: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, f'❌ Статус {response.status_code} при обновлении смс...')
-    return
+            Stamp(f'Failed to get list of sms: {response.text}', 'e')
+            BOT.send_message(message.from_user.id, f'❌ Статус {response.status_code} при обновлении списка смс...')
+    return res
 
 
 @BOT.message_handler(content_types=['text'])

@@ -28,6 +28,8 @@ from os import getcwd
 from socks import SOCKS5
 import emoji as lib_emoji
 from requests import get
+from typing import Union, Callable, Any, List, Dict, Generator
+from functools import wraps
 
 
 BOT = TeleBot(TOKEN)
@@ -69,6 +71,23 @@ MAX_RECURSION = 10
 
 class SkippedCodeInsertion(Exception):
     pass
+
+
+def ControlRecursion(func: Callable[..., Any], maximum: int = MAX_RECURSION) -> Callable[..., Any]:
+    func.recursion_depth = 0
+
+    @wraps(func)
+    def Wrapper(*args, **kwargs):
+        if func.recursion_depth > maximum:
+            Stamp('Max level of recursion reached', 'e')
+            raise RecursionError
+        if func.recursion_depth > 0:
+            Stamp(f"Recursion = {func.recursion_depth}, allowed = {maximum}", 'w')
+        func.recursion_depth += 1
+        result = func(*args, **kwargs)
+        func.recursion_depth -= 1
+        return result
+    return Wrapper
 
 
 def Stamp(message: str, level: str) -> None:
