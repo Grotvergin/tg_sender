@@ -262,7 +262,6 @@ async def ProcessRequests() -> None:
                     SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
                     user_id = req['initiator'].split(' ')[-1]
                     BOT.send_message(user_id, message, parse_mode='HTML')
-
         await AsyncSleep(LONG_SLEEP, 0.5)
 
 
@@ -348,6 +347,8 @@ async def EventHandler(event):
                 dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
+            if rand_amount > len(ACCOUNTS):
+                rand_amount = len(ACCOUNTS)
             REQS_QUEUE.append({'order_type': order_type,
                                'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
                                'link': f'{event.chat.username}/{event.message.id}',
@@ -598,9 +599,11 @@ def PrintAutomaticRequest(chan: str, data: dict) -> str:
 
 
 def SendFinishedRequests(message: Message) -> None:
+    global FINISHED_REQS
+    FINISHED_REQS = LoadRequestsFromFile('finished', 'finished.json')
     if FINISHED_REQS:
-        BOT.send_message(message.from_user.id, f' 📋 Показываю {len(FINISHED_REQS)} выполненные заявки:')
-        for req in FINISHED_REQS:
+        BOT.send_message(message.from_user.id, f' 📋 Показываю {NUMBER_LAST_FIN} выполненные заявки:')
+        for req in FINISHED_REQS[-NUMBER_LAST_FIN:]:
             BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='HTML')
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет выполненных заявок')

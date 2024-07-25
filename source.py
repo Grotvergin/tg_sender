@@ -67,6 +67,7 @@ MAX_ACCOUNTS_BUY = 10
 URL_BUY = 'https://onlinesim.io/api/getNum.php'
 URL_SMS = 'https://onlinesim.io/api/getState.php'
 MAX_RECURSION = 10
+NUMBER_LAST_FIN = 10
 
 
 class SkippedCodeInsertion(Exception):
