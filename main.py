@@ -1,6 +1,3 @@
-import requests
-
-import bot.source
 from source import *
 
 
@@ -734,7 +731,7 @@ def ProcessAccountSms(message: Message, num: str) -> int:
             BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
             break
         else:
-            Stamp(f'No incoming sms for {num}', 'e')
+            Stamp(f'No incoming sms for {num}', 'w')
             BOT.send_message(message.from_user.id, f'❌ Не удалось найти входящих смс для {num}, пробую ещё раз через {LONG_SLEEP} секунд...')
     return cnt
 
@@ -783,7 +780,7 @@ def AddAccounts(message: Message) -> None:
                                           f'завершаю процесс покупки...')
                 return
             try:
-                session, rand_hash = RequestAPICode(message, num, row)
+                session, rand_hash = RequestAPICode(message, num, proxy)
             except RecursionError:
                 Stamp(f'Exiting because of requesting code fail', 'w')
                 BOT.send_message(user_id, '❗️ Превышено максимальное количество попыток,'
@@ -897,7 +894,7 @@ def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code:
 def FigureOutFreeRow() -> int | None:
     data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
     for index, row in enumerate(data):
-        if len(row) == 4:
+        if row[0] == '':
             return index + 2
     return
 
@@ -942,9 +939,9 @@ def RequestAPICode(message: Message, num: str, proxy: dict) -> (Session, str):
 @ControlRecursion
 def BuyAccount(message: Message) -> str:
     try:
-        # TODO Поменять на telegram
         # TODO Возможность отмены номера
-        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'drom', 'country': 7, 'number': True, 'lang': 'ru'})
+        # TODO Поменять код страны
+        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': 20, 'number': True, 'lang': 'ru'})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while buying account: {e}', 'e')
         BOT.send_message(message.from_user.id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '
@@ -953,10 +950,16 @@ def BuyAccount(message: Message) -> str:
         num = BuyAccount(message)
     else:
         if str(response.status_code)[0] == '2':
-            num = response.json()['number']
-            Stamp(f'Bought account: {num}', 's')
-            BOT.send_message(message.from_user.id, f'📱 Куплен номер {num} на 15 минут,'
-                                                   f'через {LONG_SLEEP} секунд начну проверку смс...')
+            if 'number' in response.json():
+                num = response.json()['number']
+                Stamp(f'Bought account: {num}', 's')
+                BOT.send_message(message.from_user.id, f'📱 Куплен номер {num} на 15 минут,'
+                                                       f'через {LONG_SLEEP} секунд начну проверку смс...')
+            else:
+                Stamp(f'No "number" field in response <-> no available numbers in this region', 'e')
+                BOT.send_message(message.from_user.id, '⛔️ Нет доступных номеров в этом регионе, '
+                                                       'прекращаю процесс покупки...')
+                raise RecursionError
         else:
             Stamp(f'Failed to buy account: {response.text}', 'e')
             BOT.send_message(message.from_user.id, f'❌ Не удалось купить аккаунт, '
@@ -1017,5 +1020,6 @@ def MessageAccept(message: Message) -> None:
 
 if __name__ == '__main__':
     SERVICE = BuildService()
+    data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
     Thread(target=BotPolling, daemon=True).start()
     run(Main())
