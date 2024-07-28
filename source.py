@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from traceback import format_exc
 from re import match, compile, search, MULTILINE, IGNORECASE
 from threading import Thread
+from telethon import types
 from googleapiclient.errors import HttpError
 from ssl import SSLEOFError
 from socket import gaierror
@@ -14,8 +15,11 @@ from telebot import TeleBot
 from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from telethon.sync import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.account import UpdateProfileRequest, GetPasswordRequest, UpdatePasswordSettingsRequest
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
+from telethon.tl.functions.contacts import AddContactRequest, ImportContactsRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, GetMessagesViewsRequest, GetDialogsRequest, SendReactionRequest
-from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden, ReactionEmoji
+from telethon.tl.types import InputPeerEmpty, Channel, ChannelForbidden, ReactionEmoji, InputPhoneContact, InputUser, Passw
 from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError, InviteRequestSentError, ReactionInvalidError
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 from telethon.events import NewMessage
@@ -30,6 +34,7 @@ import emoji as lib_emoji
 from requests import get, Session
 from typing import Union, Callable, Any, List, Dict, Generator
 from functools import wraps
+from faker import Faker
 
 
 BOT = TeleBot(TOKEN)
@@ -50,6 +55,9 @@ CUR_REQ = {}
 AUTO_SUBS_DICT = {}
 AUTO_REPS_DICT = {}
 CODE = None
+NEW_ROW_TO_ADD = None
+NEW_CHAT_ID = None
+FAKER = Faker()
 init()
 seed()
 CREDS = Credentials.from_service_account_file('keys.json', scopes=['https://www.googleapis.com/auth/spreadsheets'])
@@ -64,6 +72,7 @@ LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
 SHEET_NAME = 'Тестирование'
+EXTRA_SHEET_NAME = 'Дополнительные'
 MAX_ACCOUNTS_BUY = 5
 URL_BUY = 'https://onlinesim.io/api/getNum.php'
 URL_SMS = 'https://onlinesim.io/api/getState.php'

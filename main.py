@@ -7,11 +7,12 @@ async def Main() -> None:
     AUTO_SUBS_DICT = LoadRequestsFromFile('automatic subs', 'auto_views.json')
     AUTO_REPS_DICT = LoadRequestsFromFile('automatic reps', 'auto_reps.json')
     loop = get_event_loop()
+    new_task = create_task(CheckNewAuth())
     refresh_task = create_task(RefreshEventHandler())
     process_task = create_task(ProcessRequests())
     auth_task = create_task(CheckRefreshAuth())
     try:
-        await gather(refresh_task, process_task, auth_task)
+        await gather(refresh_task, process_task, auth_task, new_task)
     finally:
         loop.close()
 
@@ -36,6 +37,143 @@ def WaitForCode() -> int | None:
     code = CODE
     CODE = None
     return code
+
+
+async def CheckNewAuth() -> None:
+    global NEW_ROW_TO_ADD
+    while True:
+        if NEW_ROW_TO_ADD:
+            Stamp(f'New row to add is set, authorizing account on row {NEW_ROW_TO_ADD}', 'i')
+            await AuthNewAccount(NEW_ROW_TO_ADD)
+            NEW_ROW_TO_ADD = None
+        await async_sleep(SHORT_SLEEP)
+
+
+def GenerateRandomRussianName():
+    first_names = ['Алексей', 'Андрей', 'Борис', 'Владимир', 'Георгий', 'Дмитрий', 'Евгений', 'Игорь', 'Константин', 'Максим']
+    last_names = ['Иванов', 'Смирнов', 'Кузнецов', 'Попов', 'Соколов', 'Лебедев', 'Козлов', 'Новиков', 'Морозов', 'Петров']
+    return choice(first_names), choice(last_names)
+
+
+def GenerateRandomDescription():
+    descriptions = [
+        'Люблю путешествовать и открывать новые места.',
+        'Фанат спорта и здорового образа жизни.',
+        'Веду блог о кулинарии и рецептах.',
+        'Интересуюсь искусством и культурой.',
+        'Занимаюсь фотографией и видеосъемкой.'
+    ]
+    return choice(descriptions)
+
+
+def GetRandomProfilePicture():
+    response = get('https://source.unsplash.com/random/200x200')
+    if response.status_code == 200:
+        return response.content
+    return None
+
+
+async def AddRandomContact(client):
+    random_contact = InputPhoneContact(
+        client_id=randint(0, 999999),
+        phone='+' + str(randint(10000000000, 99999999999)),
+        first_name=GenerateRandomRussianName()[0],
+        last_name=GenerateRandomRussianName()[1]
+    )
+    try:
+        result = await client(ImportContactsRequest(
+            contacts=[random_contact]
+        ))
+        if result.imported:
+            input_user = result.imported[0].user_id
+            await client(AddContactRequest(
+                id=InputUser(input_user, 0),
+                first_name=random_contact.first_name,
+                last_name=random_contact.last_name,
+                phone=random_contact.phone,
+                add_phone_privacy_exception=False
+            ))
+    except Exception as e:
+        Stamp(f'Failed to add contact: {e}', 'e')
+
+
+# async def SetTwoFactorPassword(client, new_password: str):
+#     try:
+#         current_password = await client(GetPasswordRequest())
+#         new_srp_password = compute_check(
+#             current_password.new_algo, new_password
+#         )
+#
+#         await client(UpdatePasswordSettingsRequest(
+#             password=current_password.new_algo,
+#             new_settings=types.account.PasswordInputSettings(
+#                 new_algo=new_srp_password['algo'],
+#                 new_password_hash=new_srp_password['hash'],
+#                 hint='My password hint'
+#             )
+#         ))
+#         Stamp(f'2FA password set successfully', 's')
+#     except Exception as e:
+#         Stamp(f'Error while setting 2FA password: {e}', 'e')
+
+
+async def AuthNewAccount(row: int) -> None:
+    data = GetSector(f'E{row}', f'H{row}', SERVICE, EXTRA_SHEET_NAME, SHEET_ID)[0]
+    try:
+        num, api_id, api_hash, password_tg, ip, port, login, password_proxy = ParseAccountRow(data)
+    except IndexError:
+        Stamp(f'Invalid account data in row {row}', 'e')
+        BOT.send_message(NEW_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {row}!')
+        return
+    tg_session = join(getcwd(), 'sessions', f'{num}')
+    client = TelegramClient(tg_session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
+    try:
+        await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
+        Stamp(f'Account {num} authorized', 's')
+        BOT.send_message(NEW_CHAT_ID, f'✅ Аккаунт {num} авторизован')
+        first_name, last_name = GenerateRandomRussianName()
+        await client(UpdateProfileRequest(first_name=first_name, last_name=last_name, about=GenerateRandomDescription()))
+        profile_picture = GetRandomProfilePicture()
+        if profile_picture:
+            file = await client.upload_file(profile_picture)
+            await client(UploadProfilePhotoRequest(file=file))
+        await AddRandomContact(client)
+        # await SetTwoFactorPassword(client, 'Arkana')
+        Stamp('Changed all data for the account', 's')
+        BOT.send_message(NEW_CHAT_ID, f'🖍 Изменил данные об аккаунте')
+    except PhoneCodeInvalidError:
+        BOT.send_message(NEW_CHAT_ID, f'❌ Неверный код для номера {num}.')
+        Stamp(f'Invalid code for {num}', 'e')
+    except PhoneCodeExpiredError:
+        BOT.send_message(NEW_CHAT_ID, f'❌ Истекло время действия кода для номера {num}.')
+        Stamp(f'Code expired for {num}', 'e')
+    except SessionPasswordNeededError:
+        BOT.send_message(NEW_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {num}.')
+        Stamp(f'2FA needed for {num}', 'w')
+    except PhoneNumberInvalidError:
+        BOT.send_message(NEW_CHAT_ID, f'❌ Неверный номер телефона {num}.')
+        Stamp(f'Invalid phone number {num}', 'e')
+    except SkippedCodeInsertion:
+        Stamp(f'Skipping code insertion for {num}', 'w')
+        BOT.send_message(NEW_CHAT_ID, f'👌 Пропускаем аккаунт {num}...')
+    except TimeoutError:
+        Stamp('Too long code waiting', 'w')
+        BOT.send_message(NEW_CHAT_ID, f'❌ Превышено время ожидания кода для {num}!')
+    except Exception as e:
+        Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
+        BOT.send_message(NEW_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
+
+
+def ParseAccountRow(account: list) -> tuple:
+    num = account[0]
+    api_id = account[1]
+    api_hash = account[2]
+    password_tg = account[3] if account[3] != '-' else None
+    ip = account[4]
+    port = int(account[5])
+    login = account[6]
+    password_proxy = account[7]
+    return num, api_id, api_hash, password_tg, ip, port, login, password_proxy
 
 
 async def CheckRefreshAuth() -> None:
@@ -67,14 +205,7 @@ async def AuthorizeAccounts() -> None:
         this_run_auth = [client.session.filename for client in ACCOUNTS]
         for index, account in enumerate(data):
             try:
-                num = account[0]
-                api_id = account[1]
-                api_hash = account[2]
-                password_tg = account[3] if account[3] != '-' else None
-                ip = account[4]
-                port = int(account[5])
-                login = account[6]
-                password_proxy = account[7]
+                num, api_id, api_hash, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
             except IndexError:
                 Stamp(f'Invalid account data: {account}', 'e')
                 BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')
@@ -866,7 +997,12 @@ def HandleAPICode(message: Message, session: Session, num: str, rand_hash: str, 
                                            f'API_ID: {api_id}\n'
                                            f'API_HASH: {api_hash}\n'
                                            f'▶️ Заношу данные в таблицу...')
-    UploadData([[num, api_id, api_hash, '-']], 'Дополнительные', SHEET_ID, SERVICE, row)
+    UploadData([[num[1:], api_id, api_hash, '-']], EXTRA_SHEET_NAME, SHEET_ID, SERVICE, row)
+    Stamp(f'Trying to authorize account {num}', 'i')
+    BOT.send_message(message.from_user.id, '🔐 Авторизую аккаунт, ожидайте сообщения...')
+    global NEW_ROW_TO_ADD, NEW_CHAT_ID
+    NEW_ROW_TO_ADD = row
+    NEW_CHAT_ID = message.from_user.id
 
 
 def GetAppData(message: Message, session: Session, proxy: dict) -> (str, str):
@@ -932,7 +1068,7 @@ def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code:
 
 
 def FigureOutFreeRow() -> int | None:
-    data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
+    data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, EXTRA_SHEET_NAME, SHEET_ID)
     for index, row in enumerate(data):
         if row[0] == '':
             return index + 2
@@ -940,7 +1076,7 @@ def FigureOutFreeRow() -> int | None:
 
 
 def GetProxy(row: int) -> dict:
-    data = GetSector(f'E{row}', f'H{row}', SERVICE, 'Дополнительные', SHEET_ID)[0]
+    data = GetSector(f'E{row}', f'H{row}', SERVICE, EXTRA_SHEET_NAME, SHEET_ID)[0]
     proxies = {
         'http': f'socks5://{data[2]}:{data[3]}@{data[0]}:{data[1]}',
         'https': f'socks5://{data[2]}:{data[3]}@{data[0]}:{data[1]}'
@@ -1058,6 +1194,6 @@ def MessageAccept(message: Message) -> None:
 
 if __name__ == '__main__':
     SERVICE = BuildService()
-    # data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
+    # data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, EXTRA_SHEET_NAME, SHEET_ID)
     Thread(target=BotPolling, daemon=True).start()
     run(Main())
