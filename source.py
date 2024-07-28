@@ -42,6 +42,7 @@ CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀', 'Репосты 📢', CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌', 'Удаление ❌', 'Активные 📅', CANCEL_BTN[0])
 SINGLE_BTNS = ('Активные 📅', 'Выполненные заявки 📋', 'Подписки 🔔', 'Просмотры 👀', 'Репосты 📢', 'Удаление ❌', 'Реакции 😍', CANCEL_BTN[0])
+BNT_NUM_OPERATION = ('💬 Проверить СМС', '🅾️ Отменить номер')
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
@@ -66,6 +67,7 @@ SHEET_NAME = 'Тестирование'
 MAX_ACCOUNTS_BUY = 5
 URL_BUY = 'https://onlinesim.io/api/getNum.php'
 URL_SMS = 'https://onlinesim.io/api/getState.php'
+URL_CANCEL = 'https://onlinesim.io/api/setOperationOk.php'
 URL_API_GET_CODE = 'https://my.telegram.org/auth/send_password'
 URL_API_LOGIN = 'https://my.telegram.org/auth/login'
 URL_API_GET_APP = 'https://my.telegram.org/apps'

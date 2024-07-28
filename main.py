@@ -335,7 +335,7 @@ def ContainsLink(text: str) -> bool:
     return bool(url_pattern.search(text))
 
 
-async def EventHandler(event):
+async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
     dicts_list = ({'dict': AUTO_SUBS_DICT, 'order_type': 'Просмотры'}, {'dict': AUTO_REPS_DICT, 'order_type': 'Репосты'})
     user_id = None
@@ -718,26 +718,45 @@ def ListAccountNumbers() -> str:
     return res
 
 
-def ProcessAccountSms(message: Message, num: str) -> int:
-    cnt = 0
-    while cnt < MAX_RECURSION:
-        Sleep(LONG_SLEEP)
-        Stamp(f'Checking for all sms', 'i')
-        BOT.send_message(message.from_user.id, f'🔍 Проверяю пришедшие смс...')
-        sms_dict = CheckAllSms(message)
-        cnt += 1
-        if sms_dict and num in sms_dict:
-            Stamp('Found incoming sms for recently bought number', 's')
-            BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
-            break
+def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int, total: int) -> bool:
+    Stamp(f'Checking for all sms', 'i')
+    sms_dict = CheckAllSms(message)
+    found = False
+    if sms_dict and num in sms_dict:
+        Stamp('Found incoming sms for recently bought number', 's')
+        BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
+        found = True
+    else:
+        Stamp(f'No incoming sms for {num}', 'w')
+        BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
+    ShowButtons(message, BNT_NUM_OPERATION, '❔ Что делаем дальше?')
+    BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total)
+    return found
+
+
+@ControlRecursion
+def CancelNumber(message: Message, num: str, tzid: str) -> None:
+    try:
+        response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'})
+    except ConnectionError as e:
+        Stamp(f'Failed to connect to the server while cancelling number {num}: {e}', 'e')
+        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для отмены номера, '
+                                               f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+        Sleep(LONG_SLEEP, 0.5)
+        CancelNumber(message, num, tzid)
+    else:
+        if str(response.status_code)[0] == '2' and str(response.json()['response']) == '1':
+            Stamp(f'Successful cancelling of number {num}', 's')
+            BOT.send_message(message.from_user.id, f'❇️ Номер {num} отменён')
         else:
-            Stamp(f'No incoming sms for {num}', 'w')
-            BOT.send_message(message.from_user.id, f'❌ Не удалось найти входящих смс для {num}, пробую ещё раз через {LONG_SLEEP} секунд...')
-    return cnt
+            Stamp(f'Failed to cancel number {num}: {response.text}', 'w')
+            BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось отменить номер, '
+                                                    f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
+            Sleep(LONG_SLEEP * 2)
+            CancelNumber(message, num, tzid)
 
 
 def AddAccounts(message: Message) -> None:
-    user_id = message.from_user.id
     if message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         return
@@ -752,43 +771,63 @@ def AddAccounts(message: Message) -> None:
         BOT.register_next_step_handler(message, AddAccounts)
         return
     Stamp(f'Starting the process of {message.text} account addition', 'i')
-    BOT.send_message(user_id, f'🔁 Начинаю процесс добавления {message.text} аккаунтов...')
-    for i in range(int(message.text)):
-        Stamp(f'Adding {i + 1} account', 'i')
-        BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
+    BOT.send_message(message.from_user.id, f'🔁 Начинаю процесс добавления {message.text} аккаунтов...')
+    AddAccountRecursive(message, 0, req_quantity)
+
+
+def AbilityToCancel(message: Message, num: str, tzid: str, current_index: int, total: int) -> None:
+    if message.text == BNT_NUM_OPERATION[1]:
+        Stamp(f'Cancelling number {num}', 'w')
+        BOT.send_message(message.from_user.id, f'🆗 Отменяю номер {num} (занимает некоторое время)...')
         try:
-            num = BuyAccount(message)
+            CancelNumber(message, num, tzid)
         except RecursionError:
-            Stamp(f'Exiting because of buying fail', 'w')
-            BOT.send_message(user_id, '❗️ Превышено максимальное количество попыток,'
-                                      'завершаю процесс покупки...')
-            return
-        cnt = ProcessAccountSms(message, num)
-        if cnt >= MAX_RECURSION:
-            Stamp(f'Have not found any incoming sms for {num} at all, tried {MAX_RECURSION} times', 'w')
-            BOT.send_message(user_id, f'🚫 За {MAX_RECURSION} попыток не удалось найти входящие смс для номера {num}. '
-                                      f'Перехожу к следующему номеру...')
-            continue
-        else:
-            Stamp('Sending request to authorize on API', 'i')
-            BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
-            row = FigureOutFreeRow()
-            proxy = GetProxy(row)
-            if not row:
-                Stamp(f'Exiting because of finding free row fail', 'w')
-                BOT.send_message(user_id, f'⁉️ Не нашёл свободного прокси, '
-                                          f'завершаю процесс покупки...')
-                return
-            try:
-                session, rand_hash = RequestAPICode(message, num, proxy)
-            except RecursionError:
-                Stamp(f'Exiting because of requesting code fail', 'w')
-                BOT.send_message(user_id, '❗️ Превышено максимальное количество попыток,'
-                                          'завершаю процесс покупки...')
-                return
-            BOT.register_next_step_handler(message, HandleAPICode, session, num, rand_hash, proxy, row)
-    BOT.send_message(user_id, f'✅ Было обработано {message.text} аккаунтов')
-    ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+            Stamp('Too many tries to cancel num, returning', 'w')
+            BOT.send_message(message.from_user.id, '🛑 Слишком много попыток отмены номера, '
+                                                   'перехожу к следующему...')
+        AddAccountRecursive(message, current_index + 1, total)
+        return
+    if not ProcessAccountSms(message, num, tzid, current_index, total):
+        return
+    Stamp('Sending request to authorize on API', 'i')
+    BOT.send_message(message.from_user.id, f'📮 Отправляю код на номер {num} для авторизации API')
+    row = FigureOutFreeRow()
+    proxy = GetProxy(row)
+    if not row:
+        Stamp(f'Exiting because of finding free row fail', 'w')
+        BOT.send_message(message.from_user.id, f'⁉️ Не нашёл свободного прокси, '
+                                  f'завершаю процесс покупки...')
+        AddAccountRecursive(message, current_index + 1, total)
+        return
+    try:
+        session, rand_hash = RequestAPICode(message, num, proxy)
+    except RecursionError:
+        Stamp(f'Exiting because of requesting code fail', 'w')
+        BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
+                                  'завершаю процесс покупки...')
+        AddAccountRecursive(message, current_index + 1, total)
+        return
+    BOT.register_next_step_handler(message, HandleAPICode, session, num, rand_hash, proxy, row)
+
+
+def AddAccountRecursive(message: Message, current_index: int, total: int) -> None:
+    if current_index >= total:
+        BOT.send_message(message.from_user.id, f'✅ Было обработано {total} аккаунтов')
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        return
+    Stamp(f'Adding {current_index + 1} account', 'i')
+    BOT.send_message(message.from_user.id, f'▫️ Добавляю {current_index + 1}-й аккаунт')
+    try:
+        num, tzid = BuyAccount(message)
+    except RecursionError:
+        Stamp(f'Exiting because of buying fail', 'w')
+        BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
+                                               'завершаю процесс покупки...')
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+        return
+    # num, tzid = '+18352303716', ''
+    ShowButtons(message, BNT_NUM_OPERATION, '❕ Если аккаунт нужно отменить, воспользуйтесь кнопкой')
+    BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total)
 
 
 def ExtractCodeFromMessage(text: str) -> str | None:
@@ -826,7 +865,7 @@ def HandleAPICode(message: Message, session: Session, num: str, rand_hash: str, 
     BOT.send_message(message.from_user.id, f'✅ Получил данные для номера {num}:\n'
                                            f'API_ID: {api_id}\n'
                                            f'API_HASH: {api_hash}\n'
-                                           f'Заношу данные в таблицу...')
+                                           f'▶️ Заношу данные в таблицу...')
     UploadData([[num, api_id, api_hash, '-']], 'Дополнительные', SHEET_ID, SERVICE, row)
 
 
@@ -842,11 +881,11 @@ def GetAppData(message: Message, session: Session, proxy: dict) -> (str, str):
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Got HTML page', 's')
-            BOT.send_message(f'♻️ Получил страницу сайта, ищу необходимые данные')
+            BOT.send_message(message.from_user.id, f'♻️ Получил страницу сайта, ищу необходимые данные')
             api_id, api_hash = ParseHTML(response.text)
         else:
             Stamp('Did not got HTML page', 'e')
-            BOT.send_message(f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '
+            BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '
                              f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             api_id, api_hash = GetAppData(message, session, proxy)
@@ -882,6 +921,7 @@ def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code:
         if str(response.status_code)[0] == '2':
             Stamp(f'Logined into API for number {num}', 's')
             BOT.send_message(message.from_user.id, f'❇️ Зашёл в API для аккаунта {num}')
+            print(response.json())
         else:
             Stamp(f'Failed to login into API: {response.text}', 'e')
             BOT.send_message(message.from_user.id, f'🛑 Не удалось зайти в API для номера {num}, '
@@ -937,24 +977,22 @@ def RequestAPICode(message: Message, num: str, proxy: dict) -> (Session, str):
 
 
 @ControlRecursion
-def BuyAccount(message: Message) -> str:
+def BuyAccount(message: Message) -> tuple:
     try:
-        # TODO Возможность отмены номера
-        # TODO Поменять код страны
-        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': 20, 'number': True, 'lang': 'ru'})
+        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': 7, 'number': True, 'lang': 'ru'})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while buying account: {e}', 'e')
         BOT.send_message(message.from_user.id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '
                                                f'пробую ещё раз через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP)
-        num = BuyAccount(message)
+        num, tzid = BuyAccount(message)
     else:
         if str(response.status_code)[0] == '2':
             if 'number' in response.json():
                 num = response.json()['number']
+                tzid = response.json()['tzid']
                 Stamp(f'Bought account: {num}', 's')
-                BOT.send_message(message.from_user.id, f'📱 Куплен номер {num} на 15 минут,'
-                                                       f'через {LONG_SLEEP} секунд начну проверку смс...')
+                BOT.send_message(message.from_user.id, f'📱 Куплен номер {num} на 15 минут')
             else:
                 Stamp(f'No "number" field in response <-> no available numbers in this region', 'e')
                 BOT.send_message(message.from_user.id, '⛔️ Нет доступных номеров в этом регионе, '
@@ -965,8 +1003,8 @@ def BuyAccount(message: Message) -> str:
             BOT.send_message(message.from_user.id, f'❌ Не удалось купить аккаунт, '
                                                    f'пробую ещё раз через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP)
-            num = BuyAccount(message)
-    return num
+            num, tzid = BuyAccount(message)
+    return num, tzid
 
 
 def CheckAllSms(message: Message) -> dict | None:
@@ -1020,6 +1058,6 @@ def MessageAccept(message: Message) -> None:
 
 if __name__ == '__main__':
     SERVICE = BuildService()
-    data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
+    # data = GetSector(LEFT_CORNER, RIGHT_CORNER, SERVICE, 'Дополнительные', SHEET_ID)
     Thread(target=BotPolling, daemon=True).start()
     run(Main())
