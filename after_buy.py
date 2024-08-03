@@ -10,7 +10,9 @@ from os import remove, getcwd
 from os.path import join
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.sync import TelegramClient
+from telethon.tl.types import InputPhoneContact
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
+from telethon.tl.functions.contacts import ImportContactsRequest
 from socks import SOCKS5
 from telethon.errors import (PhoneCodeInvalidError,
                              PhoneCodeExpiredError,
@@ -20,6 +22,7 @@ from common import SkippedCodeInsertion, ParseAccountRow
 from traceback import format_exc
 from auth import AuthCallback
 from asyncio import sleep as async_sleep
+from random import randint
 
 
 async def CheckNewAuth() -> None:
@@ -33,13 +36,13 @@ async def CheckNewAuth() -> None:
         await async_sleep(SHORT_SLEEP)
 
 
-def GenerateRandomRussianName():
+def GenerateRandomRussianName() -> (str, str):
     first_names = ['Алексей', 'Андрей', 'Борис', 'Владимир', 'Георгий', 'Дмитрий', 'Евгений', 'Игорь', 'Константин', 'Максим']
     last_names = ['Иванов', 'Смирнов', 'Кузнецов', 'Попов', 'Соколов', 'Лебедев', 'Козлов', 'Новиков', 'Морозов', 'Петров']
     return choice(first_names), choice(last_names)
 
 
-def GenerateRandomDescription():
+def GenerateRandomDescription() -> str:
     descriptions = [
         'Люблю путешествовать и открывать новые места.',
         'Фанат спорта и здорового образа жизни.',
@@ -63,54 +66,37 @@ def GetRandomProfilePicture() -> str | None:
         return IMG_PATH
 
 
-async def SetProfilePicture(client, path: str):
-    file = await client.upload_file(path)
+async def SetProfilePicture(client: TelegramClient) -> None:
+    Stamp('Setting profile picture', 'i')
+    BOT.send_message(NEW_CHAT_ID, '🖼 Изменяю фотографию профиля...')
+    file = await client.upload_file(IMG_PATH)
     await client(UploadProfilePhotoRequest(file))
-    remove(path)
+    remove(IMG_PATH)
 
 
-# async def AddRandomContact(client):
-#     random_contact = InputPhoneContact(
-#         client_id=randint(0, 999999),
-#         phone='+' + str(randint(10000000000, 99999999999)),
-#         first_name=GenerateRandomRussianName()[0],
-#         last_name=GenerateRandomRussianName()[1]
-#     )
-#     try:
-#         result = await client(ImportContactsRequest(
-#             contacts=[random_contact]
-#         ))
-#         if result.imported:
-#             input_user = result.imported[0].user_id
-#             await client(AddContactRequest(
-#                 id=InputUser(input_user, 0),
-#                 first_name=random_contact.first_name,
-#                 last_name=random_contact.last_name,
-#                 phone=random_contact.phone,
-#                 add_phone_privacy_exception=False
-#             ))
-#     except Exception as e:
-#         Stamp(f'Failed to add contact: {e}', 'e')
+async def SetProfileInfo(client: TelegramClient) -> None:
+    Stamp('Setting profile info', 'i')
+    BOT.send_message(NEW_CHAT_ID, '📝 Изменяю информацию профиля...')
+    first_name, last_name = GenerateRandomRussianName()
+    about = GenerateRandomDescription()
+    await client(UpdateProfileRequest(first_name=first_name,
+                                      last_name=last_name,
+                                      about=about))
 
 
-# async def SetTwoFactorPassword(client, new_password: str):
-#     try:
-#         current_password = await client(GetPasswordRequest())
-#         new_srp_password = compute_check(
-#             current_password.new_algo, new_password
-#         )
-#
-#         await client(UpdatePasswordSettingsRequest(
-#             password=current_password.new_algo,
-#             new_settings=types.account.PasswordInputSettings(
-#                 new_algo=new_srp_password['algo'],
-#                 new_password_hash=new_srp_password['hash'],
-#                 hint='My password hint'
-#             )
-#         ))
-#         Stamp(f'2FA password set successfully', 's'
-#     except Exception as e:
-#         Stamp(f'Error while setting 2FA password: {e}', 'e')
+async def AddContacts(client: TelegramClient, num: int) -> None:
+    Stamp(f'Adding {num} contacts', 'i')
+    BOT.send_message(NEW_CHAT_ID, f'📞 Добавляю {num} контактов...')
+    contacts = []
+    for _ in range(num):
+        first_name, last_name = GenerateRandomRussianName()
+        phone = f'+{randint(1, 99)}{randint(1000000000, 9999999999)}'
+        contact = InputPhoneContact(client_id=randint(0, 999999),
+                                    phone=phone,
+                                    first_name=first_name,
+                                    last_name=last_name)
+        contacts.append(contact)
+    await client(ImportContactsRequest(contacts))
 
 
 async def AuthNewAccount(row: int) -> None:
@@ -127,11 +113,9 @@ async def AuthNewAccount(row: int) -> None:
         await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
         Stamp(f'Account {num} authorized', 's')
         BOT.send_message(NEW_CHAT_ID, f'✅ Аккаунт {num} авторизован')
-        first_name, last_name = GenerateRandomRussianName()
-        await client(UpdateProfileRequest(first_name=first_name, last_name=last_name, about=GenerateRandomDescription()))
-        await SetProfilePicture(client, IMG_PATH)
-        # await AddRandomContact(client)
-        # await SetTwoFactorPassword(client, 'Arkana')
+        await SetProfileInfo(client)
+        await SetProfilePicture(client)
+        await AddContacts(client, 10)
         Stamp('Changed all data for the account', 's')
         BOT.send_message(NEW_CHAT_ID, f'🖍 Изменил данные об аккаунте')
     except PhoneCodeInvalidError:
