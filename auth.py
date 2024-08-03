@@ -1,0 +1,112 @@
+from time import time, sleep
+from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT, LEFT_CORNER,
+                    RIGHT_CORNER, SHEET_NAME, ACCOUNTS, WELCOME_BTNS)
+from common import (Stamp, SkippedCodeInsertion, GetSector,
+                    Sleep, ShowButtons, BuildService)
+from after_buy import ParseAccountRow
+from os.path import join
+from secret import SHEET_ID
+from os import getcwd
+from telethon.sync import TelegramClient
+from socks import SOCKS5
+from telethon.errors import (SessionPasswordNeededError,
+                             PhoneCodeInvalidError, PhoneNumberInvalidError)
+from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
+from traceback import format_exc
+from source import ADMIN_CHAT_ID
+from asyncio import sleep as async_sleep
+
+
+def WaitForCode() -> int | None:
+    global CODE
+    start = time()
+    while not CODE:
+        sleep(1)
+        Stamp('Waiting for code', 'l')
+        if (time() - start) > MAX_WAIT_CODE:
+            return
+    code = CODE
+    CODE = None
+    return code
+
+
+async def CheckRefreshAuth() -> None:
+    global ADMIN_CHAT_ID
+    while True:
+        if ADMIN_CHAT_ID is not None:
+            Stamp('Admin chat ID is set, authorizing accounts', 'i')
+            await AuthorizeAccounts()
+            ADMIN_CHAT_ID = None
+        await async_sleep(SHORT_SLEEP)
+
+
+def AuthCallback(number: str) -> int:
+    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {number} в течение {MAX_WAIT_CODE} секунд '
+                                    f'(либо "-" для пропуска этого аккаунта):')
+    code = WaitForCode()
+    if not code:
+        raise TimeoutError('Too long code waiting')
+    elif code == '-':
+        raise SkippedCodeInsertion
+    return int(code)
+
+
+async def AuthorizeAccounts() -> None:
+    Stamp('Authorization procedure started', 'b')
+    try:
+        BOT.send_message(ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
+        data = GetSector(LEFT_CORNER, RIGHT_CORNER, BuildService(), SHEET_NAME, SHEET_ID)
+        this_run_auth = [client.session.filename for client in ACCOUNTS]
+        for index, account in enumerate(data):
+            try:
+                num, api_id, api_hash, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
+            except IndexError:
+                Stamp(f'Invalid account data: {account}', 'e')
+                BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')
+                continue
+            session = join(getcwd(), 'sessions', f'{num}')
+            if session + '.session' in this_run_auth:
+                Stamp(f'Account {num} already authorized', 's')
+                continue
+            else:
+                Stamp(f'Processing account {num}', 'i')
+                client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
+                try:
+                    await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
+                    ACCOUNTS.append(client)
+                    Stamp(f'Account {num} authorized', 's')
+                    BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
+                    Sleep(SHORT_SLEEP, 0.5)
+                except PhoneCodeInvalidError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
+                    Stamp(f'Invalid code for {num}', 'e')
+                    continue
+                except PhoneCodeExpiredError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Истекло время действия кода для номера {num}.')
+                    Stamp(f'Code expired for {num}', 'e')
+                    continue
+                except SessionPasswordNeededError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❗️Требуется двухфакторная аутентификация для номера {num}.')
+                    Stamp(f'2FA needed for {num}', 'w')
+                    continue
+                except PhoneNumberInvalidError:
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Неверный номер телефона {num}.')
+                    Stamp(f'Invalid phone number {num}', 'e')
+                    continue
+                except SkippedCodeInsertion:
+                    Stamp(f'Skipping code insertion for {num}', 'w')
+                    BOT.send_message(ADMIN_CHAT_ID, f'👌 Пропускаем аккаунт {num}...')
+                    continue
+                except TimeoutError:
+                    Stamp('Too long code waiting', 'w')
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Превышено время ожидания кода для {num}!')
+                    continue
+                except Exception as e:
+                    Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
+                    BOT.send_message(ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
+                    continue
+        BOT.send_message(ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
+        ShowButtons(ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
+    except Exception as e:
+        Stamp(f'Unknown exception in authorization procedure: {e}', 'w')
+    Stamp('All accounts authorized', 'b')

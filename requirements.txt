@@ -5,3 +5,5 @@ protobuf==5.27.1
 pyTelegramBotAPI==4.19.1
 Telethon==1.36.0
 pysocks==1.7.1
+emoji==2.12.1
+pillow==10.4.0
