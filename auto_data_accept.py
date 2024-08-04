@@ -9,6 +9,7 @@ from deletion import DeleteAutomaticRequest
 from info_senders import PrintAutomaticRequest
 from datetime import datetime
 from file import SaveRequestsToFile
+import source
 
 
 def AutomaticChannelDispatcher(message: Message, file: str) -> None:
@@ -46,12 +47,11 @@ def AutomaticChannelAction(message: Message, file: str) -> None:
                                          "(https://t.me/name или @name)")
         BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     else:
-        global CUR_REQ
-        CUR_REQ = {'initiator': f'{message.from_user.username} – {message.from_user.id}'}
+        source.CUR_REQ = {'initiator': f'{message.from_user.username} – {message.from_user.id}'}
         cut_link = message.text.split('/')[-1]
         if cut_link[0] == '@':
             cut_link = cut_link[1:]
-        CUR_REQ['link'] = cut_link
+        source.CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите количество аккаунтов, которые '
                                          f'будут автоматически совершать действие с новой публикацией '
                                          f'(доступно {len(ACCOUNTS)} аккаунтов):')
@@ -65,7 +65,7 @@ def AutomaticNumberProcedure(message: Message, file: str) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) <= len(ACCOUNTS):
-                CUR_REQ['annual'] = int(message.text)
+                source.CUR_REQ['annual'] = int(message.text)
                 ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), отведённый на действие")
                 BOT.register_next_step_handler(message, AutomaticPeriod, file)
             else:
@@ -83,7 +83,7 @@ def AutomaticPeriod(message: Message, path: str) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) < MAX_MINS:
-                CUR_REQ['time_limit'] = int(message.text)
+                source.CUR_REQ['time_limit'] = int(message.text)
                 BOT.send_message(message.from_user.id, '❔ Введите разброс (в %, от 0 до 100), с которым рассчитается количество:')
                 BOT.register_next_step_handler(message, InsertSpread, path)
             else:
@@ -115,20 +115,20 @@ def InsertSpread(message: Message, path: str) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 <= int(message.text) < 100:
-                CUR_REQ['spread'] = int(message.text)
-                CUR_REQ['approved'] = datetime.now().strftime(TIME_FORMAT)
-                record = {'initiator': CUR_REQ['initiator'],
-                          'time_limit': CUR_REQ['time_limit'],
-                          'approved': CUR_REQ['approved'],
-                          'annual': CUR_REQ['annual'],
-                          'spread': CUR_REQ['spread']}
+                source.CUR_REQ['spread'] = int(message.text)
+                source.CUR_REQ['approved'] = datetime.now().strftime(TIME_FORMAT)
+                record = {'initiator': source.CUR_REQ['initiator'],
+                          'time_limit': source.CUR_REQ['time_limit'],
+                          'approved': source.CUR_REQ['approved'],
+                          'annual': source.CUR_REQ['annual'],
+                          'spread': source.CUR_REQ['spread']}
                 if path == 'auto_views.json':
-                    AUTO_SUBS_DICT[CUR_REQ['link']] = record
+                    AUTO_SUBS_DICT[source.CUR_REQ['link']] = record
                     SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', 'auto_views.json')
                 else:
-                    AUTO_REPS_DICT[CUR_REQ['link']] = record
+                    AUTO_REPS_DICT[source.CUR_REQ['link']] = record
                     SaveRequestsToFile(AUTO_REPS_DICT, 'automatic reps', 'auto_reps.json')
-                BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {CUR_REQ['link']}...")
+                BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {source.CUR_REQ['link']}...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")

@@ -8,12 +8,14 @@ from httplib2.error import ServerNotFoundError
 from ssl import SSLEOFError
 from socket import gaierror
 
-# TODO Separatemore into buy acc/auth api/change
+# TODO Separate more into buy acc/auth api/change
+# TODO Buying more than one account
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
-                'Авторизация аккаунтов 🔐',
-                'Активные аккаунты 🦾',
-                'Покупка аккаунтов 💰')
+                'Авторизация 🔐',
+                'Активные 🦾',
+                'Покупка 💰',
+                'Изменение 🔄',)
 CANCEL_BTN = ('В меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀',
                'Репосты 📢',
@@ -35,7 +37,6 @@ BNT_NUM_OPERATION = ('💬 Проверить СМС',
 # TODO Is really needed?
 CREATE_APP_BTN = ('Создать приложение 📱',)
 GET_API_CODE_BTN = ('Получить код API 📝',)
-
 BOT = TeleBot(TOKEN)
 REQS_QUEUE = []
 ACCOUNTS = []
@@ -51,6 +52,10 @@ SHORT_SLEEP = 1
 LINK_FORMAT = r'https://t\.me/'
 MAX_MINS = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
+ADMIN_CHAT_ID = MY_TG_ID
+WARDEN_CHAT_ID = MY_TG_ID
+CODE = None
+ACC_TO_CHANGE = None
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000

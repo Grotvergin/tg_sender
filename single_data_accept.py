@@ -10,6 +10,7 @@ from info_senders import SendRequests
 from file import LoadRequestsFromFile
 from deletion import DeleteSingleRequest
 from emoji import EMOJI_DATA
+import source
 
 
 def SingleChoice(message: Message) -> None:
@@ -52,10 +53,10 @@ def RequestPeriod(message: Message) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) < MAX_MINS:
-                CUR_REQ['start'] = datetime.now().strftime(TIME_FORMAT)
-                CUR_REQ['finish'] = (datetime.now() + timedelta(minutes=int(message.text))).strftime(TIME_FORMAT)
-                CUR_REQ['cur_acc_index'] = randint(0, len(ACCOUNTS) - 1)
-                REQS_QUEUE.append(CUR_REQ)
+                source.CUR_REQ['start'] = datetime.now().strftime(TIME_FORMAT)
+                source.CUR_REQ['finish'] = (datetime.now() + timedelta(minutes=int(message.text))).strftime(TIME_FORMAT)
+                source.CUR_REQ['cur_acc_index'] = randint(0, len(ACCOUNTS) - 1)
+                REQS_QUEUE.append(source.CUR_REQ)
                 BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
@@ -73,7 +74,7 @@ def NumberInsertingProcedure(message: Message) -> None:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
             if 0 < int(message.text) <= len(ACCOUNTS):
-                CUR_REQ['planned'] = int(message.text)
+                source.CUR_REQ['planned'] = int(message.text)
                 ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
                                                  "в течение которого будет выполняться заявка:")
                 BOT.register_next_step_handler(message, RequestPeriod)
@@ -87,7 +88,6 @@ def NumberInsertingProcedure(message: Message) -> None:
 
 def ChannelSub(message: Message) -> None:
     Stamp('Channel link inserting procedure', 'i')
-    global CUR_REQ
     if message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif not message.text[0] == '@' and not match(LINK_FORMAT, message.text):
@@ -96,17 +96,17 @@ def ChannelSub(message: Message) -> None:
                                          "(https://t.me/name_or_hash или @name)")
         BOT.register_next_step_handler(message, ChannelSub)
     else:
-        CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.username} – {message.from_user.id}'}
+        source.CUR_REQ = {'order_type': 'Подписка', 'initiator': f'{message.from_user.username} – {message.from_user.id}'}
         cut_link = message.text.split('/')[-1]
         if cut_link[0] == '@':
-            CUR_REQ['channel_type'] = 'public'
+            source.CUR_REQ['channel_type'] = 'public'
             cut_link = cut_link[1:]
         elif cut_link[0] == '+':
             cut_link = cut_link[1:]
-            CUR_REQ['channel_type'] = 'private'
+            source.CUR_REQ['channel_type'] = 'private'
         else:
-            CUR_REQ['channel_type'] = 'public'
-        CUR_REQ['link'] = cut_link
+            source.CUR_REQ['channel_type'] = 'public'
+        source.CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество подписок'
                                          f'(доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
@@ -135,10 +135,9 @@ def AcceptPost(message: Message, order_type: str, emoji: str = None) -> None:
                                              "Пожалуйста, проверьте формат ссылки (https://t.me/name/post_id)")
             BOT.register_next_step_handler(message, AcceptPost, order_type)
     else:
-        global CUR_REQ
         cut_link = '/'.join(message.text.split('/')[-2:])
-        CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.username} – {message.from_user.id}', 'link': cut_link}
+        source.CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.username} – {message.from_user.id}', 'link': cut_link}
         if emoji:
-            CUR_REQ['emoji'] = emoji
+            source.CUR_REQ['emoji'] = emoji
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)

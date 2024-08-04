@@ -1,5 +1,6 @@
 from telebot.types import Message
 from source import BOT, ACCOUNTS
+from os.path import split
 
 
 def SendTariffInfo(data: dict) -> (str, list):
@@ -7,7 +8,7 @@ def SendTariffInfo(data: dict) -> (str, list):
     msg = '📊 Доступные страны:\n\n'
     countries = []
     for code, info in data['countries'].items():
-        msg += f'🌍 {info['name']} – {info['code']} – {'доступна' if info['enable'] else 'недоступна'}\n'
+        msg += f'{info['name']} | {info['code']} | {'доступна' if info['enable'] else 'недоступна'}\n'
         if info['enable']:
             countries.append(info['code'])
     return msg, countries
@@ -47,5 +48,5 @@ def PrintAutomaticRequest(chan: str, data: dict) -> str:
 def ListAccountNumbers() -> str:
     res = ''
     for i, acc in enumerate(ACCOUNTS):
-        res += f'{i + 1}) {acc.session.filename.split('/')[-1][:-8]}\n'
+        res += f'{i + 1} | {split(acc.session.filename)[-1][:-8]}\n'
     return res

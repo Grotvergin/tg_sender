@@ -372,6 +372,7 @@ def FinalStep(message: Message, session: Session, num: str, cur_hash: str) -> No
     UploadData([[num[1:], api_id, api_hash, '-']], EXTRA_SHEET_NAME, SHEET_ID, srv, row)
     Stamp(f'Data for number {num} added to the table', 's')
     BOT.send_message(message.from_user.id, f'📊 Данные для номера {num} занесены в таблицу')
+    ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
 def GenerateRandomWord(min_length: int) -> str:
