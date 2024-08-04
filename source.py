@@ -8,7 +8,7 @@ from httplib2.error import ServerNotFoundError
 from ssl import SSLEOFError
 from socket import gaierror
 
-
+# TODO Separatemore into buy acc/auth api/change
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
                 'Авторизация аккаунтов 🔐',
@@ -32,7 +32,9 @@ SINGLE_BTNS = ('Активные 📅',
                CANCEL_BTN[0])
 BNT_NUM_OPERATION = ('💬 Проверить СМС',
                      '🅾️ Отменить номер')
+# TODO Is really needed?
 CREATE_APP_BTN = ('Создать приложение 📱',)
+GET_API_CODE_BTN = ('Получить код API 📝',)
 
 BOT = TeleBot(TOKEN)
 REQS_QUEUE = []
@@ -41,9 +43,6 @@ FINISHED_REQS = []
 CUR_REQ = {}
 AUTO_SUBS_DICT = {}
 AUTO_REPS_DICT = {}
-CODE = None
-NEW_ROW_TO_ADD = None
-NEW_CHAT_ID = MY_TG_ID
 FAKER = Faker()
 init()
 seed()
@@ -52,7 +51,6 @@ SHORT_SLEEP = 1
 LINK_FORMAT = r'https://t\.me/'
 MAX_MINS = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
-ADMIN_CHAT_ID = MY_TG_ID
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000

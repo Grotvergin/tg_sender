@@ -7,7 +7,6 @@ from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, ACCOUNTS, FILE_FINISHED,
                     FILE_AUTO_VIEWS, FILE_AUTO_REPS)
-from after_buy import CheckNewAuth
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
@@ -24,12 +23,11 @@ async def Main() -> None:
     AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
     AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     loop = get_event_loop()
-    new_task = create_task(CheckNewAuth())
     refresh_task = create_task(RefreshEventHandler())
     process_task = create_task(ProcessRequests())
     auth_task = create_task(CheckRefreshAuth())
     try:
-        await gather(refresh_task, process_task, auth_task, new_task)
+        await gather(refresh_task, process_task, auth_task)
     finally:
         loop.close()
 
@@ -67,6 +65,7 @@ def MessageAccept(message: Message) -> None:
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':
+        Stamp(f'ID of code var is {id(CODE)} in MessageAccept', 'i')
         CODE = message.text
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')

@@ -4,7 +4,7 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BNT_NUM_OPERATION,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS,
                     URL_API_GET_CODE, URL_API_LOGIN, URL_API_GET_APP,
                     URL_API_CREATE_APP, URL_GET_TARIFFS, LEFT_CORNER,
-                    SMALL_RIGHT_CORNER, EXTRA_SHEET_NAME)
+                    SMALL_RIGHT_CORNER, EXTRA_SHEET_NAME, GET_API_CODE_BTN)
 from secret import TOKEN_SIM, SHEET_ID
 from common import ShowButtons, Sleep, Stamp, ControlRecursion, UploadData, GetSector, BuildService
 from info_senders import SendTariffInfo
@@ -116,7 +116,11 @@ def AbilityToCancel(message: Message, num: str, tzid: str, current_index: int, t
         AddAccountRecursive(message, current_index + 1, total, country_code)
         return
     elif message.text == BNT_NUM_OPERATION[0]:
-        ProcessAccountSms(message, num, tzid, current_index, total)
+        ProcessAccountSms(message, num, tzid, current_index, total, country_code)
+        return
+
+
+def SendAPICode(message: Message, num: str) -> None:
     Stamp('Sending request to authorize on API', 'i')
     BOT.send_message(message.from_user.id, f'📮 Отправляю код на номер {num} для авторизации API')
     try:
@@ -125,7 +129,6 @@ def AbilityToCancel(message: Message, num: str, tzid: str, current_index: int, t
         Stamp(f'Exiting because of requesting code fail', 'w')
         BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
                                   'завершаю процесс покупки...')
-        AddAccountRecursive(message, current_index + 1, total, country_code)
         return
     BOT.register_next_step_handler(message, HandleAPICode, session, num, rand_hash)
 
@@ -180,20 +183,19 @@ def CancelNumber(message: Message, num: str, tzid: str) -> None:
             CancelNumber(message, num, tzid)
 
 
-def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int, total: int) -> bool:
+def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int, total: int, country_code: int) -> None:
     Stamp(f'Checking for all sms', 'i')
     sms_dict = CheckAllSms(message)
-    found = False
     if sms_dict and num in sms_dict:
         Stamp('Found incoming sms for recently bought number', 's')
         BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
-        found = True
+        ShowButtons(message, GET_API_CODE_BTN, '❔ Как будете готовы, нажмите кнопку')
+        BOT.register_next_step_handler(message, SendAPICode, num)
     else:
         Stamp(f'No incoming sms for {num}', 'w')
         BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
-    ShowButtons(message, BNT_NUM_OPERATION, '❔ Что делаем дальше?')
-    BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total)
-    return found
+        ShowButtons(message, BNT_NUM_OPERATION, '❔ Что делаем дальше?')
+        BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
 
 
 def CheckAllSms(message: Message) -> dict | None:
@@ -316,7 +318,7 @@ def GetHash(message: Message, session: Session) -> str:
         if str(response.status_code)[0] == '2':
             Stamp(f'Got HTML page for hash', 's')
             BOT.send_message(message.from_user.id, f'♻️ Получил страницу сайта, ищу необходимые данные')
-            cur_hash = ParseHash(response.text)
+            cur_hash = ParseHash(message, response.text)
         else:
             Stamp('Did not got HTML page for hash', 'e')
             BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с хешем, '
@@ -326,17 +328,17 @@ def GetHash(message: Message, session: Session) -> str:
     return cur_hash
 
 
-def ParseHash(page: str) -> str | None:
+def ParseHash(message: Message, page: str) -> str | None:
     Stamp('Parsing hash from HTML page', 'i')
-    BOT.send_message(NEW_CHAT_ID, '🔍 Ищу хеш на странице...')
+    BOT.send_message(message.from_user.id, '🔍 Ищу хеш на странице...')
     soup = BeautifulSoup(page, 'html.parser')
     hash_input = soup.find('input', {'name': 'hash'})
     if hash_input:
-        BOT.send_message(NEW_CHAT_ID, f'✅ Нашёл хеш: {hash_input.get("value")}')
+        BOT.send_message(message.from_user.id, f'✅ Нашёл хеш: {hash_input.get("value")}')
         Stamp(f'Got hash: {hash_input.get("value")}', 's')
         return hash_input.get('value')
-    BOT.send_message(NEW_CHAT_ID, '❌ Не удалось найти хеш на странице')
     Stamp('Did not got hash', 'e')
+    BOT.send_message(message.from_user.id, '❌ Не удалось найти хеш на странице')
     return None
 
 
@@ -368,9 +370,8 @@ def FinalStep(message: Message, session: Session, num: str, cur_hash: str) -> No
     srv = BuildService()
     row = len(GetSector(LEFT_CORNER, SMALL_RIGHT_CORNER, srv, EXTRA_SHEET_NAME, SHEET_ID)) + 2
     UploadData([[num[1:], api_id, api_hash, '-']], EXTRA_SHEET_NAME, SHEET_ID, srv, row)
-    global NEW_ROW_TO_ADD, NEW_CHAT_ID
-    NEW_ROW_TO_ADD = row
-    NEW_CHAT_ID = message.from_user.id
+    Stamp(f'Data for number {num} added to the table', 's')
+    BOT.send_message(message.from_user.id, f'📊 Данные для номера {num} занесены в таблицу')
 
 
 def GenerateRandomWord(min_length: int) -> str:

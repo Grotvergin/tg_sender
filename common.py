@@ -1,5 +1,5 @@
 from typing import Any, Callable
-from source import CONN_ERRORS, LONG_SLEEP, BOT
+from source import CONN_ERRORS, LONG_SLEEP, BOT, MAX_RECURSION
 from googleapiclient.discovery import Resource, build
 from colorama import Fore, Style
 from datetime import datetime
@@ -16,7 +16,6 @@ class SkippedCodeInsertion(Exception):
 
 
 def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
-    global MAX_RECURSION
     func.recursion_depth = 0
 
     @wraps(func)

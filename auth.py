@@ -2,8 +2,7 @@ from time import time, sleep
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT, LEFT_CORNER,
                     RIGHT_CORNER, SHEET_NAME, ACCOUNTS, WELCOME_BTNS)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
-                    Sleep, ShowButtons, BuildService)
-from after_buy import ParseAccountRow
+                    Sleep, ShowButtons, BuildService, ParseAccountRow)
 from os.path import join
 from secret import SHEET_ID
 from os import getcwd
@@ -13,17 +12,18 @@ from telethon.errors import (SessionPasswordNeededError,
                              PhoneCodeInvalidError, PhoneNumberInvalidError)
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 from traceback import format_exc
-from source import ADMIN_CHAT_ID
 from asyncio import sleep as async_sleep
 
 
-def WaitForCode() -> int | None:
+def WaitForCode(max_wait_time: int) -> int | None:
     global CODE
     start = time()
+    Stamp(f'ID of code var is {id(CODE)} in WaitForCode', 'i')
+    Stamp(f'Before loop code = {CODE}', 'i')
     while not CODE:
         sleep(1)
         Stamp('Waiting for code', 'l')
-        if (time() - start) > MAX_WAIT_CODE:
+        if (time() - start) > max_wait_time:
             return
     code = CODE
     CODE = None
@@ -33,17 +33,17 @@ def WaitForCode() -> int | None:
 async def CheckRefreshAuth() -> None:
     global ADMIN_CHAT_ID
     while True:
-        if ADMIN_CHAT_ID is not None:
+        if ADMIN_CHAT_ID:
             Stamp('Admin chat ID is set, authorizing accounts', 'i')
             await AuthorizeAccounts()
             ADMIN_CHAT_ID = None
         await async_sleep(SHORT_SLEEP)
 
 
-def AuthCallback(number: str) -> int:
-    BOT.send_message(ADMIN_CHAT_ID, f'❗️Введите код для {number} в течение {MAX_WAIT_CODE} секунд '
+def AuthCallback(number: str, user_id: int, max_wait_time: int) -> int:
+    BOT.send_message(user_id, f'❗️Введите код для {number} в течение {max_wait_time} секунд '
                                     f'(либо "-" для пропуска этого аккаунта):')
-    code = WaitForCode()
+    code = WaitForCode(max_wait_time)
     if not code:
         raise TimeoutError('Too long code waiting')
     elif code == '-':
@@ -72,7 +72,7 @@ async def AuthorizeAccounts() -> None:
                 Stamp(f'Processing account {num}', 'i')
                 client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
                 try:
-                    await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num))
+                    await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num, ADMIN_CHAT_ID, MAX_WAIT_CODE))
                     ACCOUNTS.append(client)
                     Stamp(f'Account {num} authorized', 's')
                     BOT.send_message(ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
