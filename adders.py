@@ -2,7 +2,10 @@ from common import Sleep, Stamp
 from source import ACCOUNTS, SHORT_SLEEP
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import SendReactionRequest
-from telethon.errors import ReactionInvalidError
+from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
+                             ChannelPrivateError, ChatIdInvalidError,
+                             PeerIdInvalidError, ChannelInvalidError,
+                             InviteHashInvalidError)
 from telethon.tl.types import ReactionEmoji
 from telethon.tl.functions.messages import GetMessagesViewsRequest, ImportChatInviteRequest
 from telethon.errors import InviteRequestSentError
@@ -42,6 +45,8 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
             await acc(GetMessagesViewsRequest(peer=post_link.split('/')[0], id=[int(post_link.split('/')[1])], increment=True))
             cnt_success_views += 1
             Stamp(f"Viewed post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except (ChannelPrivateError, ChatIdInvalidError, PeerIdInvalidError) as e:
+            raise e
         except Exception as e:
             Stamp(f"Failed to view post {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
@@ -65,6 +70,8 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
                     Stamp('Caught InviteSendRequest error, continuing', 'i')
             Stamp(f"Subscribed {acc.session.filename.split('_')[-1]} to {link}", 's')
             cnt_success_subs += 1
+        except (ChannelInvalidError, InviteHashInvalidError) as e:
+            raise e
         except Exception as e:
             Stamp(f"Failed to subscribe {acc.session.filename.split('_')[-1]} to {link}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
@@ -83,6 +90,8 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
             await acc.forward_messages('me', message_id, entity)
             cnt_success_reposts += 1
             Stamp(f"Reposted post {post_link} using account {acc.session.filename.split('_')[-1]}", 's')
+        except MessageIdInvalidError as e:
+            raise e
         except Exception as e:
             Stamp(f"Failed to repost {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         await async_sleep(SHORT_SLEEP)

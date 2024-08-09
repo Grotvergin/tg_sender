@@ -4,19 +4,51 @@ from common import Stamp, AsyncSleep
 from source import (BOT, REQS_QUEUE, TIME_FORMAT, FINISHED_REQS,
                     ACCOUNTS, MAX_MINS_REQ, LONG_SLEEP)
 from datetime import datetime, timedelta
-from telethon.errors import ReactionInvalidError
+from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
+                             ChannelPrivateError, ChatIdInvalidError,
+                             PeerIdInvalidError, ChannelInvalidError,
+                             InviteHashInvalidError)
 from file import SaveRequestsToFile
 from info_senders import PrintRequest
 
 
 async def ProcessOrder(req: dict, to_add: int):
     if req['order_type'] == 'Подписка':
-        cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
+        try:
+            cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
+        except ChannelInvalidError:
+            Stamp(f'Channel is invalid in {req['link']}, removing req', 'w')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
+            REQS_QUEUE.remove(req)
+            return
+        except InviteHashInvalidError:
+            Stamp(f'Hash is invalid in {req['link']}, removing req', 'w')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
+            REQS_QUEUE.remove(req)
+            return
     elif req['order_type'] == 'Просмотры':
-        cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
+        try:
+            cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
+        except ChannelPrivateError:
+            Stamp(f'Invalid message in request, removing request', 'w')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'💢 Ссылка ведёт на приватный канал {req['link']}, заявка снимается...')
+            REQS_QUEUE.remove(req)
+            return
+        except (ChatIdInvalidError, PeerIdInvalidError):
+            Stamp(f'Invalid message in request, removing request', 'w')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
+            REQS_QUEUE.remove(req)
+            return
     elif req['order_type'] == 'Репосты':
-        cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
+        try:
+            cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
+        except MessageIdInvalidError:
+            Stamp(f'Invalid message in request, removing request', 'w')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
+            REQS_QUEUE.remove(req)
+            return
     elif req['order_type'] == 'Реакции':
+        # TODO Сделать обработку плохого id канала/поста
         try:
             cnt_success = await AddReactions(req['link'], to_add, req['cur_acc_index'], req['emoji'])
         except ReactionInvalidError as e:
