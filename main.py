@@ -20,10 +20,9 @@ from change import RequestChangeProfile, CheckProfileChange
 
 
 async def Main() -> None:
-    global FINISHED_REQS, AUTO_VIEWS_DICT, AUTO_REPS_DICT
-    FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)
-    AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
-    AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
+    source.FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)
+    source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
+    source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     loop = get_event_loop()
     change_task = create_task(CheckProfileChange())
     refresh_task = create_task(RefreshEventHandler())
