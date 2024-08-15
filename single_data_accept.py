@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from telebot.types import Message
 from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS,
                     LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED,
-                    ACCOUNTS, REQS_QUEUE, BOT)
+                    ACCOUNTS, BOT)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
 from file import LoadRequestsFromFile
@@ -15,7 +15,7 @@ import source
 
 def SingleChoice(message: Message) -> None:
     if message.text == SINGLE_BTNS[0]:
-        SendRequests(message, REQS_QUEUE)
+        SendRequests(message, source.REQS_QUEUE)
         ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, SingleChoice)
     elif message.text == SINGLE_BTNS[1]:

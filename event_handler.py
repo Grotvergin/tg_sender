@@ -4,10 +4,9 @@ from telethon.sync import TelegramClient
 from telethon.events import NewMessage
 from re import compile
 from random import randint
-from source import (LONG_SLEEP, TIME_FORMAT, REQS_QUEUE,
-                    ACCOUNTS, AUTO_VIEWS_DICT, AUTO_REPS_DICT,
-                    BOT, LINK_DECREASE_RATIO, LIMIT_DIALOGS,
-                    NOTIF_TIME_DELTA)
+from source import (LONG_SLEEP, TIME_FORMAT, ACCOUNTS,
+                    BOT, LINK_DECREASE_RATIO,
+                    LIMIT_DIALOGS, NOTIF_TIME_DELTA)
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
@@ -18,7 +17,7 @@ from telebot.apihelper import ApiTelegramException
 
 async def RefreshEventHandler():
     while True:
-        channels = list(AUTO_VIEWS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
+        channels = list(source.AUTO_VIEWS_DICT.keys()) + list(source.AUTO_REPS_DICT.keys())
         if not ACCOUNTS:
             Stamp("No accounts available to set up event handler", 'w')
             BOT.send_message(MY_TG_ID, '💀 Нет аккаунтов для запуска EventHandler')
@@ -43,7 +42,7 @@ async def RefreshEventHandler():
 
 async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-    dicts_list = ({'dict': AUTO_VIEWS_DICT, 'order_type': 'Просмотры'}, {'dict': AUTO_REPS_DICT, 'order_type': 'Репосты'})
+    dicts_list = ({'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры'}, {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты'})
     user_id = None
     for item in dicts_list:
         dict_name = item['dict']
@@ -55,7 +54,7 @@ async def EventHandler(event: NewMessage.Event):
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
             if rand_amount > len(ACCOUNTS):
                 rand_amount = len(ACCOUNTS)
-            REQS_QUEUE.append({'order_type': order_type,
+            source.REQS_QUEUE.append({'order_type': order_type,
                                'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
                                'link': f'{event.chat.username}/{event.message.id}',
                                'start': datetime.now().strftime(TIME_FORMAT),

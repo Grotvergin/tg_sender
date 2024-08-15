@@ -21,12 +21,12 @@ async def ProcessOrder(req: dict, to_add: int):
         except ChannelInvalidError:
             Stamp(f'Channel is invalid in {req['link']}, removing req', 'w')
             BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
         except InviteHashInvalidError:
             Stamp(f'Hash is invalid in {req['link']}, removing req', 'w')
             BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
     elif req['order_type'] == 'Просмотры':
         try:
@@ -34,12 +34,12 @@ async def ProcessOrder(req: dict, to_add: int):
         except ChannelPrivateError:
             Stamp(f'Invalid message in request, removing request', 'w')
             BOT.send_message(req['initiator'].split(' ')[-1], f'💢 Ссылка ведёт на приватный канал {req['link']}, заявка снимается...')
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
         except (ChatIdInvalidError, PeerIdInvalidError):
             Stamp(f'Invalid message in request, removing request', 'w')
             BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
     elif req['order_type'] == 'Репосты':
         try:
@@ -47,7 +47,7 @@ async def ProcessOrder(req: dict, to_add: int):
         except MessageIdInvalidError:
             Stamp(f'Invalid message in request, removing request', 'w')
             BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
     elif req['order_type'] == 'Реакции':
         try:
@@ -55,7 +55,7 @@ async def ProcessOrder(req: dict, to_add: int):
         except ReactionInvalidError as e:
             Stamp(f"Bad reaction {req['emoji']} for {req['link']}: {e}", 'e')
             BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {req['emoji']} недоступна для заявки {req['link']}, заявка снимается...")
-            REQS_QUEUE.remove(req)
+            source.REQS_QUEUE.remove(req)
             return
     else:
         Stamp('Unknown order type', 'e')
