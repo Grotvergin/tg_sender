@@ -49,7 +49,7 @@ REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
 CUR_REQ = {}
-AUTO_SUBS_DICT = {}
+AUTO_VIEWS_DICT = {}
 AUTO_REPS_DICT = {}
 FAKER = Faker()
 init()

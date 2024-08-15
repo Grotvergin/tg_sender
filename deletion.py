@@ -1,5 +1,5 @@
 from telebot.types import Message
-from source import (BOT, REQS_QUEUE, AUTO_SUBS_DICT,
+from source import (BOT, REQS_QUEUE, AUTO_VIEWS_DICT,
                     AUTO_REPS_DICT, WELCOME_BTNS, SINGLE_BTNS)
 from common import ShowButtons, Stamp
 from file import SaveRequestsToFile
@@ -24,9 +24,9 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
 
 
 def DeleteAutomaticRequest(message: Message, path: str) -> None:
-    if message.text in AUTO_SUBS_DICT.keys() and path == 'auto_views.json':
-        del AUTO_SUBS_DICT[message.text]
-        SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', path)
+    if message.text in AUTO_VIEWS_DICT.keys() and path == 'auto_views.json':
+        del AUTO_VIEWS_DICT[message.text]
+        SaveRequestsToFile(AUTO_VIEWS_DICT, 'automatic subs', path)
         BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на просмотры для канала {message.text} удалена')
     elif message.text in AUTO_REPS_DICT.keys() and path == 'auto_reps.json':
         del AUTO_REPS_DICT[message.text]

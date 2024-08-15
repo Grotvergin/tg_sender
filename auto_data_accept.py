@@ -1,14 +1,14 @@
 from telebot.types import Message
 from common import ShowButtons, Stamp
 from source import (AUTO_BTNS, CANCEL_BTN, WELCOME_BTNS,
-                    AUTO_CHOICE, AUTO_SUBS_DICT, AUTO_REPS_DICT,
-                    ACCOUNTS, LINK_FORMAT, MAX_MINS,
+                    AUTO_CHOICE, ACCOUNTS, LINK_FORMAT, MAX_MINS,
                     TIME_FORMAT, BOT, FILE_AUTO_VIEWS)
 from re import match
 from deletion import DeleteAutomaticRequest
 from info_senders import PrintAutomaticRequest
 from datetime import datetime
 from file import SaveRequestsToFile
+from common import Sleep
 import source
 
 
@@ -22,10 +22,11 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
                                                'автоматическую заявку (name):')
         BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
     elif message.text == AUTO_BTNS[2]:
-        data = AUTO_SUBS_DICT if file == FILE_AUTO_VIEWS else AUTO_REPS_DICT
+        data = source.AUTO_VIEWS_DICT if file == FILE_AUTO_VIEWS else source.AUTO_REPS_DICT
         if data.keys():
             for chan in data.keys():
                 BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='HTML')
+                Sleep(1)
         else:
             BOT.send_message(message.from_user.id, '🔍 Нет автоматических заявок')
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
@@ -123,11 +124,11 @@ def InsertSpread(message: Message, path: str) -> None:
                           'annual': source.CUR_REQ['annual'],
                           'spread': source.CUR_REQ['spread']}
                 if path == 'auto_views.json':
-                    AUTO_SUBS_DICT[source.CUR_REQ['link']] = record
-                    SaveRequestsToFile(AUTO_SUBS_DICT, 'automatic subs', 'auto_views.json')
+                    source.AUTO_VIEWS_DICT[source.CUR_REQ['link']] = record
+                    SaveRequestsToFile(source.AUTO_VIEWS_DICT, 'automatic views', 'auto_views.json')
                 else:
-                    AUTO_REPS_DICT[source.CUR_REQ['link']] = record
-                    SaveRequestsToFile(AUTO_REPS_DICT, 'automatic reps', 'auto_reps.json')
+                    source.AUTO_REPS_DICT[source.CUR_REQ['link']] = record
+                    SaveRequestsToFile(source.AUTO_REPS_DICT, 'automatic reps', 'auto_reps.json')
                 BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {source.CUR_REQ['link']}...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
