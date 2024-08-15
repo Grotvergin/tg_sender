@@ -7,9 +7,17 @@ from googleapiclient.errors import HttpError
 from httplib2.error import ServerNotFoundError
 from ssl import SSLEOFError
 from socket import gaierror
+from datetime import datetime
 
-# TODO Separate more into buy acc/auth api/change
-# TODO Buying more than one account
+# ----- TODO List -----
+# Separate more into 1) buy acc 2) auth api 3) change profile
+# Buying more than one account
+# Save single reqs
+# Android emulator
+# Is CREATE_APP_BTN relly needed?
+# Password change in profile
+
+
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
                 'Автоматические заявки ⏳',
                 'Авторизация 🔐',
@@ -34,7 +42,6 @@ SINGLE_BTNS = ('Активные 📅',
                CANCEL_BTN[0])
 BNT_NUM_OPERATION = ('💬 Проверить СМС',
                      '🅾️ Отменить номер')
-# TODO Is really needed?
 CREATE_APP_BTN = ('Создать приложение 📱',)
 GET_API_CODE_BTN = ('Получить код API 📝',)
 BOT = TeleBot(TOKEN)
@@ -83,3 +90,6 @@ FILE_FINISHED = 'finished.json'
 FILE_AUTO_VIEWS = 'auto_views.json'
 FILE_AUTO_REPS = 'auto_reps.json'
 IMG_PATH = 'random_image.jpg'
+LAST_NOTIF_EVENT_HANDLER = datetime.now()
+LAST_NOTIF_PROCESSOR = datetime.now()
+NOTIF_TIME_DELTA = 30

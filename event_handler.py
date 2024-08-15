@@ -6,10 +6,14 @@ from re import compile
 from random import randint
 from source import (LONG_SLEEP, TIME_FORMAT, REQS_QUEUE,
                     ACCOUNTS, AUTO_SUBS_DICT, AUTO_REPS_DICT,
-                    BOT, LINK_DECREASE_RATIO, LIMIT_DIALOGS)
+                    BOT, LINK_DECREASE_RATIO, LIMIT_DIALOGS,
+                    NOTIF_TIME_DELTA)
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
+from secret import MY_TG_ID
+import source
+from telebot.apihelper import ApiTelegramException
 
 
 async def RefreshEventHandler():
@@ -17,8 +21,10 @@ async def RefreshEventHandler():
         channels = list(AUTO_SUBS_DICT.keys()) + list(AUTO_REPS_DICT.keys())
         if not ACCOUNTS:
             Stamp("No accounts available to set up event handler", 'w')
+            BOT.send_message(MY_TG_ID, '💀 Нет аккаунтов для запуска EventHandler')
         elif not channels:
             Stamp("No need to set up event handler (no channels)", 'i')
+            BOT.send_message(MY_TG_ID, '🥺 Нет необходимости запускать EventHandler')
         else:
             Stamp(f'Setting up event handler', 'i')
             already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
@@ -29,6 +35,9 @@ async def RefreshEventHandler():
             ACCOUNTS[0].remove_event_handler(EventHandler)
             ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Set up", 's')
+            if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
+                BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
+                source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
@@ -55,7 +64,10 @@ async def EventHandler(event: NewMessage.Event):
                                'cur_acc_index': randint(0, len(ACCOUNTS) - 1)})
             user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
-    BOT.send_message(user_id, f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка создана')
+    try:
+        BOT.send_message(user_id, f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка создана')
+    except ApiTelegramException:
+        Stamp('ApiTelegramException caught in notifying about new publication, probably chat is unavailable', 'w')
 
 
 async def GetChannelIDsByUsernames(account, requested_usernames: list[str]) -> list[int]:
