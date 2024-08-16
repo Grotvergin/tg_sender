@@ -1,6 +1,7 @@
 from telebot.types import Message
-from source import BOT, ACCOUNTS
+from source import BOT
 from os.path import split
+import source
 
 
 def SendTariffInfo(data: dict) -> (str, list):
@@ -47,6 +48,6 @@ def PrintAutomaticRequest(chan: str, data: dict) -> str:
 
 def ListAccountNumbers() -> str:
     res = ''
-    for i, acc in enumerate(ACCOUNTS):
+    for i, acc in enumerate(source.ACCOUNTS):
         res += f'{i + 1} | {split(acc.session.filename)[-1][:-8]}\n'
     return res

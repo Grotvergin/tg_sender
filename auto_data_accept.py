@@ -1,7 +1,7 @@
 from telebot.types import Message
 from common import ShowButtons, Stamp
 from source import (AUTO_BTNS, CANCEL_BTN, WELCOME_BTNS,
-                    AUTO_CHOICE, ACCOUNTS, LINK_FORMAT, MAX_MINS,
+                    AUTO_CHOICE, LINK_FORMAT, MAX_MINS,
                     TIME_FORMAT, BOT, FILE_AUTO_VIEWS)
 from re import match
 from deletion import DeleteAutomaticRequest
@@ -55,7 +55,7 @@ def AutomaticChannelAction(message: Message, file: str) -> None:
         source.CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите количество аккаунтов, которые '
                                          f'будут автоматически совершать действие с новой публикацией '
-                                         f'(доступно {len(ACCOUNTS)} аккаунтов):')
+                                         f'(доступно {len(source.ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, AutomaticNumberProcedure, file)
 
 
@@ -65,7 +65,7 @@ def AutomaticNumberProcedure(message: Message, file: str) -> None:
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
-            if 0 < int(message.text) <= len(ACCOUNTS):
+            if 0 < int(message.text) <= len(source.ACCOUNTS):
                 source.CUR_REQ['annual'] = int(message.text)
                 ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), отведённый на действие")
                 BOT.register_next_step_handler(message, AutomaticPeriod, file)

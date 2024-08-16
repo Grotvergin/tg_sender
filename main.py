@@ -6,7 +6,7 @@ import source
 from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
-                    CANCEL_BTN, ACCOUNTS, FILE_FINISHED,
+                    CANCEL_BTN, FILE_FINISHED,
                     FILE_AUTO_VIEWS, FILE_AUTO_REPS)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
@@ -59,7 +59,7 @@ def MessageAccept(message: Message) -> None:
         Stamp(f'Setting ADMIN_CHAT_ID = {message.from_user.id} with ID = {id(source.ADMIN_CHAT_ID)}', 'w')
         source.ADMIN_CHAT_ID = message.from_user.id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
+        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')

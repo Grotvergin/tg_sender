@@ -1,6 +1,6 @@
 from time import time, sleep
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT, LEFT_CORNER,
-                    RIGHT_CORNER, SHEET_NAME, ACCOUNTS, WELCOME_BTNS)
+                    RIGHT_CORNER, SHEET_NAME, WELCOME_BTNS)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
                     Sleep, ShowButtons, BuildService, ParseAccountRow)
 from os.path import join
@@ -31,7 +31,7 @@ def WaitForCode(max_wait_time: int) -> int | None:
 
 
 async def CheckRefreshAuth() -> None:
-   while True:
+    while True:
         if source.ADMIN_CHAT_ID:
             Stamp('Admin chat ID is set, authorizing accounts', 'i')
             await AuthorizeAccounts()
@@ -41,7 +41,7 @@ async def CheckRefreshAuth() -> None:
 
 def AuthCallback(number: str, user_id: int, max_wait_time: int) -> int:
     BOT.send_message(user_id, f'❗️Введите код для {number} в течение {max_wait_time} секунд '
-                                    f'(либо "-" для пропуска этого аккаунта):')
+                              f'(либо "-" для пропуска этого аккаунта):')
     code = WaitForCode(max_wait_time)
     if not code:
         raise TimeoutError('Too long code waiting')
@@ -55,7 +55,7 @@ async def AuthorizeAccounts() -> None:
     try:
         BOT.send_message(source.ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
         data = GetSector(LEFT_CORNER, RIGHT_CORNER, BuildService(), SHEET_NAME, SHEET_ID)
-        this_run_auth = [client.session.filename for client in ACCOUNTS]
+        this_run_auth = [client.session.filename for client in source.ACCOUNTS]
         for index, account in enumerate(data):
             try:
                 num, api_id, api_hash, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
@@ -72,7 +72,7 @@ async def AuthorizeAccounts() -> None:
                 client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
                 try:
                     await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num, source.ADMIN_CHAT_ID, MAX_WAIT_CODE))
-                    ACCOUNTS.append(client)
+                    source.ACCOUNTS.append(client)
                     Stamp(f'Account {num} authorized', 's')
                     BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
                     Sleep(SHORT_SLEEP, 0.5)
@@ -104,7 +104,7 @@ async def AuthorizeAccounts() -> None:
                     Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
                     BOT.send_message(source.ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
                     continue
-        BOT.send_message(source.ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(ACCOUNTS)} аккаунтов\n')
+        BOT.send_message(source.ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(source.ACCOUNTS)} аккаунтов\n')
         ShowButtons(source.ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     except Exception as e:
         Stamp(f'Unknown exception in authorization procedure: {e}', 'w')

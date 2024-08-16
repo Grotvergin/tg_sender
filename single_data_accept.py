@@ -3,8 +3,7 @@ from random import randint
 from datetime import datetime, timedelta
 from telebot.types import Message
 from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS,
-                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED,
-                    ACCOUNTS, BOT)
+                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
 from file import LoadRequestsFromFile
@@ -55,8 +54,8 @@ def RequestPeriod(message: Message) -> None:
             if 0 < int(message.text) < MAX_MINS:
                 source.CUR_REQ['start'] = datetime.now().strftime(TIME_FORMAT)
                 source.CUR_REQ['finish'] = (datetime.now() + timedelta(minutes=int(message.text))).strftime(TIME_FORMAT)
-                source.CUR_REQ['cur_acc_index'] = randint(0, len(ACCOUNTS) - 1)
-                REQS_QUEUE.append(source.CUR_REQ)
+                source.CUR_REQ['cur_acc_index'] = randint(0, len(source.ACCOUNTS) - 1)
+                source.REQS_QUEUE.append(source.CUR_REQ)
                 BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
@@ -73,7 +72,7 @@ def NumberInsertingProcedure(message: Message) -> None:
         if message.text == CANCEL_BTN[0]:
             ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         else:
-            if 0 < int(message.text) <= len(ACCOUNTS):
+            if 0 < int(message.text) <= len(source.ACCOUNTS):
                 source.CUR_REQ['planned'] = int(message.text)
                 ShowButtons(message, CANCEL_BTN, "❔ Введите промежуток времени (в минутах), "
                                                  "в течение которого будет выполняться заявка:")
@@ -108,7 +107,7 @@ def ChannelSub(message: Message) -> None:
             source.CUR_REQ['channel_type'] = 'public'
         source.CUR_REQ['link'] = cut_link
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество подписок'
-                                         f'(доступно {len(ACCOUNTS)} аккаунтов):')
+                                         f'(доступно {len(source.ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 
@@ -139,5 +138,5 @@ def AcceptPost(message: Message, order_type: str, emoji: str = None) -> None:
         source.CUR_REQ = {'order_type': order_type, 'initiator': f'{message.from_user.username} – {message.from_user.id}', 'link': cut_link}
         if emoji:
             source.CUR_REQ['emoji'] = emoji
-        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(ACCOUNTS)} аккаунтов):')
+        ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(source.ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)

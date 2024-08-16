@@ -1,5 +1,5 @@
 from telebot.types import Message
-from source import (BOT, WELCOME_BTNS, SINGLE_BTNS)
+from source import BOT, WELCOME_BTNS, SINGLE_BTNS
 from common import ShowButtons, Stamp
 from file import SaveRequestsToFile
 from typing import Callable

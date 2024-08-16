@@ -1,8 +1,6 @@
-from adders import (PerformSubscription, IncreasePostViews,
-                    RepostMessage, AddReactions)
+from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
-from source import (BOT, REQS_QUEUE, TIME_FORMAT, FINISHED_REQS,
-                    ACCOUNTS, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA)
+from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA
 from datetime import datetime, timedelta
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -60,7 +58,7 @@ async def ProcessOrder(req: dict, to_add: int):
     else:
         Stamp('Unknown order type', 'e')
         return
-    req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(ACCOUNTS)
+    req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(source.ACCOUNTS)
     req['current'] = req.get('current', 0) + cnt_success
 
 
@@ -71,7 +69,7 @@ async def ProcessRequests() -> None:
             if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
                 BOT.send_message(MY_TG_ID, '🔄 ProcessRequests OK')
                 source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
-            for req in REQS_QUEUE:
+            for req in source.REQS_QUEUE:
                 finish = datetime.strptime(req['finish'], TIME_FORMAT)
                 start = datetime.strptime(req['start'], TIME_FORMAT)
                 now = datetime.now()
@@ -93,9 +91,9 @@ async def ProcessRequests() -> None:
                             message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
                         else:
                             message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
-                        REQS_QUEUE.remove(req)
-                        FINISHED_REQS.append(req)
-                        SaveRequestsToFile(FINISHED_REQS, 'finished', 'finished.json')
+                        source.REQS_QUEUE.remove(req)
+                        source.FINISHED_REQS.append(req)
+                        SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
                         user_id = req['initiator'].split(' ')[-1]
                         BOT.send_message(user_id, message, parse_mode='HTML')
         except Exception as e:

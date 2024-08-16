@@ -1,5 +1,5 @@
 import source
-from source import BOT, IMG_PATH, CANCEL_BTN, ACCOUNTS
+from source import BOT, IMG_PATH, CANCEL_BTN
 from common import Stamp, ShowButtons
 from random import choice
 from requests import get
@@ -60,7 +60,7 @@ async def CheckProfileChange() -> None:
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:
-    for acc in ACCOUNTS:
+    for acc in source.ACCOUNTS:
         if int(split(acc.session.filename)[-1][:-8]) == num:
             return acc
     return None

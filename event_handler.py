@@ -4,9 +4,8 @@ from telethon.sync import TelegramClient
 from telethon.events import NewMessage
 from re import compile
 from random import randint
-from source import (LONG_SLEEP, TIME_FORMAT, ACCOUNTS,
-                    BOT, LINK_DECREASE_RATIO,
-                    LIMIT_DIALOGS, NOTIF_TIME_DELTA)
+from source import (LONG_SLEEP, TIME_FORMAT, BOT,
+                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, NOTIF_TIME_DELTA)
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
@@ -18,7 +17,7 @@ from telebot.apihelper import ApiTelegramException
 async def RefreshEventHandler():
     while True:
         channels = list(source.AUTO_VIEWS_DICT.keys()) + list(source.AUTO_REPS_DICT.keys())
-        if not ACCOUNTS:
+        if not source.ACCOUNTS:
             Stamp("No accounts available to set up event handler", 'w')
             BOT.send_message(MY_TG_ID, '💀 Нет аккаунтов для запуска EventHandler')
         elif not channels:
@@ -26,13 +25,13 @@ async def RefreshEventHandler():
             BOT.send_message(MY_TG_ID, '🥺 Нет необходимости запускать EventHandler')
         else:
             Stamp(f'Setting up event handler', 'i')
-            already_subscribed = await GetSubscribedChannels(ACCOUNTS[0])
+            already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[0])
             list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
-            channel_ids = await GetChannelIDsByUsernames(ACCOUNTS[0], channels)
-            ACCOUNTS[0].remove_event_handler(EventHandler)
-            ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
+            channel_ids = await GetChannelIDsByUsernames(source.ACCOUNTS[0], channels)
+            source.ACCOUNTS[0].remove_event_handler(EventHandler)
+            source.ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Set up", 's')
             if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
                 BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
@@ -52,15 +51,15 @@ async def EventHandler(event: NewMessage.Event):
                 dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
-            if rand_amount > len(ACCOUNTS):
-                rand_amount = len(ACCOUNTS)
+            if rand_amount > len(source.ACCOUNTS):
+                rand_amount = len(source.ACCOUNTS)
             source.REQS_QUEUE.append({'order_type': order_type,
-                               'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
-                               'link': f'{event.chat.username}/{event.message.id}',
-                               'start': datetime.now().strftime(TIME_FORMAT),
-                               'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
-                               'planned': rand_amount,
-                               'cur_acc_index': randint(0, len(ACCOUNTS) - 1)})
+                                      'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
+                                      'link': f'{event.chat.username}/{event.message.id}',
+                                      'start': datetime.now().strftime(TIME_FORMAT),
+                                      'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
+                                      'planned': rand_amount,
+                                      'cur_acc_index': randint(0, len(source.ACCOUNTS) - 1)})
             user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
     try:
