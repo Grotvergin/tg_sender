@@ -2,7 +2,7 @@ from re import match
 from random import randint
 from datetime import datetime, timedelta
 from telebot.types import Message
-from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS,
+from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS, NUMBER_LAST_FIN,
                     LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
@@ -19,7 +19,7 @@ def SingleChoice(message: Message) -> None:
         BOT.register_next_step_handler(message, SingleChoice)
     elif message.text == SINGLE_BTNS[1]:
         reqs = LoadRequestsFromFile('finished', FILE_FINISHED)
-        SendRequests(message, reqs, 10)
+        SendRequests(message, reqs, NUMBER_LAST_FIN)
         ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, SingleChoice)
     elif message.text == SINGLE_BTNS[2]:

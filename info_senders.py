@@ -1,6 +1,7 @@
 from telebot.types import Message
 from source import BOT
 from os.path import split
+from common import Sleep
 import source
 
 
@@ -20,6 +21,7 @@ def SendRequests(message: Message, reqs: list, amount: int = None) -> None:
         reqs = reqs[-amount:] if amount else reqs
         for req in reqs:
             BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='HTML')
+            Sleep(1)
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет заявок')
 
