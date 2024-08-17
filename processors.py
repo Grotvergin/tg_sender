@@ -8,7 +8,7 @@ from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              InviteHashInvalidError)
 from file import SaveRequestsToFile
 from info_senders import PrintRequest
-from secret import MY_TG_ID
+from secret import MY_TG_ID, AR_TG_ID
 import source
 
 
@@ -65,6 +65,7 @@ async def ProcessRequests() -> None:
             Stamp('Pending requests', 'i')
             if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
                 BOT.send_message(MY_TG_ID, '🔄 ProcessRequests OK')
+                BOT.send_message(AR_TG_ID, '🔄 ProcessRequests OK')
                 source.LAST_NOTIF_PROCESSOR = datetime.now()
             for req in source.REQS_QUEUE:
                 finish = datetime.strptime(req['finish'], TIME_FORMAT)

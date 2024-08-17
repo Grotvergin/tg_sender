@@ -9,7 +9,7 @@ from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
-from secret import MY_TG_ID
+from secret import MY_TG_ID, AR_TG_ID
 import source
 from file import SaveRequestsToFile
 from telebot.apihelper import ApiTelegramException
@@ -36,6 +36,7 @@ async def RefreshEventHandler():
             Stamp("Set up", 's')
             if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
                 BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
+                BOT.send_message(AR_TG_ID, '📩 EventHandler OK')
                 source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
