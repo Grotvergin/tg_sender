@@ -1,5 +1,5 @@
 from telebot.types import Message
-from source import BOT, WELCOME_BTNS, SINGLE_BTNS
+from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE
 from common import ShowButtons, Stamp
 from file import SaveRequestsToFile
 from typing import Callable
@@ -12,6 +12,7 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
         if req['link'] == message.text:
             Stamp(f'Deleting request for {req["link"]}', 'i')
             del source.REQS_QUEUE[i]
+            SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
             cnt += 1
     if cnt == 0:
         Stamp('No deletions made', 'w')

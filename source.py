@@ -12,7 +12,6 @@ from datetime import datetime
 # ----- TODO List -----
 # Separate more into 1) buy acc 2) auth api 3) change profile
 # Buying more than one account
-# Save single reqs
 # Android emulator
 # Is CREATE_APP_BTN relly needed?
 # Password change in profile
@@ -89,6 +88,7 @@ CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFErr
 FILE_FINISHED = 'finished.json'
 FILE_AUTO_VIEWS = 'auto_views.json'
 FILE_AUTO_REPS = 'auto_reps.json'
+FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 LAST_NOTIF_EVENT_HANDLER = datetime.now()
 LAST_NOTIF_PROCESSOR = datetime.now()

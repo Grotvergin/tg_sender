@@ -6,7 +6,7 @@ import source
 from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
-                    CANCEL_BTN, FILE_FINISHED,
+                    CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
                     FILE_AUTO_VIEWS, FILE_AUTO_REPS)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
@@ -20,6 +20,7 @@ from change import RequestChangeProfile, CheckProfileChange
 
 
 async def Main() -> None:
+    source.REQS_QUEUE = LoadRequestsFromFile('active', FILE_ACTIVE)
     source.FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)
     source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)

@@ -1,6 +1,6 @@
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
-from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA
+from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE
 from datetime import datetime, timedelta
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -12,40 +12,37 @@ from secret import MY_TG_ID
 import source
 
 
+async def CancelRequest(req: dict, reason: str):
+    Stamp(f'{reason} in {req["link"]}, removing req', 'w')
+    BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ {reason} {req["link"]}, заявка снимается...')
+    source.REQS_QUEUE.remove(req)
+    SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+
+
 async def ProcessOrder(req: dict, to_add: int):
     if req['order_type'] == 'Подписка':
         try:
             cnt_success = await PerformSubscription(req['link'], to_add, req['channel_type'], req['cur_acc_index'])
         except ChannelInvalidError:
-            Stamp(f'Channel is invalid in {req['link']}, removing req', 'w')
-            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, 'Некорректная ссылка на канал')
             return
         except InviteHashInvalidError:
-            Stamp(f'Hash is invalid in {req['link']}, removing req', 'w')
-            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на канал {req['link']}, заявка снимается...')
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, 'Некорректная ссылка на канал')
             return
     elif req['order_type'] == 'Просмотры':
         try:
             cnt_success = await IncreasePostViews(req['link'], to_add, req['cur_acc_index'])
         except ChannelPrivateError:
-            Stamp(f'Invalid message in request, removing request', 'w')
-            BOT.send_message(req['initiator'].split(' ')[-1], f'💢 Ссылка ведёт на приватный канал {req['link']}, заявка снимается...')
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, 'Ссылка ведёт на приватный канал')
             return
         except (ChatIdInvalidError, PeerIdInvalidError):
-            Stamp(f'Invalid message in request, removing request', 'w')
-            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, 'Некорректная ссылка на пост')
             return
     elif req['order_type'] == 'Репосты':
         try:
             cnt_success = await RepostMessage(req['link'], to_add, req['cur_acc_index'])
         except MessageIdInvalidError:
-            Stamp(f'Invalid message in request, removing request', 'w')
-            BOT.send_message(req['initiator'].split(' ')[-1], f'⛔️ Некорректная ссылка на пост {req['link']}, заявка снимается...')
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, 'Некорректная ссылка на пост')
             return
     elif req['order_type'] == 'Реакции':
         try:
@@ -53,7 +50,7 @@ async def ProcessOrder(req: dict, to_add: int):
         except ReactionInvalidError as e:
             Stamp(f"Bad reaction {req['emoji']} for {req['link']}: {e}", 'e')
             BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {req['emoji']} недоступна для заявки {req['link']}, заявка снимается...")
-            source.REQS_QUEUE.remove(req)
+            await CancelRequest(req, f"Запрошенная реакция {req['emoji']} недоступна для заявки")
             return
     else:
         Stamp('Unknown order type', 'e')
@@ -92,6 +89,7 @@ async def ProcessRequests() -> None:
                         else:
                             message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
                         source.REQS_QUEUE.remove(req)
+                        SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                         source.FINISHED_REQS.append(req)
                         SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
                         user_id = req['initiator'].split(' ')[-1]

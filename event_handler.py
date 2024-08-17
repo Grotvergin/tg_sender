@@ -4,13 +4,14 @@ from telethon.sync import TelegramClient
 from telethon.events import NewMessage
 from re import compile
 from random import randint
-from source import (LONG_SLEEP, TIME_FORMAT, BOT,
+from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
                     LINK_DECREASE_RATIO, LIMIT_DIALOGS, NOTIF_TIME_DELTA)
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
 from secret import MY_TG_ID
 import source
+from file import SaveRequestsToFile
 from telebot.apihelper import ApiTelegramException
 
 
@@ -62,6 +63,7 @@ async def EventHandler(event: NewMessage.Event):
                                       'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
                                       'planned': rand_amount,
                                       'cur_acc_index': randint(0, len(source.ACCOUNTS) - 1)})
+            SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
             user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
     try:

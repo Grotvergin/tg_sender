@@ -3,10 +3,10 @@ from random import randint
 from datetime import datetime, timedelta
 from telebot.types import Message
 from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS, NUMBER_LAST_FIN,
-                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT)
+                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT, FILE_ACTIVE)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
-from file import LoadRequestsFromFile
+from file import LoadRequestsFromFile, SaveRequestsToFile
 from deletion import DeleteSingleRequest
 from emoji import EMOJI_DATA
 import source
@@ -56,6 +56,7 @@ def RequestPeriod(message: Message) -> None:
                 source.CUR_REQ['finish'] = (datetime.now() + timedelta(minutes=int(message.text))).strftime(TIME_FORMAT)
                 source.CUR_REQ['cur_acc_index'] = randint(0, len(source.ACCOUNTS) - 1)
                 source.REQS_QUEUE.append(source.CUR_REQ)
+                SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                 BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
