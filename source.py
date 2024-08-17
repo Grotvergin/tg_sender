@@ -10,9 +10,7 @@ from socket import gaierror
 from datetime import datetime
 
 # ----- TODO List -----
-# Separate more into 1) buy acc 2) auth api 3) change profile
 # Buying more than one account
-# Android emulator
 # Is CREATE_APP_BTN relly needed?
 # Password change in profile
 
