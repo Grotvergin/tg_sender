@@ -92,4 +92,4 @@ FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 LAST_NOTIF_EVENT_HANDLER = datetime.now()
 LAST_NOTIF_PROCESSOR = datetime.now()
-NOTIF_TIME_DELTA = 100
+NOTIF_TIME_DELTA = 30
