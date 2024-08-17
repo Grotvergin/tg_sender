@@ -53,6 +53,8 @@ async def EventHandler(event: NewMessage.Event):
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
             if rand_amount > len(source.ACCOUNTS):
                 rand_amount = len(source.ACCOUNTS)
+            elif rand_amount <= 0:
+                rand_amount = 1
             source.REQS_QUEUE.append({'order_type': order_type,
                                       'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
                                       'link': f'{event.chat.username}/{event.message.id}',
