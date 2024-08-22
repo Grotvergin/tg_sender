@@ -8,6 +8,7 @@ from info_senders import SendTariffInfo
 from requests import get
 from re import search, MULTILINE
 from api import SendAPICode
+from emulator import AskForCode, InsertCode
 
 
 def AddAccounts(message: Message) -> None:
@@ -64,6 +65,7 @@ def AddAccountRecursive(message: Message, current_index: int, total: int, countr
         BOT.send_message(message.from_user.id, '❗️ Завершаю процесс покупки...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         return
+    AskForCode(message.from_user.id, num)
     ShowButtons(message, BNT_NUM_OPERATION, '❕ Если аккаунт нужно отменить, воспользуйтесь кнопкой')
     BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
 
@@ -144,6 +146,7 @@ def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int,
     if sms_dict and num in sms_dict:
         Stamp('Found incoming sms for recently bought number', 's')
         BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
+        InsertCode(message.from_user.id, sms_dict[num])
         ShowButtons(message, GET_API_CODE_BTN, '❔ Как будете готовы, нажмите кнопку')
         BOT.register_next_step_handler(message, SendAPICode, num)
     else:

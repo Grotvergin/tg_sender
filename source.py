@@ -9,10 +9,10 @@ from ssl import SSLEOFError
 from socket import gaierror
 from datetime import datetime
 
-# ----- TODO List -----
+# ----- TODO LIST -----
+# Email handling in SetPassword
 # Buying more than one account
-# Is CREATE_APP_BTN relly needed?
-# Password change in profile
+# Transfer to Ubuntu
 
 
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
@@ -60,6 +60,8 @@ ADMIN_CHAT_ID = MY_TG_ID
 WARDEN_CHAT_ID = MY_TG_ID
 CODE = None
 ACC_TO_CHANGE = None
+API_CODE = None
+LABEL_API_MSG = 'Код подтверждения для сайта.'
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
@@ -91,3 +93,8 @@ IMG_PATH = 'random_image.jpg'
 LAST_NOTIF_EVENT_HANDLER = datetime.now()
 LAST_NOTIF_PROCESSOR = datetime.now()
 NOTIF_TIME_DELTA = 30
+HOME_KEYCODE = 3
+PLATFORM_NAME = 'Android'
+DEVICE_NAME = 'Pixel_XL'
+URL_DEVICE = 'http://localhost:4723/wd/hub'
+SLEEP_BEFORE_CODE = 125

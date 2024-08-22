@@ -7,11 +7,11 @@ from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
-                    FILE_AUTO_VIEWS, FILE_AUTO_REPS)
+                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, LABEL_API_MSG)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
-from buy import AddAccounts
+from buy import AddAccounts, ExtractCodeFromMessage
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
 from asyncio import run
@@ -72,6 +72,9 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':
         source.CODE = message.text
+    elif LABEL_API_MSG in message.text:
+        source.API_CODE = ExtractCodeFromMessage(message.text)
+        BOT.send_message(message.from_user.id, f'🔑 Получен код API: {source.API_CODE_MSG}')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')

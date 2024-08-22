@@ -21,6 +21,8 @@ from telethon.tl.types import (InputPrivacyValueDisallowAll,
                                InputPrivacyKeyChatInvite,
                                InputPrivacyKeyStatusTimestamp)
 from telethon.tl.functions.account import SetPrivacyRequest
+from emulator import SetPassword
+from secret import PASSWORD
 
 
 # TODO Wrong cancellation
@@ -55,6 +57,7 @@ async def CheckProfileChange() -> None:
             await SetProfilePicture(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
             await AddContacts(source.ACC_TO_CHANGE, 50, source.WARDEN_CHAT_ID)
             await UpdatePrivacySettings(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
+            SetPassword(source.WARDEN_CHAT_ID, PASSWORD, 'my_email')
             source.ACC_TO_CHANGE = None
         await async_sleep(source.SHORT_SLEEP)
 
