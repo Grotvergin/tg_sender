@@ -3,14 +3,13 @@ from bs4 import BeautifulSoup
 import source
 from headers_agents import HEADERS
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP, MAX_WAIT_CODE,
-                    URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS, CREATE_APP_BTN,
+                    URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS,
                     EXTRA_SHEET_NAME, FAKER, LEFT_CORNER, SMALL_RIGHT_CORNER)
 from common import Stamp, Sleep, ControlRecursion, ShowButtons, UploadData, GetSector, BuildService
 from re import search, IGNORECASE
 from requests import Session
 from secret import SHEET_ID
 from telebot.types import Message
-from buy import ExtractCodeFromMessage
 from datetime import datetime
 
 
