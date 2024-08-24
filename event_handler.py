@@ -34,10 +34,10 @@ async def RefreshEventHandler():
             source.ACCOUNTS[0].remove_event_handler(EventHandler)
             source.ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Set up", 's')
-            if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
-                BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
-                BOT.send_message(AR_TG_ID, '📩 EventHandler OK')
-                source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
+            # if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
+            #     BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
+            #     BOT.send_message(AR_TG_ID, '📩 EventHandler OK')
+            #     source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
