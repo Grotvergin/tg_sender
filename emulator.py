@@ -139,6 +139,3 @@ def ForwardMessage(user_id: int) -> None:
     driver.quit()
     Stamp('Message forwarded successfully', 's')
     BOT.send_message(user_id, '📩 Сообщение переслано в бота')
-
-
-ForwardMessage(386988582)
