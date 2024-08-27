@@ -9,3 +9,4 @@ emoji==2.12.1
 pillow==10.4.0
 faker==26.0.0
 beautifulsoup4==4.12.3
+Appium-Python-Client==4.1.0
