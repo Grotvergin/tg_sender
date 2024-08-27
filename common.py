@@ -15,6 +15,14 @@ class SkippedCodeInsertion(Exception):
     pass
 
 
+class AccountIsBanned(Exception):
+    pass
+
+
+class WeSentCodeToDevice(Exception):
+    pass
+
+
 def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
     func.recursion_depth = 0
 

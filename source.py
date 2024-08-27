@@ -1,5 +1,5 @@
 from telebot import TeleBot
-from secret import TOKEN, MY_TG_ID
+from secret import TOKEN, MY_TG_ID, TOKEN_TEST
 from colorama import init
 from faker import Faker
 from random import seed
@@ -13,6 +13,8 @@ from datetime import datetime
 # Email handling in SetPassword
 # Buying more than one account
 # Transfer to Ubuntu
+# Deep re-authorization
+# Forced ProcessRequests launch
 
 
 WELCOME_BTNS = ('Разовые заявки 1️⃣',
@@ -41,7 +43,7 @@ BNT_NUM_OPERATION = ('💬 Проверить СМС',
                      '🅾️ Отменить номер')
 CREATE_APP_BTN = ('Создать приложение 📱',)
 GET_API_CODE_BTN = ('Получить код API 📝',)
-BOT = TeleBot(TOKEN)
+BOT = TeleBot(TOKEN_TEST)
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
@@ -66,7 +68,7 @@ MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
-SHEET_NAME = 'Авторизованные'
+SHEET_NAME = 'Тестирование'
 EXTRA_SHEET_NAME = 'Дополнительные'
 MAX_ACCOUNTS_BUY = 5
 URL_SIM = 'https://onlinesim.io/api/'
@@ -97,4 +99,4 @@ HOME_KEYCODE = 3
 PLATFORM_NAME = 'Android'
 DEVICE_NAME = 'Pixel_XL'
 URL_DEVICE = 'http://localhost:4723/wd/hub'
-SLEEP_BEFORE_CODE = 125
+REQS_PORTION = 10

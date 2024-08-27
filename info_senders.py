@@ -1,5 +1,5 @@
 from telebot.types import Message
-from source import BOT
+from source import BOT, REQS_PORTION
 from os.path import split
 from common import Sleep
 import source
@@ -16,11 +16,14 @@ def SendTariffInfo(data: dict) -> (str, list):
     return msg, countries
 
 
-def SendRequests(message: Message, reqs: list, amount: int = None) -> None:
+def SendRequests(message: Message, reqs: list, amount: int = None, portion: int = REQS_PORTION) -> None:
     if reqs:
+        BOT.send_message(message.from_user.id, f"🔍 Количество заявок: {len(reqs)}")
         reqs = reqs[-amount:] if amount else reqs
-        for req in reqs:
-            BOT.send_message(message.from_user.id, PrintRequest(req), parse_mode='HTML')
+        for i in range(0, len(reqs), portion):
+            portion_requests = reqs[i:i + portion]
+            portion_message = '\n\n'.join(PrintRequest(req) for req in portion_requests)
+            BOT.send_message(message.from_user.id, portion_message, parse_mode='HTML')
             Sleep(1)
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет заявок')

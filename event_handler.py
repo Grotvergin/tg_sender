@@ -5,11 +5,11 @@ from telethon.events import NewMessage
 from re import compile
 from random import randint
 from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
-                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, NOTIF_TIME_DELTA)
+                    LINK_DECREASE_RATIO, LIMIT_DIALOGS)
 from common import Stamp, AsyncSleep
 from datetime import datetime, timedelta
 from adders import PerformSubscription
-from secret import MY_TG_ID, AR_TG_ID
+from secret import MY_TG_ID
 import source
 from file import SaveRequestsToFile
 from telebot.apihelper import ApiTelegramException
@@ -34,10 +34,6 @@ async def RefreshEventHandler():
             source.ACCOUNTS[0].remove_event_handler(EventHandler)
             source.ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Set up", 's')
-            # if datetime.now() - source.LAST_NOTIF_EVENT_HANDLER > timedelta(minutes=NOTIF_TIME_DELTA):
-            #     BOT.send_message(MY_TG_ID, '📩 EventHandler OK')
-            #     BOT.send_message(AR_TG_ID, '📩 EventHandler OK')
-            #     source.LAST_NOTIF_EVENT_HANDLER = datetime.now()
         await AsyncSleep(LONG_SLEEP * 3, 0.5)
 
 
@@ -67,10 +63,6 @@ async def EventHandler(event: NewMessage.Event):
             SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
             user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
-    try:
-        BOT.send_message(user_id, f'⚡️ Обнаружена новая публикация в канале {event.chat.username}, заявка создана')
-    except ApiTelegramException:
-        Stamp('ApiTelegramException caught in notifying about new publication, probably chat is unavailable', 'w')
 
 
 async def GetChannelIDsByUsernames(account, requested_usernames: list[str]) -> list[int]:

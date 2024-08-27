@@ -64,6 +64,7 @@ async def ProcessRequests() -> None:
         try:
             Stamp('Pending requests', 'i')
             if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
+                Stamp('Sending notification about proper work', 'i')
                 BOT.send_message(MY_TG_ID, '🔄 ProcessRequests OK')
                 BOT.send_message(AR_TG_ID, '🔄 ProcessRequests OK')
                 source.LAST_NOTIF_PROCESSOR = datetime.now()

@@ -3,7 +3,8 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BNT_NUM_OPERATION, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, GET_API_CODE_BTN)
 from secret import TOKEN_SIM
-from common import ShowButtons, Sleep, Stamp, ControlRecursion
+from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
+                    AccountIsBanned, WeSentCodeToDevice)
 from info_senders import SendTariffInfo
 from requests import get
 from re import search, MULTILINE
@@ -65,7 +66,10 @@ def AddAccountRecursive(message: Message, current_index: int, total: int, countr
         BOT.send_message(message.from_user.id, '❗️ Завершаю процесс покупки...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         return
-    AskForCode(message.from_user.id, num)
+    try:
+        AskForCode(message.from_user.id, num, len(str(country_code)))
+    except (AccountIsBanned, WeSentCodeToDevice):
+        pass
     ShowButtons(message, BNT_NUM_OPERATION, '❕ Если аккаунт нужно отменить, воспользуйтесь кнопкой')
     BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
 

@@ -2,10 +2,11 @@ import time
 from appium.webdriver import Remote
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
-from common import Stamp, Sleep
+from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME,
-                    URL_DEVICE, SLEEP_BEFORE_CODE, BOT)
+                    URL_DEVICE, BOT)
 from secret import BOT_NAME, XPATH_TO_BOT
+from selenium.common.exceptions import NoSuchElementException
 
 
 def PrepareDriver() -> Remote:
@@ -23,6 +24,14 @@ def BackToHomeScreen(driver: Remote):
         Stamp('Got back to home screen', 's')
     except Exception as e:
         Stamp(f'Failed to get back to home screen: {e}', 'e')
+
+
+def CloseTelegramApp(driver: Remote):
+    try:
+        driver.terminate_app('org.telegram.messenger.web')
+        Stamp('Telegram app closed successfully', 's')
+    except Exception as e:
+        Stamp(f'Failed to close Telegram app: {e}', 'e')
 
 
 def PressButton(driver: Remote, path: str, name: str, interval: int, by: str = AppiumBy.XPATH):
@@ -59,10 +68,19 @@ def DistributedInsertion(driver: Remote, path: str, name: str, text: str, big_in
     Sleep(big_interval)
 
 
+def IsElementPresent(driver: Remote, path: str, by: str = AppiumBy.XPATH) -> bool:
+    try:
+        driver.find_element(by=by, value=path)
+        return True
+    except NoSuchElementException:
+        return False
+
+
 def SetPassword(user_id: int, password: str, email: str) -> None:
     Stamp('Setting password ', 'i')
     BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта {email}')
     driver = PrepareDriver()
+    CloseTelegramApp(driver)
     BackToHomeScreen(driver)
     PressButton(driver, '//android.widget.TextView[@content-desc="Telegram"]', 'Telegram', 3)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', 'Menu', 3)
@@ -83,27 +101,37 @@ def SetPassword(user_id: int, password: str, email: str) -> None:
     driver.close()
     driver.quit()
     Stamp('Password set successfully', 's')
-    BOT.send_message(user_id, f'❇️ Пароль для аккаунта {email} установлен')
+    BOT.send_message(user_id, f'❇️ Пароль для аккаунта установлен')
 
 
-def AskForCode(user_id: int, num: str) -> None:
+def AskForCode(user_id: int, num: str, len_country_code: int) -> None:
     Stamp('Asking for code', 'i')
     BOT.send_message(user_id, f'💎 Запрос кода для номера {num}')
     driver = PrepareDriver()
+    CloseTelegramApp(driver)
     BackToHomeScreen(driver)
     PressButton(driver, '//android.widget.TextView[@content-desc="Telegram"]', 'Telegram', 3)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', '|||', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
+    PressButton(driver, '//android.widget.ImageButton[@content-desc="More options"]/android.widget.ImageView', '...', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])', 'Logout', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'One more logout', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'Final logout', 3)
     PressButton(driver, '//android.widget.TextView[@text="Start Messaging"]', 'Start Messaging', 3)
-    InsertField(driver, '//android.widget.EditText[@content-desc="Country code"]', 'Phone number', num[1], 2)
-    InsertField(driver, '//android.widget.EditText[@content-desc="Phone number"]', 'Phone number', num[2:], 2)
-    PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Arrow', 3)
+    country_code = num[1:1 + len_country_code]
+    phone_number = num[1 + len_country_code:]
+    InsertField(driver, '//android.widget.EditText[@content-desc="Country code"]', 'Country code', country_code, 2)
+    InsertField(driver, '//android.widget.EditText[@content-desc="Phone number"]', 'Phone number', phone_number, 2)
+    PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', '->', 3)
     PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 3)
-    element = driver.find_element(by=AppiumBy.XPATH,
-                                    value=f'//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[1]')
-    if not element:
-        Stamp(f'First Code field was not found on the page, waiting for {SLEEP_BEFORE_CODE} seconds', 'w')
-        BOT.send_message(user_id, f'⏳ Ожидаю {SLEEP_BEFORE_CODE} секунд до появления возможности запросить код для номера {num}')
-        Sleep(SLEEP_BEFORE_CODE)
-        PressButton(driver, '//android.widget.TextView[@text="Get the code via SMS"]', 'Get the code via SMS', 3)
+    if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]'):
+        Stamp(f'Account {num} is banned, exiting', 'w')
+        BOT.send_message(user_id, f'🚫 Аккаунт {num} заблокирован, выхожу из процедуры')
+        raise AccountIsBanned
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
+        Stamp(f'Code was sent to Telegram, exiting', 'w')
+        BOT.send_message(user_id, f'🚫 Код был отправлен на другое устройство, выхожу из процедуры')
+        raise WeSentCodeToDevice
     driver.close()
     driver.quit()
     Stamp('Code requested successfully', 's')
