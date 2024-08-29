@@ -57,7 +57,7 @@ async def CheckProfileChange() -> None:
             await SetProfilePicture(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
             await AddContacts(source.ACC_TO_CHANGE, 50, source.WARDEN_CHAT_ID)
             await UpdatePrivacySettings(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
-            SetPassword(source.WARDEN_CHAT_ID, PASSWORD, 'my_email')
+            SetPassword(source.WARDEN_CHAT_ID, PASSWORD)
             source.ACC_TO_CHANGE = None
         await async_sleep(source.SHORT_SLEEP)
 
@@ -99,7 +99,6 @@ def GetRandomProfilePicture(user_id: int) -> None:
         img.save(IMG_PATH)
 
 
-# TODO Uncomment after testing
 async def SetProfilePicture(client: TelegramClient, user_id: int) -> None:
     Stamp('Setting profile picture', 'i')
     BOT.send_message(user_id, '🖼 Изменяю фотографию профиля...')

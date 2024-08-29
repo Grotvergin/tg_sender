@@ -10,20 +10,19 @@ from socket import gaierror
 from datetime import datetime
 
 # ----- TODO LIST -----
-# Email handling in SetPassword
-# Buying more than one account
+# Buying more than one account test
 # Transfer to Ubuntu
 # Deep re-authorization
 # Forced ProcessRequests launch
 
 
-WELCOME_BTNS = ('Разовые заявки 1️⃣',
-                'Автоматические заявки ⏳',
+WELCOME_BTNS = ('Разовые 1️⃣',
+                'Автоматические ⏳',
                 'Авторизация 🔐',
                 'Активные 🦾',
                 'Покупка 💰',
                 'Изменение 🔄',)
-CANCEL_BTN = ('В меню ↩️',)
+CANCEL_BTN = ('Меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀',
                'Репосты 📢',
                CANCEL_BTN[0])
@@ -32,7 +31,7 @@ AUTO_BTNS = ('Добавление 📌',
              'Активные 📅',
              CANCEL_BTN[0])
 SINGLE_BTNS = ('Активные 📅',
-               'Выполненные заявки 📋',
+               'Выполненные 📋',
                'Подписки 🔔',
                'Просмотры 👀',
                'Репосты 📢',
@@ -100,3 +99,5 @@ PLATFORM_NAME = 'Android'
 DEVICE_NAME = 'Pixel_XL'
 URL_DEVICE = 'http://localhost:4723/wd/hub'
 REQS_PORTION = 10
+MIN_LEN_EMAIL = 20
+ATTEMPTS_EMAIL = 15

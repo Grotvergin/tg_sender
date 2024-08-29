@@ -6,7 +6,6 @@ import source
 
 
 def SendTariffInfo(data: dict) -> (str, list):
-    # TODO Fix this output
     msg = '📊 Доступные страны:\n\n'
     countries = []
     for code, info in data['countries'].items():
@@ -18,11 +17,17 @@ def SendTariffInfo(data: dict) -> (str, list):
 
 def SendRequests(message: Message, reqs: list, amount: int = None, portion: int = REQS_PORTION) -> None:
     if reqs:
-        BOT.send_message(message.from_user.id, f"🔍 Количество заявок: {len(reqs)}")
-        reqs = reqs[-amount:] if amount else reqs
-        for i in range(0, len(reqs), portion):
-            portion_requests = reqs[i:i + portion]
-            portion_message = '\n\n'.join(PrintRequest(req) for req in portion_requests)
+        cut_reqs = reqs[-amount:] if amount else reqs
+        BOT.send_message(message.from_user.id, f"🔍 Общее количество заявок: {len(reqs)}, показываю: {len(cut_reqs)}")
+        for idx, i in enumerate(range(0, len(cut_reqs), portion)):
+            portion_requests = cut_reqs[i:i + portion]
+            portion_message = ''
+            for j, req in enumerate(portion_requests, start=1):
+                num = idx * portion + j
+                separator = '	—' * 12 if num < 100 else '	—' * 11
+                portion_message += f"{separator} {idx * portion + j} {separator}\n"
+                portion_message += PrintRequest(req) + '\n'
+
             BOT.send_message(message.from_user.id, portion_message, parse_mode='HTML')
             Sleep(1)
     else:

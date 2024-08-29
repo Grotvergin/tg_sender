@@ -3,10 +3,13 @@ from appium.webdriver import Remote
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
-from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME,
-                    URL_DEVICE, BOT)
-from secret import BOT_NAME, XPATH_TO_BOT
+from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME, ATTEMPTS_EMAIL,
+                    URL_DEVICE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP)
+from secret import BOT_NAME, XPATH_TO_BOT, PASSWORD
 from selenium.common.exceptions import NoSuchElementException
+from requests import get, post
+from api import GenerateRandomWord
+from re import search
 
 
 def PrepareDriver() -> Remote:
@@ -76,9 +79,45 @@ def IsElementPresent(driver: Remote, path: str, by: str = AppiumBy.XPATH) -> boo
         return False
 
 
-def SetPassword(user_id: int, password: str, email: str) -> None:
+def GetTemporaryEmail(min_len: int, password: str) -> (str, str):
+    Stamp('Getting temporary email', 'i')
+    response = get('https://api.mail.tm/domains')
+    domain = response.json()['hydra:member'][0]['domain']
+    email_username = GenerateRandomWord(min_len)
+    email = f'{email_username}@{domain}'
+    data = {
+        "address": email,
+        "password": password
+    }
+    post('https://api.mail.tm/accounts', json=data)
+    token_response = post('https://api.mail.tm/token', json=data)
+    token = token_response.json()['token']
+    Stamp(f'Temporary email {email} received successfully', 's')
+    return email, token
+
+
+def GetEmailCode(token: str, max_attempts: int = ATTEMPTS_EMAIL) -> str | None:
+    Stamp('Getting email code', 'i')
+    for _ in range(max_attempts):
+        response = get('https://api.mail.tm/messages', headers={'Authorization': f'Bearer {token}'})
+        messages = response.json()['hydra:member']
+        if messages:
+            Stamp('Email message received', 's')
+            code_message = messages[0]['subject']
+            match = search(r'\b\d{6}\b', code_message)
+            if match:
+                Stamp('Email code received successfully', 's')
+                return match.group(0)
+            else:
+                Stamp('Email code not found in the message', 'w')
+        Sleep(SHORT_SLEEP*5)
+    Stamp('Failed to get email code', 'w')
+    return
+
+
+def SetPassword(user_id: int, password: str) -> None:
     Stamp('Setting password ', 'i')
-    BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта {email}')
+    BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта')
     driver = PrepareDriver()
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
@@ -93,9 +132,10 @@ def SetPassword(user_id: int, password: str, email: str) -> None:
     InsertField(driver, '//android.widget.EditText[@content-desc="Re-enter password"]', 'Password repeat', password, 2)
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Next"]', 'Next', 3)
     PressButton(driver, '//android.widget.TextView[@text="Skip"]', 'Skip', 3)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
     InsertField(driver, '//android.widget.EditText[@content-desc="Email"]', 'Email', email, 2)
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Next"]', 'Next', 3)
-    code = input('Введите код из почты:')
+    code = GetEmailCode(token)
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)
     PressButton(driver, '//android.widget.TextView[@text="Return to Settings"]', 'Done', 3)
     driver.close()
@@ -167,3 +207,6 @@ def ForwardMessage(user_id: int) -> None:
     driver.quit()
     Stamp('Message forwarded successfully', 's')
     BOT.send_message(user_id, '📩 Сообщение переслано в бота')
+
+
+print(GetEmailCode(GetTemporaryEmail()))

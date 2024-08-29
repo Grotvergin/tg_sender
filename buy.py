@@ -68,8 +68,18 @@ def AddAccountRecursive(message: Message, current_index: int, total: int, countr
         return
     try:
         AskForCode(message.from_user.id, num, len(str(country_code)))
-    except (AccountIsBanned, WeSentCodeToDevice):
-        pass
+    except AccountIsBanned:
+        Stamp(f'Account {num} is banned', 'w')
+        BOT.send_message(message.from_user.id, f'❌ Аккаунт {num} заблокирован, отменяю и перехожу к следующему...')
+        CancelNumber(message, num, tzid)
+        AddAccountRecursive(message, current_index + 1, total, country_code)
+        return
+    except WeSentCodeToDevice:
+        Stamp(f'Code was sent to device for {num}', 's')
+        BOT.send_message(message.from_user.id, f'❌ Код отправлен на устройство для {num}, отменяю и перехожу к следующему...')
+        CancelNumber(message, num, tzid)
+        AddAccountRecursive(message, current_index + 1, total, country_code)
+        return
     ShowButtons(message, BNT_NUM_OPERATION, '❕ Если аккаунт нужно отменить, воспользуйтесь кнопкой')
     BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
 
