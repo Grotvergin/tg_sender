@@ -4,7 +4,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME, ATTEMPTS_EMAIL,
-                    URL_DEVICE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP)
+                    URL_DEVICE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, UDID)
 from secret import BOT_NAME, XPATH_TO_BOT, PASSWORD
 from selenium.common.exceptions import NoSuchElementException
 from requests import get, post
@@ -14,9 +14,11 @@ from re import search
 
 def PrepareDriver() -> Remote:
     options = UiAutomator2Options()
+    options.set_capability("disableWindowAnimation", True)
     options.platform_name = PLATFORM_NAME
     options.device_name = DEVICE_NAME
     options.no_reset = True
+    options.udid = UDID
     driver = Remote(URL_DEVICE, options=options)
     return driver
 
@@ -163,12 +165,15 @@ def AskForCode(user_id: int, num: str, len_country_code: int) -> None:
     InsertField(driver, '//android.widget.EditText[@content-desc="Country code"]', 'Country code', country_code, 2)
     InsertField(driver, '//android.widget.EditText[@content-desc="Phone number"]', 'Phone number', phone_number, 2)
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', '->', 3)
-    PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 3)
+    PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 10)
     if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]'):
+        PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK', 3)
         Stamp(f'Account {num} is banned, exiting', 'w')
         BOT.send_message(user_id, f'🚫 Аккаунт {num} заблокирован, выхожу из процедуры')
         raise AccountIsBanned
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
+        PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back', 3)
+        PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit', 3)
         Stamp(f'Code was sent to Telegram, exiting', 'w')
         BOT.send_message(user_id, f'🚫 Код был отправлен на другое устройство, выхожу из процедуры')
         raise WeSentCodeToDevice
@@ -207,6 +212,3 @@ def ForwardMessage(user_id: int) -> None:
     driver.quit()
     Stamp('Message forwarded successfully', 's')
     BOT.send_message(user_id, '📩 Сообщение переслано в бота')
-
-
-print(GetEmailCode(GetTemporaryEmail()))

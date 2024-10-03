@@ -10,10 +10,11 @@ from socket import gaierror
 from datetime import datetime
 
 # ----- TODO LIST -----
+# Button for returning the request + fast channelname copying ability
+# Showing a list of auto reqs like single ones
+# Truncate amount of data in error message from appium
 # Buying more than one account test
-# Transfer to Ubuntu
-# Deep re-authorization
-# Forced ProcessRequests launch
+# External smartphone connection
 
 
 WELCOME_BTNS = ('Разовые 1️⃣',
@@ -96,8 +97,9 @@ LAST_NOTIF_PROCESSOR = datetime.now()
 NOTIF_TIME_DELTA = 30
 HOME_KEYCODE = 3
 PLATFORM_NAME = 'Android'
-DEVICE_NAME = 'Pixel_XL'
-URL_DEVICE = 'http://localhost:4723/wd/hub'
+DEVICE_NAME = 'Mi'
+URL_DEVICE = 'http://127.0.0.1:4723/wd/hub'
+UDID = '192.168.1.6:5555'
 REQS_PORTION = 10
 MIN_LEN_EMAIL = 20
 ATTEMPTS_EMAIL = 15

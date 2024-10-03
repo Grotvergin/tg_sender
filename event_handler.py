@@ -40,12 +40,11 @@ async def RefreshEventHandler():
 async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
     dicts_list = ({'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры'}, {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты'})
-    user_id = None
     for item in dicts_list:
         dict_name = item['dict']
         order_type = item['order_type']
         if event.chat.username in dict_name:
-            if order_type == 'Репосты' and bool(compile(r'http?').search(event.message.message)):
+            if NeedToDecrease(event.message.text, event.chat.username):
                 dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
@@ -63,6 +62,16 @@ async def EventHandler(event: NewMessage.Event):
             SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
             user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
+
+
+def NeedToDecrease(message_text: str, channel_name: str) -> bool:
+    http_link = compile(r'https?://t\.me/[\w]+')
+    dog_link = compile(r'@[\w]+')
+    if http_link.search(message_text) or dog_link.search(message_text):
+        if f'@{channel_name}' in message_text or f'https://t.me/{channel_name}' in message_text:
+            return False
+        return True
+    return False
 
 
 async def GetChannelIDsByUsernames(account, requested_usernames: list[str]) -> list[int]:
