@@ -44,10 +44,11 @@ async def EventHandler(event: NewMessage.Event):
         dict_name = item['dict']
         order_type = item['order_type']
         if event.chat.username in dict_name:
-            if NeedToDecrease(event.message.text, event.chat.username):
-                dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
-            rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
-                                  int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
+            annual_amount = dict_name[event.chat.username]['annual']
+            if NeedToDecrease(event.message.text, event.chat.username) and order_type == 'Репосты':
+                annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
+            rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount),
+                                  int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount))
             if rand_amount > len(source.ACCOUNTS):
                 rand_amount = len(source.ACCOUNTS)
             elif rand_amount <= 0:
@@ -60,7 +61,6 @@ async def EventHandler(event: NewMessage.Event):
                                       'planned': rand_amount,
                                       'cur_acc_index': randint(0, len(source.ACCOUNTS) - 1)})
             SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
-            user_id = dict_name[event.chat.username]['initiator'].split(' ')[-1]
     Stamp(f'Added automatic request for channel {event.chat.username}', 's')
 
 
