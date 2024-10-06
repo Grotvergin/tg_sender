@@ -44,7 +44,7 @@ async def EventHandler(event: NewMessage.Event):
         dict_name = item['dict']
         order_type = item['order_type']
         if event.chat.username in dict_name:
-            if NeedToDecrease(event.message.text, event.chat.username):
+            if NeedToDecrease(event.message.text, event.chat.username) and order_type == 'Репосты':
                 dict_name[event.chat.username]['annual'] = int(float(dict_name[event.chat.username]['annual']) / LINK_DECREASE_RATIO)
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * dict_name[event.chat.username]['annual']))
