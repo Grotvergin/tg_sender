@@ -5,10 +5,9 @@ from source import (AUTO_BTNS, CANCEL_BTN, WELCOME_BTNS,
                     TIME_FORMAT, BOT, FILE_AUTO_VIEWS)
 from re import match
 from deletion import DeleteAutomaticRequest
-from info_senders import PrintAutomaticRequest
+from info_senders import SendAutomaticRequests
 from datetime import datetime
 from file import SaveRequestsToFile
-from common import Sleep
 import source
 
 
@@ -23,12 +22,7 @@ def AutomaticChannelDispatcher(message: Message, file: str) -> None:
         BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
     elif message.text == AUTO_BTNS[2]:
         data = source.AUTO_VIEWS_DICT if file == FILE_AUTO_VIEWS else source.AUTO_REPS_DICT
-        if data.keys():
-            for chan in data.keys():
-                BOT.send_message(message.from_user.id, PrintAutomaticRequest(chan, data), parse_mode='HTML')
-                Sleep(1)
-        else:
-            BOT.send_message(message.from_user.id, '🔍 Нет автоматических заявок')
+        SendAutomaticRequests(message, data)
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, file)
     elif message.text == AUTO_BTNS[3]:

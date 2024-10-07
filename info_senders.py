@@ -18,20 +18,37 @@ def SendTariffInfo(data: dict) -> (str, list):
 def SendRequests(message: Message, reqs: list, amount: int = None, portion: int = REQS_PORTION) -> None:
     if reqs:
         cut_reqs = reqs[-amount:] if amount else reqs
-        BOT.send_message(message.from_user.id, f"🔍 Общее количество заявок: {len(reqs)}, показываю: {len(cut_reqs)}")
+        BOT.send_message(message.from_user.id, f"🔍 Общее количество разовых заявок: {len(reqs)}, показываю: {len(cut_reqs)}")
         for idx, i in enumerate(range(0, len(cut_reqs), portion)):
             portion_requests = cut_reqs[i:i + portion]
-            portion_message = ''
+            msg = ''
             for j, req in enumerate(portion_requests, start=1):
                 num = idx * portion + j
                 separator = '	—' * 12 if num < 100 else '	—' * 11
-                portion_message += f"{separator} {idx * portion + j} {separator}\n"
-                portion_message += PrintRequest(req) + '\n'
-
-            BOT.send_message(message.from_user.id, portion_message, parse_mode='HTML')
+                msg += f"{separator} {idx * portion + j} {separator}\n"
+                msg += PrintRequest(req) + '\n'
+            BOT.send_message(message.from_user.id, msg, parse_mode='HTML')
             Sleep(1)
     else:
-        BOT.send_message(message.from_user.id, '🔍 Нет заявок')
+        BOT.send_message(message.from_user.id, '🔍 Нет разовых заявок')
+
+
+def SendAutomaticRequests(message: Message, data: dict, portion: int = REQS_PORTION) -> None:
+    if data.keys():
+        BOT.send_message(message.from_user.id, f"🔍 Общее количество автоматических заявок: {len(data)}")
+        channels = list(data.keys())
+        for idx, i in enumerate(range(0, len(channels), portion)):
+            portion_requests = channels[i:i + portion]
+            msg = ''
+            for j, chan in enumerate(portion_requests, start=1):
+                num = idx * portion + j
+                separator = '	—' * 12 if num < 100 else '	—' * 11
+                msg += f"{separator} {idx * portion + j} {separator}\n"
+                msg += PrintAutomaticRequest(chan, data) + '\n'
+            BOT.send_message(message.from_user.id, msg, parse_mode='HTML')
+            Sleep(1)
+    else:
+        BOT.send_message(message.from_user.id, '🔍 Нет автоматических заявок')
 
 
 def PrintRequest(req: dict) -> str:
@@ -40,9 +57,8 @@ def PrintRequest(req: dict) -> str:
             f"<b>Тип</b>: {req['order_type']}\n"
             f"<b>Желаемое</b>: {req['planned']}\n"
             f"<b>Выполненное</b>: {req.get('current', 0)}\n"
-            f"<b>Ссылка</b>: {req['link']}\n"
+            f"<b>Ссылка</b>: https://t.me/{req['link']}\n"
             f"<b>Инициатор</b>: {req['initiator']}\n"
-            f"<b>Индекс аккаунта</b>: {req.get('cur_acc_index', 'N/A')}\n"
             f"<b>Эмодзи</b>: {req.get('emoji', 'N/A')}")
 
 

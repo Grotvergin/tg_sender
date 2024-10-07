@@ -5,7 +5,7 @@ from telebot.types import Message
 from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS, NUMBER_LAST_FIN,
                     LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT, FILE_ACTIVE)
 from common import ShowButtons, Stamp
-from info_senders import SendRequests
+from info_senders import SendRequests, PrintRequest
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from deletion import DeleteSingleRequest
 from emoji import EMOJI_DATA
