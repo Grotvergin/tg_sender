@@ -1,5 +1,5 @@
 from telebot import TeleBot
-from secret import TOKEN, MY_TG_ID, TOKEN_TEST
+from secret import TOKEN, MY_TG_ID
 from colorama import init
 from faker import Faker
 from random import seed
@@ -43,7 +43,7 @@ BNT_NUM_OPERATION = ('💬 Проверить СМС',
                      '🅾️ Отменить номер')
 CREATE_APP_BTN = ('Создать приложение 📱',)
 GET_API_CODE_BTN = ('Получить код API 📝',)
-BOT = TeleBot(TOKEN_TEST)
+BOT = TeleBot(TOKEN)
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
@@ -68,7 +68,6 @@ MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
-SHEET_NAME = 'Тестирование'
 EXTRA_SHEET_NAME = 'Дополнительные'
 MAX_ACCOUNTS_BUY = 5
 URL_SIM = 'https://onlinesim.io/api/'

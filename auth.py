@@ -1,10 +1,10 @@
 from time import time, sleep
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT, LEFT_CORNER,
-                    RIGHT_CORNER, SHEET_NAME, WELCOME_BTNS)
+                    RIGHT_CORNER, WELCOME_BTNS)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
                     Sleep, ShowButtons, BuildService, ParseAccountRow)
 from os.path import join
-from secret import SHEET_ID
+from secret import SHEET_ID, SHEET_NAME
 from os import getcwd
 from telethon.sync import TelegramClient
 from socks import SOCKS5
