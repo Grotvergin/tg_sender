@@ -23,6 +23,7 @@ from telethon.tl.types import (InputPrivacyValueDisallowAll,
 from telethon.tl.functions.account import SetPrivacyRequest
 from emulator import SetPassword
 from secret import PASSWORD
+from generator import GenerateRandomRussianName
 
 
 # TODO Wrong cancellation
@@ -67,12 +68,6 @@ def FindAccountByNumber(num: int) -> TelegramClient | None:
         if int(split(acc.session.filename)[-1][:-8]) == num:
             return acc
     return None
-
-
-def GenerateRandomRussianName() -> (str, str):
-    first_names = ['Алексей', 'Андрей', 'Борис', 'Владимир', 'Георгий', 'Дмитрий', 'Евгений', 'Игорь', 'Константин', 'Максим']
-    last_names = ['Иванов', 'Смирнов', 'Кузнецов', 'Попов', 'Соколов', 'Лебедев', 'Козлов', 'Новиков', 'Морозов', 'Петров']
-    return choice(first_names), choice(last_names)
 
 
 def GenerateRandomDescription() -> str:

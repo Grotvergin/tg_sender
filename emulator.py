@@ -5,11 +5,12 @@ from appium.options.android import UiAutomator2Options
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME, ATTEMPTS_EMAIL,
                     URL_DEVICE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, UDID)
-from secret import BOT_NAME, XPATH_TO_BOT, PASSWORD
+from secret import BOT_NAME, XPATH_TO_BOT
 from selenium.common.exceptions import NoSuchElementException
 from requests import get, post
 from api import GenerateRandomWord
 from re import search
+from generator import GenerateRandomRussianName
 
 
 def PrepareDriver() -> Remote:
@@ -140,19 +141,18 @@ def SetPassword(user_id: int, password: str) -> None:
     code = GetEmailCode(token)
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)
     PressButton(driver, '//android.widget.TextView[@text="Return to Settings"]', 'Done', 3)
-    driver.close()
     driver.quit()
     Stamp('Password set successfully', 's')
     BOT.send_message(user_id, f'❇️ Пароль для аккаунта установлен')
 
 
-def AskForCode(user_id: int, num: str, len_country_code: int) -> None:
+def AskForCode(user_id: int, num: str, len_country_code: int, password: str) -> None:
     Stamp('Asking for code', 'i')
     BOT.send_message(user_id, f'💎 Запрос кода для номера {num}')
     driver = PrepareDriver()
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
-    PressButton(driver, '//android.widget.TextView[@content-desc="Telegram"]', 'Telegram', 3)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', '|||', 3)
     PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
     PressButton(driver, '//android.widget.ImageButton[@content-desc="More options"]/android.widget.ImageView', '...', 3)
@@ -177,7 +177,12 @@ def AskForCode(user_id: int, num: str, len_country_code: int) -> None:
         Stamp(f'Code was sent to Telegram, exiting', 'w')
         BOT.send_message(user_id, f'🚫 Код был отправлен на другое устройство, выхожу из процедуры')
         raise WeSentCodeToDevice
-    driver.close()
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Choose a login email"]'):
+        email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
+        InsertField(driver, '//android.widget.EditText', 'Email', email, 2)
+        PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 4)
+        code = GetEmailCode(token)
+        DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Verification Code', code, 4, 1)
     driver.quit()
     Stamp('Code requested successfully', 's')
     BOT.send_message(user_id, f'🔑 Код для номера {num} запрошен')
@@ -185,15 +190,18 @@ def AskForCode(user_id: int, num: str, len_country_code: int) -> None:
 
 def InsertCode(user_id: int, code: str) -> None:
     Stamp('Inserting code', 'i')
-    BOT.send_message(user_id, f'🗝 Ввод кода в эмуляторе {code}')
+    BOT.send_message(user_id, f'🗝 Ввод кода {code}')
     driver = PrepareDriver()
     DistributedInsertion(driver,
                          '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]',
                          'Code', code, 3, 1)
-    driver.close()
-    driver.quit()
     Stamp('Code inserted successfully', 's')
     BOT.send_message(user_id, f'✅ Код {code} введен')
+    if IsElementPresent(driver, '//android.widget.TextView[@text="Profile info"]'):
+        first_name, last_name = GenerateRandomRussianName()
+        InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText', 'First Name', first_name, 4)
+        InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[2]/android.widget.EditText', 'Last Name', last_name, 3)
+    driver.quit()
 
 
 def ForwardMessage(user_id: int) -> None:
@@ -208,7 +216,7 @@ def ForwardMessage(user_id: int) -> None:
     PressButton(driver, XPATH_TO_BOT, 'Our Bot', 3)
     PressButton(driver, '//android.widget.TextView[@text="START"]', 'Start', 3)
     PressButton(driver, '//android.view.View[@content-desc="Send"]', 'Send', 3)
-    driver.close()
+    # Сделать отправку сообщения ботом
     driver.quit()
     Stamp('Message forwarded successfully', 's')
     BOT.send_message(user_id, '📩 Сообщение переслано в бота')

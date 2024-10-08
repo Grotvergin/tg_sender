@@ -2,7 +2,7 @@ from telebot.types import Message
 from source import (CANCEL_BTN, WELCOME_BTNS, BNT_NUM_OPERATION, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, GET_API_CODE_BTN)
-from secret import TOKEN_SIM
+from secret import TOKEN_SIM ,PASSWORD
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
                     AccountIsBanned, WeSentCodeToDevice)
 from info_senders import SendTariffInfo
@@ -67,7 +67,7 @@ def AddAccountRecursive(message: Message, current_index: int, total: int, countr
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
         return
     try:
-        AskForCode(message.from_user.id, num, len(str(country_code)))
+        AskForCode(message.from_user.id, num, len(str(country_code)), PASSWORD)
     except AccountIsBanned:
         Stamp(f'Account {num} is banned', 'w')
         BOT.send_message(message.from_user.id, f'❌ Аккаунт {num} заблокирован, отменяю и перехожу к следующему...')
