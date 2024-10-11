@@ -47,6 +47,7 @@ async def EventHandler(event: NewMessage.Event):
         if event.chat.username in dict_name:
             annual_amount = dict_name[event.chat.username]['annual']
             Stamp(f'Annual amount before decision = {annual_amount}', 'i')
+            Stamp(f'Message text:\n{event.message.text}\n', 'i')
             if NeedToDecrease(event.message.text, event.chat.username) and order_type == 'Репосты':
                 annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
                 Stamp(f'DECREASING! annual = {annual_amount}', 'w')
@@ -73,9 +74,13 @@ def NeedToDecrease(message_text: str, channel_name: str) -> bool:
     http_link = compile(r'https?://t\.me/[\w]+')
     dog_link = compile(r'@[\w]+')
     if http_link.search(message_text) or dog_link.search(message_text):
+        Stamp('Found some link in post', 'i')
         if f'@{channel_name}' in message_text or f'https://t.me/{channel_name}' in message_text:
+            Stamp('Link points to the same channel', 'w')
             return False
+        Stamp('Link points to different channel', 'i')
         return True
+    Stamp('No link found', 'i')
     return False
 
 
