@@ -43,18 +43,17 @@ async def EventHandler(event: NewMessage.Event):
     for item in dicts_list:
         dict_name = item['dict']
         order_type = item['order_type']
-        Stamp(f'Dict name: {dict_name}, order_type: {order_type}', 'i')
         if event.chat.username in dict_name:
             annual_amount = dict_name[event.chat.username]['annual']
             Stamp(f'Annual amount before decision = {annual_amount}', 'i')
             Stamp(f'Message text:\n{event.message.text}\n', 'i')
             if NeedToDecrease(event.message.text, event.chat.username) and order_type == 'Репосты':
                 annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
-                Stamp(f'DECREASING! annual = {annual_amount}', 'w')
+                Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
             Stamp(f'Annual amount after decision = {annual_amount}', 'i')
             rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount),
                                   int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount))
-            Stamp(f'RAnd_amount = {rand_amount}', 'i')
+            Stamp(f'Rand_amount = {rand_amount}', 'i')
             if rand_amount > len(source.ACCOUNTS):
                 rand_amount = len(source.ACCOUNTS)
             elif rand_amount <= 0:
@@ -73,6 +72,8 @@ async def EventHandler(event: NewMessage.Event):
 def NeedToDecrease(message_text: str, channel_name: str) -> bool:
     http_link = compile(r'https?://t\.me/[\w]+')
     dog_link = compile(r'@[\w]+')
+    message_text = message_text.lower()
+    channel_name = channel_name.lower()
     if http_link.search(message_text) or dog_link.search(message_text):
         Stamp('Found some link in post', 'i')
         if f'@{channel_name}' in message_text or f'https://t.me/{channel_name}' in message_text:
