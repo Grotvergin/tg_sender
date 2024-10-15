@@ -3,24 +3,23 @@ from appium.webdriver import Remote
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
-from source import (HOME_KEYCODE, PLATFORM_NAME, DEVICE_NAME, ATTEMPTS_EMAIL,
-                    URL_DEVICE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, UDID)
-from secret import BOT_NAME, XPATH_TO_BOT
+from source import HOME_KEYCODE, ATTEMPTS_EMAIL, BOT, MIN_LEN_EMAIL, SHORT_SLEEP
+from secret import BOT_NAME, XPATH_TO_BOT, UDID, APPIUM
 from selenium.common.exceptions import NoSuchElementException
 from requests import get, post
 from api import GenerateRandomWord
-from re import search
+from re import search, MULTILINE
 from generator import GenerateRandomRussianName
 
 
 def PrepareDriver() -> Remote:
     options = UiAutomator2Options()
     options.set_capability("disableWindowAnimation", True)
-    options.platform_name = PLATFORM_NAME
-    options.device_name = DEVICE_NAME
-    options.no_reset = True
-    options.udid = UDID
-    driver = Remote(URL_DEVICE, options=options)
+    options.set_capability("platformName", "Android")
+    options.set_capability("deviceName", "Mi")
+    options.set_capability("noReset", True)
+    options.set_capability("udid", UDID)
+    driver = Remote(APPIUM, options=options)
     return driver
 
 
@@ -28,16 +27,16 @@ def BackToHomeScreen(driver: Remote):
     try:
         driver.press_keycode(HOME_KEYCODE)
         Stamp('Got back to home screen', 's')
-    except Exception as e:
-        Stamp(f'Failed to get back to home screen: {e}', 'e')
+    except NoSuchElementException:
+        Stamp(f'Failed to get back to home screen', 'e')
 
 
 def CloseTelegramApp(driver: Remote):
     try:
         driver.terminate_app('org.telegram.messenger.web')
         Stamp('Telegram app closed successfully', 's')
-    except Exception as e:
-        Stamp(f'Failed to close Telegram app: {e}', 'e')
+    except NoSuchElementException:
+        Stamp(f'Failed to close Telegram app', 'e')
 
 
 def PressButton(driver: Remote, path: str, name: str, interval: int, by: str = AppiumBy.XPATH):
@@ -45,8 +44,8 @@ def PressButton(driver: Remote, path: str, name: str, interval: int, by: str = A
         btn = driver.find_element(by=by, value=path)
         btn.click()
         Stamp(f'Button {name} pressed successfully', 's')
-    except Exception as e:
-        Stamp(f'Failed to find or press button {name}: {e}', 'e')
+    except NoSuchElementException:
+        Stamp(f'Failed to find or press button {name}', 'e')
     Sleep(interval)
 
 
@@ -56,8 +55,8 @@ def InsertField(driver: Remote, path: str, name: str, text: str, interval: int):
         field.clear()
         field.send_keys(text)
         Stamp(f'Field {name} filled successfully', 's')
-    except Exception as e:
-        Stamp(f'Failed to find or fill field {name}: {e}', 'e')
+    except NoSuchElementException:
+        Stamp(f'Failed to find or fill field {name}', 'e')
     Sleep(interval)
 
 
@@ -69,8 +68,8 @@ def DistributedInsertion(driver: Remote, path: str, name: str, text: str, big_in
             field.send_keys(text[i - 1])
             time.sleep(small_interval)
         Stamp(f'Field {name} filled successfully', 's')
-    except Exception as e:
-        Stamp(f'Failed to find or fill field {name}: {e}', 'e')
+    except NoSuchElementException:
+        Stamp(f'Failed to find or fill field {name}', 'e')
     Sleep(big_interval)
 
 
@@ -118,10 +117,9 @@ def GetEmailCode(token: str, max_attempts: int = ATTEMPTS_EMAIL) -> str | None:
     return
 
 
-def SetPassword(user_id: int, password: str) -> None:
+def SetPassword(driver: Remote, user_id: int, password: str) -> None:
     Stamp('Setting password ', 'i')
     BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта')
-    driver = PrepareDriver()
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
     PressButton(driver, '//android.widget.TextView[@content-desc="Telegram"]', 'Telegram', 3)
@@ -146,10 +144,9 @@ def SetPassword(user_id: int, password: str) -> None:
     BOT.send_message(user_id, f'❇️ Пароль для аккаунта установлен')
 
 
-def AskForCode(user_id: int, num: str, len_country_code: int, password: str) -> None:
+def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, password: str) -> None:
     Stamp('Asking for code', 'i')
     BOT.send_message(user_id, f'💎 Запрос кода для номера {num}')
-    driver = PrepareDriver()
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
@@ -188,10 +185,9 @@ def AskForCode(user_id: int, num: str, len_country_code: int, password: str) -> 
     BOT.send_message(user_id, f'🔑 Код для номера {num} запрошен')
 
 
-def InsertCode(user_id: int, code: str) -> None:
+def InsertCode(driver: Remote, user_id: int, code: str) -> None:
     Stamp('Inserting code', 'i')
     BOT.send_message(user_id, f'🗝 Ввод кода {code}')
-    driver = PrepareDriver()
     DistributedInsertion(driver,
                          '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]',
                          'Code', code, 3, 1)
@@ -204,19 +200,10 @@ def InsertCode(user_id: int, code: str) -> None:
     driver.quit()
 
 
-def ForwardMessage(user_id: int) -> None:
-    Stamp('Forwarding message', 'i')
-    BOT.send_message(user_id, '📨 Пересылаю сообщение с кодом для API')
-    driver = PrepareDriver()
-    PressButton(driver, 'new UiSelector().className("android.view.ViewGroup").index(0)', 'Chat', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
-    PressButton(driver, 'new UiSelector().textContains("Код")', 'Message', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
-    PressButton(driver, '//android.widget.TextView[@text="Forward"]', 'Forward', 3)
-    PressButton(driver, '//android.widget.ImageButton[@content-desc="Search"]/android.widget.ImageView', 'Search', 3)
-    InsertField(driver, '//android.widget.EditText[@text="Search"]', 'Search', BOT_NAME, 2)
-    PressButton(driver, XPATH_TO_BOT, 'Our Bot', 3)
-    PressButton(driver, '//android.widget.TextView[@text="START"]', 'Start', 3)
-    PressButton(driver, '//android.view.View[@content-desc="Send"]', 'Send', 3)
-    # Сделать отправку сообщения ботом
-    driver.quit()
-    Stamp('Message forwarded successfully', 's')
-    BOT.send_message(user_id, '📩 Сообщение переслано в бота')
+def ExtractCodeFromMessage(driver: Remote) -> str | None:
+    element = driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("Код")')
+    pattern = r'Вот он:\s*(\S+)'
+    found = search(pattern, element.text, MULTILINE)
+    if found:
+        return found.group(1)
+    return

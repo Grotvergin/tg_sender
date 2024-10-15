@@ -6,12 +6,17 @@ import source
 
 
 def SendTariffInfo(data: dict) -> (str, list):
-    msg = '📊 Доступные страны:\n\n'
+    msg = '```\n'
     countries = []
+    header = f"{'Страна':<21} | {'Код':<4}\n"
+    msg += header
+    msg += '-' * len(header) + '\n'
     for code, info in data['countries'].items():
-        msg += f'{info['name']} | {info['code']} | {'доступна' if info['enable'] else 'недоступна'}\n'
+        line = f"{info['name']:<19} | {info['code']:<4}\n"
+        msg += line
         if info['enable']:
             countries.append(info['code'])
+    msg += '\n```'
     return msg, countries
 
 

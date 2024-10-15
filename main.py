@@ -72,9 +72,6 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':
         source.CODE = message.text
-    elif LABEL_API_MSG in message.text:
-        source.API_CODE = ExtractCodeFromMessage(message.text)
-        BOT.send_message(message.from_user.id, f'🔑 Получен код API: {source.API_CODE_MSG}')
     else:
         BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')

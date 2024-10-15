@@ -10,11 +10,8 @@ from socket import gaierror
 from datetime import datetime
 
 # ----- TODO LIST -----
-# Button for returning the request + fast channelname copying ability
-# Showing a list of auto reqs like single ones
-# Truncate amount of data in error message from appium
+# Button for returning the request
 # Buying more than one account test
-# External smartphone connection
 
 
 WELCOME_BTNS = ('Разовые 1️⃣',
@@ -62,7 +59,6 @@ ADMIN_CHAT_ID = MY_TG_ID
 WARDEN_CHAT_ID = MY_TG_ID
 CODE = None
 ACC_TO_CHANGE = None
-API_CODE = None
 LABEL_API_MSG = 'Код подтверждения для сайта.'
 MAX_WAIT_CODE = 180
 LINK_DECREASE_RATIO = 3
@@ -95,10 +91,6 @@ LAST_NOTIF_EVENT_HANDLER = datetime.now()
 LAST_NOTIF_PROCESSOR = datetime.now()
 NOTIF_TIME_DELTA = 30
 HOME_KEYCODE = 3
-PLATFORM_NAME = 'Android'
-DEVICE_NAME = 'Mi'
-URL_DEVICE = 'http://127.0.0.1:4723/wd/hub'
-UDID = '192.168.1.7:40977'
 REQS_PORTION = 10
 MIN_LEN_EMAIL = 20
 ATTEMPTS_EMAIL = 15

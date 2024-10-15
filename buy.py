@@ -2,14 +2,14 @@ from telebot.types import Message
 from source import (CANCEL_BTN, WELCOME_BTNS, BNT_NUM_OPERATION, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, GET_API_CODE_BTN)
-from secret import TOKEN_SIM ,PASSWORD
+from secret import TOKEN_SIM, PASSWORD
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
                     AccountIsBanned, WeSentCodeToDevice)
 from info_senders import SendTariffInfo
 from requests import get
-from re import search, MULTILINE
 from api import SendAPICode
 from emulator import AskForCode, InsertCode
+from appium.webdriver import Remote
 
 
 def AddAccounts(message: Message) -> None:
@@ -29,7 +29,7 @@ def AddAccounts(message: Message) -> None:
     country_data = GetTariffInfo(message)
     BOT.send_message(message.from_user.id, '📌 Введите код желаемой страны:')
     msg, avail_codes = SendTariffInfo(country_data)
-    BOT.send_message(message.from_user.id, msg)
+    BOT.send_message(message.from_user.id, msg, parse_mode='Markdown')
     BOT.register_next_step_handler(message, ChooseCountry, req_quantity, avail_codes)
 
 
@@ -161,8 +161,7 @@ def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int,
         Stamp('Found incoming sms for recently bought number', 's')
         BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
         InsertCode(message.from_user.id, sms_dict[num])
-        ShowButtons(message, GET_API_CODE_BTN, '❔ Как будете готовы, нажмите кнопку')
-        BOT.register_next_step_handler(message, SendAPICode, num)
+        SendAPICode(message, num)
     else:
         Stamp(f'No incoming sms for {num}', 'w')
         BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
@@ -211,11 +210,3 @@ def GetTariffInfo(message: Message) -> dict:
             Sleep(LONG_SLEEP * 2)
             data = GetTariffInfo(message, TOKEN_SIM)
     return data
-
-
-def ExtractCodeFromMessage(text: str) -> str | None:
-    pattern = r'Вот он:\s*(\S+)'
-    found = search(pattern, text, MULTILINE)
-    if found:
-        return found.group(1)
-    return None

@@ -1,16 +1,18 @@
 from bs4 import BeautifulSoup
-
 import source
 from headers_agents import HEADERS
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP, MAX_WAIT_CODE,
                     URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS,
-                    EXTRA_SHEET_NAME, FAKER, LEFT_CORNER, SMALL_RIGHT_CORNER)
+                    EXTRA_SHEET_NAME, LEFT_CORNER, SMALL_RIGHT_CORNER)
 from common import Stamp, Sleep, ControlRecursion, ShowButtons, UploadData, GetSector, BuildService
 from re import search, IGNORECASE
 from requests import Session
 from secret import SHEET_ID
 from telebot.types import Message
 from datetime import datetime
+from generator import GenerateRandomWord
+from emulator import PressButton, PrepareDriver, IsElementPresent, ExtractCodeFromMessage
+from appium.webdriver.common.appiumby import AppiumBy
 
 
 def SendAPICode(message: Message, num: str) -> None:
@@ -24,11 +26,12 @@ def SendAPICode(message: Message, num: str) -> None:
                                   'завершаю процесс покупки...')
         return
     start_time = datetime.now()
+    driver = PrepareDriver()
     code = None
+    PressButton(driver, 'new UiSelector().className("android.view.ViewGroup").index(0)', 'Chat', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
     while (datetime.now() - start_time).seconds < MAX_WAIT_CODE:
-        if source.API_CODE:
-            code = source.API_CODE
-            source.API_CODE = None
+        if IsElementPresent(driver, 'new UiSelector().textContains("Код")', by=AppiumBy.ANDROID_UIAUTOMATOR):
+            code = ExtractCodeFromMessage(driver)
             Stamp(f'API code received for number {num}: {code}', 's')
             BOT.send_message(message.from_user.id, f'✳️ Обнаружен код: {code}')
             break
@@ -54,10 +57,7 @@ def RequestAPICode(message: Message, num: str) -> (Session, str):
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Sent API code to {num}', 's')
-            BOT.send_message(message.from_user.id, f'💬 Код для авторизации в API отправлен на {num}, '
-                                                   f'проверьте сообщения от Telegram.\n⚠️ В ответ перешлите мне'
-                                                   f'всё сообщение целиком.')
-            print(response.json())
+            BOT.send_message(message.from_user.id, f'💬 Код для авторизации в API отправлен на {num}')
             rand_hash = response.json()['random_hash']
         else:
             Stamp(f'Failed to send API code to {num}: {response.text}', 'e')
@@ -184,13 +184,6 @@ def FinalStep(message: Message, session: Session, num: str, cur_hash: str) -> No
     Stamp(f'Data for number {num} added to the table', 's')
     BOT.send_message(message.from_user.id, f'📊 Данные для номера {num} занесены в таблицу')
     ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-
-
-def GenerateRandomWord(min_length: int) -> str:
-    word = FAKER.word()
-    while len(word) < min_length:
-        word += f's{FAKER.word()}'
-    return word
 
 
 def CreateApp(message: Message, session: Session, num: str, cur_hash: str) -> None:
