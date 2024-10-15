@@ -1,5 +1,5 @@
 from telebot.types import Message
-from source import (CANCEL_BTN, WELCOME_BTNS, BNT_NUM_OPERATION, BOT,
+from source import (CANCEL_BTN, WELCOME_BTNS, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS)
 from secret import TOKEN_SIM, PASSWORD
@@ -79,8 +79,7 @@ def AddAccountRecursive(message: Message, current_index: int, total: int, countr
         CancelNumber(message, num, tzid)
         AddAccountRecursive(message, current_index + 1, total, country_code)
         return
-    ShowButtons(message, BNT_NUM_OPERATION, '❕ Если аккаунт нужно отменить, воспользуйтесь кнопкой')
-    BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
+    ProcessAccountSms(message, num, tzid, current_index, total, country_code)
 
 
 @ControlRecursion
@@ -112,23 +111,6 @@ def BuyAccount(message: Message, country_code: int) -> tuple:
             Sleep(LONG_SLEEP)
             num, tzid = BuyAccount(message)
     return num, tzid
-
-
-def AbilityToCancel(message: Message, num: str, tzid: str, current_index: int, total: int, country_code: int) -> None:
-    if message.text == BNT_NUM_OPERATION[1]:
-        Stamp(f'Cancelling number {num}', 'w')
-        BOT.send_message(message.from_user.id, f'🆗 Отменяю номер {num} (занимает некоторое время)...')
-        try:
-            CancelNumber(message, num, tzid)
-        except RecursionError:
-            Stamp('Too many tries to cancel num, returning', 'w')
-            BOT.send_message(message.from_user.id, '🛑 Слишком много попыток отмены номера, '
-                                                   'перехожу к следующему...')
-        AddAccountRecursive(message, current_index + 1, total, country_code)
-        return
-    elif message.text == BNT_NUM_OPERATION[0]:
-        ProcessAccountSms(message, num, tzid, current_index, total, country_code)
-        return
 
 
 @ControlRecursion
@@ -164,8 +146,7 @@ def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int,
     else:
         Stamp(f'No incoming sms for {num}', 'w')
         BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
-        ShowButtons(message, BNT_NUM_OPERATION, '❔ Что делаем дальше?')
-        BOT.register_next_step_handler(message, AbilityToCancel, num, tzid, current_index, total, country_code)
+        ProcessAccountSms(message, num, tzid, current_index, total, country_code)
 
 
 def CheckAllSms(message: Message) -> dict | None:
