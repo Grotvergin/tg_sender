@@ -7,11 +7,11 @@ from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
-                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, LABEL_API_MSG)
+                    FILE_AUTO_VIEWS, FILE_AUTO_REPS)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
-from buy import AddAccounts, ExtractCodeFromMessage
+from buy import AddAccounts
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
 from asyncio import run

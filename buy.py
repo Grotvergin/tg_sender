@@ -9,7 +9,6 @@ from info_senders import SendTariffInfo
 from requests import get
 from api import SendAPICode
 from emulator import AskForCode, InsertCode
-from appium.webdriver import Remote
 
 
 def AddAccounts(message: Message) -> None:
