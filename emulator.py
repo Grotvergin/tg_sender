@@ -4,7 +4,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import HOME_KEYCODE, ATTEMPTS_EMAIL, BOT, MIN_LEN_EMAIL, SHORT_SLEEP
-from secret import BOT_NAME, XPATH_TO_BOT, UDID, APPIUM
+from secret import UDID, APPIUM
 from selenium.common.exceptions import NoSuchElementException
 from requests import get, post
 from api import GenerateRandomWord
@@ -139,7 +139,6 @@ def SetPassword(driver: Remote, user_id: int, password: str) -> None:
     code = GetEmailCode(token)
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)
     PressButton(driver, '//android.widget.TextView[@text="Return to Settings"]', 'Done', 3)
-    driver.quit()
     Stamp('Password set successfully', 's')
     BOT.send_message(user_id, f'❇️ Пароль для аккаунта установлен')
 
@@ -179,7 +178,6 @@ def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, pa
     elif IsElementPresent(driver, 'path_to_get_via_sms'):
         Sleep(125)
         PressButton(driver, '//android.widget.TextView[@text="Get the code via SMS"]', 'Get the code via SMS', 5)
-    driver.quit()
     Stamp('Code requested successfully', 's')
     BOT.send_message(user_id, f'🔑 Код для номера {num} запрошен')
 
@@ -196,7 +194,7 @@ def InsertCode(driver: Remote, user_id: int, code: str) -> None:
         first_name, last_name = GenerateRandomRussianName()
         InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText', 'First Name', first_name, 4)
         InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[2]/android.widget.EditText', 'Last Name', last_name, 3)
-    driver.quit()
+        PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 3)
 
 
 def ExtractCodeFromMessage(driver: Remote) -> str | None:

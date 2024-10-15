@@ -17,6 +17,7 @@ from auto_data_accept import AutomaticChoice
 from asyncio import run
 from info_senders import ListAccountNumbers
 from change import RequestChangeProfile, CheckProfileChange
+from api import SendAPICode
 
 
 async def Main() -> None:
@@ -64,7 +65,7 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
-        BOT.register_next_step_handler(message, AddAccounts)
+        SendAPICode(message, '12543634469')
     elif message.text == WELCOME_BTNS[5]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите номер телефона:')
         BOT.register_next_step_handler(message, RequestChangeProfile)

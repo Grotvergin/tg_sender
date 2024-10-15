@@ -131,7 +131,7 @@ def CancelNumber(message: Message, num: str, tzid: str) -> None:
             Stamp(f'Failed to cancel number {num}: {response.text}', 'w')
             BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось отменить номер, '
                                                     f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
-            Sleep(LONG_SLEEP * 2)
+            Sleep(LONG_SLEEP)
             CancelNumber(message, num, tzid)
 
 
@@ -187,7 +187,7 @@ def GetTariffInfo(message: Message) -> dict:
         else:
             Stamp(f'Failed to get tariffs: {response.text}', 'w')
             BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось получить тарифы, '
-                                                    f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
-            Sleep(LONG_SLEEP * 2)
+                                                    f'пробую ещё раз через {LONG_SLEEP} секунд...')
+            Sleep(LONG_SLEEP)
             data = GetTariffInfo(message, TOKEN_SIM)
     return data

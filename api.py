@@ -25,6 +25,7 @@ def SendAPICode(message: Message, num: str) -> None:
         BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
                                   'завершаю процесс покупки...')
         return
+    Sleep(10)
     start_time = datetime.now()
     driver = PrepareDriver()
     code = None
