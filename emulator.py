@@ -165,14 +165,10 @@ def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, pa
     PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 10)
     if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]'):
         PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK', 3)
-        Stamp(f'Account {num} is banned, exiting', 'w')
-        BOT.send_message(user_id, f'🚫 Аккаунт {num} заблокирован, выхожу из процедуры')
         raise AccountIsBanned
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
         PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back', 3)
         PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit', 3)
-        Stamp(f'Code was sent to Telegram, exiting', 'w')
-        BOT.send_message(user_id, f'🚫 Код был отправлен на другое устройство, выхожу из процедуры')
         raise WeSentCodeToDevice
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Choose a login email"]'):
         email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
@@ -180,6 +176,9 @@ def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, pa
         PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 4)
         code = GetEmailCode(token)
         DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Verification Code', code, 4, 1)
+    elif IsElementPresent(driver, 'path_to_get_via_sms'):
+        Sleep(125)
+        PressButton(driver, '//android.widget.TextView[@text="Get the code via SMS"]', 'Get the code via SMS', 5)
     driver.quit()
     Stamp('Code requested successfully', 's')
     BOT.send_message(user_id, f'🔑 Код для номера {num} запрошен')

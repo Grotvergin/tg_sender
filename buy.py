@@ -146,6 +146,7 @@ def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int,
     else:
         Stamp(f'No incoming sms for {num}', 'w')
         BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
+        Sleep(10)
         ProcessAccountSms(message, num, tzid, current_index, total, country_code)
 
 
