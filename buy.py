@@ -1,14 +1,15 @@
-from telebot.types import Message
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS)
-from secret import TOKEN_SIM, PASSWORD
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
                     AccountIsBanned, WeSentCodeToDevice)
-from info_senders import SendTariffInfo
-from requests import get
 from api import SendAPICode
 from emulator import AskForCode, InsertCode, PrepareDriver
+from secret import TOKEN_SIM, PASSWORD
+from info_senders import SendTariffInfo
+# ---
+from requests import get
+from telebot.types import Message
 
 
 def AddAccounts(message: Message) -> None:

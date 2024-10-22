@@ -1,7 +1,3 @@
-from asyncio import get_event_loop, gather, create_task
-from traceback import format_exc
-from threading import Thread
-from telebot.types import Message
 import source
 from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
@@ -14,10 +10,14 @@ from event_handler import RefreshEventHandler
 from buy import AddAccounts
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
-from asyncio import run
 from info_senders import ListAccountNumbers
-from change import RequestChangeProfile, CheckProfileChange
-from api import SendAPICode
+from change import CheckProfileChange
+# ---
+from asyncio import get_event_loop, gather, create_task, run
+from traceback import format_exc
+from threading import Thread
+# ---
+from telebot.types import Message
 
 
 async def Main() -> None:
@@ -65,10 +65,7 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
-        SendAPICode(message, '12543634469')
-    elif message.text == WELCOME_BTNS[5]:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите номер телефона:')
-        BOT.register_next_step_handler(message, RequestChangeProfile)
+        AddAccounts(message)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':

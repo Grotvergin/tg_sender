@@ -1,13 +1,15 @@
-from typing import Any, Callable
 from source import CONN_ERRORS, LONG_SLEEP, BOT, MAX_RECURSION
-from googleapiclient.discovery import Resource, build
-from colorama import Fore, Style
+# ---
+from typing import Any, Callable
 from datetime import datetime
-from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from random import randint
 from time import sleep
 from functools import wraps
+from random import randint
 from asyncio import sleep as async_sleep
+# ---
+from googleapiclient.discovery import Resource, build
+from colorama import Fore, Style
+from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from google.oauth2.service_account import Credentials
 
 

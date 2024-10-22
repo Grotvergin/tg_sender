@@ -1,15 +1,17 @@
-import time
+from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
+from source import HOME_KEYCODE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, MAX_RECURSION
+from secret import UDID, APPIUM
+from api import GenerateRandomWord
+from generator import GenerateRandomRussianName
+# ---
+from re import search, MULTILINE
+from time import sleep
+# ---
+from selenium.common.exceptions import NoSuchElementException
+from requests import get, post
 from appium.webdriver import Remote
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
-from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
-from source import HOME_KEYCODE, ATTEMPTS_EMAIL, BOT, MIN_LEN_EMAIL, SHORT_SLEEP
-from secret import UDID, APPIUM
-from selenium.common.exceptions import NoSuchElementException
-from requests import get, post
-from api import GenerateRandomWord
-from re import search, MULTILINE
-from generator import GenerateRandomRussianName
 
 
 def PrepareDriver() -> Remote:
@@ -66,7 +68,7 @@ def DistributedInsertion(driver: Remote, path: str, name: str, text: str, big_in
             field = driver.find_element(by=AppiumBy.XPATH, value=path.format(i))
             field.clear()
             field.send_keys(text[i - 1])
-            time.sleep(small_interval)
+            sleep(small_interval)
         Stamp(f'Field {name} filled successfully', 's')
     except NoSuchElementException:
         Stamp(f'Failed to find or fill field {name}', 'e')
@@ -98,7 +100,7 @@ def GetTemporaryEmail(min_len: int, password: str) -> (str, str):
     return email, token
 
 
-def GetEmailCode(token: str, max_attempts: int = ATTEMPTS_EMAIL) -> str | None:
+def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
     Stamp('Getting email code', 'i')
     for _ in range(max_attempts):
         response = get('https://api.mail.tm/messages', headers={'Authorization': f'Bearer {token}'})

@@ -1,66 +1,92 @@
 import source
-from source import BOT, IMG_PATH, CANCEL_BTN
-from common import Stamp, ShowButtons
-from random import choice
-from requests import get
-from PIL import Image
+from source import BOT, IMG_PATH, LEFT_CORNER, RIGHT_CORNER
+from common import Stamp, UploadData, GetSector, BuildService
+from emulator import SetPassword, PrepareDriver
+from secret import PASSWORD, PROXY_KEY, SHEET_ID, SHEET_NAME
+from generator import GenerateRandomRussianName
+# ---
 from io import BytesIO
-from os import remove
-from os.path import split
-from telethon.tl.functions.account import UpdateProfileRequest
+from os import remove, getcwd
+from os.path import split, join
+from random import randint, choice
+from asyncio import sleep as async_sleep
+# ---
+from requests import get, RequestException
+from PIL import Image
+from socks import SOCKS5
 from telethon.sync import TelegramClient
-from telethon.tl.types import InputPhoneContact
+from telethon.tl.functions.account import UpdateProfileRequest, SetPrivacyRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
 from telethon.tl.functions.contacts import ImportContactsRequest
-from random import randint
-from telebot.types import Message
-from asyncio import sleep as async_sleep
 from telethon.tl.types import (InputPrivacyValueDisallowAll,
                                InputPrivacyKeyPhoneNumber,
                                InputPrivacyKeyPhoneCall,
                                InputPrivacyKeyChatInvite,
-                               InputPrivacyKeyStatusTimestamp)
-from telethon.tl.functions.account import SetPrivacyRequest
-from emulator import SetPassword
-from secret import PASSWORD
-from generator import GenerateRandomRussianName
+                               InputPrivacyKeyStatusTimestamp,
+                               InputPhoneContact)
 
 
-# TODO Wrong cancellation
-def RequestChangeProfile(message: Message) -> None:
-    if message.text == CANCEL_BTN[0]:
-        ShowButtons(message, source.WELCOME_BTNS, '❔ Выберите действие:')
-        return
+def buyProxy(api_key):
+    url = f"https://proxy6.net/api/{api_key}/buy"
+    params = {
+        'count': 1,
+        'period': 30,
+        'country': 'ru',
+        'version': 3,
+        'type': 'socks'
+    }
     try:
-        num = int(message.text)
-    except ValueError:
-        Stamp(f'Failed to convert {message.text} to number, retrying', 'e')
-        ShowButtons(message, CANCEL_BTN, '❌ Введите только цифры номера телефона, '
-                                               'например, 74951234567')
-        BOT.register_next_step_handler(message, RequestChangeProfile)
-    else:
-        acc = FindAccountByNumber(num)
-        if not acc:
-            Stamp(f'User {message.from_user.id} requested to change profile for {num}, but not found', 'w')
-            ShowButtons(message, CANCEL_BTN, '❌ Номер телефона не найден, попробуйте еще раз')
-            BOT.register_next_step_handler(message, RequestChangeProfile)
-            return
-        source.ACC_TO_CHANGE = acc
-        source.WARDEN_CHAT_ID = message.from_user.id
-        Stamp(f'User {message.from_user.id} requested to change profile for {num}', 'i')
-        BOT.send_message(message.from_user.id, '🔄 Изменение профиля начато')
+        response = get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        if data['status'] == 'yes':
+            proxy_data = list(data['list'].values())[0]
+            proxy = (
+                SOCKS5,
+                proxy_data['host'],
+                proxy_data['port'],
+                True,
+                proxy_data['user'],
+                proxy_data['pass']
+            )
+            return proxy
+        else:
+            raise Exception(f"Error: {data}")
+    except RequestException as e:
+        Stamp(f'HTTP Request failed: {e}', 'e')
+        return
+    except Exception as e:
+        Stamp(f'An error occurred: {e}', 'e')
+        return
 
 
 async def CheckProfileChange() -> None:
     while True:
         if source.ACC_TO_CHANGE:
-            await SetProfileInfo(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
-            await SetProfilePicture(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
-            await AddContacts(source.ACC_TO_CHANGE, 50, source.WARDEN_CHAT_ID)
-            await UpdatePrivacySettings(source.ACC_TO_CHANGE, source.WARDEN_CHAT_ID)
-            SetPassword(source.WARDEN_CHAT_ID, PASSWORD)
+            SetPassword(PrepareDriver(), source.ADMIN_CHAT_ID, PASSWORD)
+            proxy = buyProxy(PROXY_KEY)
+            num, api_id, api_hash = source.ACC_TO_CHANGE.split('|')
+            session = join(getcwd(), 'sessions', f'{num}')
+            client = TelegramClient(session, api_id, api_hash, proxy=proxy)
+            await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback())
+            source.ACCOUNTS.append(client)
+            Stamp(f'Account {num} authorized', 's')
+            BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
+            await SetProfileInfo(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
+            await SetProfilePicture(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
+            await AddContacts(source.ACC_TO_CHANGE, 50, source.ADMIN_CHAT_ID)
+            await UpdatePrivacySettings(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
+            srv = BuildService()
+            row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
+            UploadData([[num, api_id, api_hash, '-', proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+            Stamp(f'Data for number {num} added to the table', 's')
+            BOT.send_message(source.ADMIN_CHAT_ID, f'📊 Данные для номера {num} занесены в таблицу')
             source.ACC_TO_CHANGE = None
         await async_sleep(source.SHORT_SLEEP)
+
+
+def emuAuthCallback() -> int:
+    pass
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:

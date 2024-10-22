@@ -1,18 +1,18 @@
-from bs4 import BeautifulSoup
 import source
-from headers_agents import HEADERS
-from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP, MAX_WAIT_CODE,
-                    URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS,
-                    EXTRA_SHEET_NAME, LEFT_CORNER, SMALL_RIGHT_CORNER)
-from common import Stamp, Sleep, ControlRecursion, ShowButtons, UploadData, GetSector, BuildService
-from re import search, IGNORECASE
-from requests import Session
-from secret import SHEET_ID
-from telebot.types import Message
-from datetime import datetime
-from generator import GenerateRandomWord
 from emulator import PressButton, PrepareDriver, IsElementPresent, ExtractCodeFromMessage
+from headers_agents import HEADERS
+from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP,
+                    MAX_WAIT_CODE, URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS)
+from generator import GenerateRandomWord
+from common import Stamp, Sleep, ControlRecursion, ShowButtons
+# ---
+from re import search, IGNORECASE
+from datetime import datetime
+# ---
+from requests import Session
+from telebot.types import Message
 from appium.webdriver.common.appiumby import AppiumBy
+from bs4 import BeautifulSoup
 
 
 def SendAPICode(message: Message, num: str) -> None:
@@ -23,7 +23,7 @@ def SendAPICode(message: Message, num: str) -> None:
     except RecursionError:
         Stamp(f'Exiting because of requesting code fail', 'w')
         BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
-                                  'завершаю процесс покупки...')
+                                               'завершаю процесс покупки...')
         return
     Sleep(10)
     start_time = datetime.now()
@@ -134,7 +134,7 @@ def GetHash(message: Message, session: Session) -> str:
         else:
             Stamp('Did not got HTML page for hash', 'e')
             BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с хешем, '
-                             f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+                                                   f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             cur_hash = GetHash(message, session)
     return cur_hash
@@ -172,18 +172,14 @@ def FinalStep(message: Message, session: Session, num: str, cur_hash: str) -> No
     except RecursionError:
         Stamp(f'Exiting because of getting app data fail', 'w')
         BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
-                                  'завершаю процесс покупки...')
+                                               'завершаю процесс покупки...')
         return
     Stamp(f'Got api_id: {api_id} and api_hash: {api_hash} for number {num}', 's')
     BOT.send_message(message.from_user.id, f'✅ Получил данные для номера {num}:\n'
                                            f'API_ID: {api_id}\n'
                                            f'API_HASH: {api_hash}\n'
-                                           f'▶️ Заношу данные в таблицу...')
-    srv = BuildService()
-    row = len(GetSector(LEFT_CORNER, SMALL_RIGHT_CORNER, srv, EXTRA_SHEET_NAME, SHEET_ID)) + 2
-    UploadData([[num[1:], api_id, api_hash, '-']], EXTRA_SHEET_NAME, SHEET_ID, srv, row)
-    Stamp(f'Data for number {num} added to the table', 's')
-    BOT.send_message(message.from_user.id, f'📊 Данные для номера {num} занесены в таблицу')
+                                           f'▶️ Начинаю авторизацию и изменение аккаунта...')
+    source.ACC_TO_CHANGE = num + '|' + api_id + '|' + api_hash
     ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
@@ -229,7 +225,7 @@ def GetAppData(message: Message, session: Session) -> (str, str):
         else:
             Stamp('Did not got HTML page', 'e')
             BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '
-                             f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+                                                   f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             api_id, api_hash = GetAppData(message, session)
     return api_id, api_hash

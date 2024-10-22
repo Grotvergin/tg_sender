@@ -1,8 +1,10 @@
-from telebot.types import Message
-from source import BOT, REQS_PORTION
-from os.path import split
-from common import Sleep
 import source
+from common import Sleep
+from source import BOT, REQS_PORTION
+# ---
+from os.path import split
+# ---
+from telebot.types import Message
 
 
 def SendTariffInfo(data: dict) -> (str, list):

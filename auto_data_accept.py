@@ -1,14 +1,17 @@
-from telebot.types import Message
-from common import ShowButtons, Stamp
+import source
 from source import (AUTO_BTNS, CANCEL_BTN, WELCOME_BTNS,
                     AUTO_CHOICE, LINK_FORMAT, MAX_MINS,
                     TIME_FORMAT, BOT, FILE_AUTO_VIEWS)
-from re import match
+from common import ShowButtons, Stamp
+from file import SaveRequestsToFile
 from deletion import DeleteAutomaticRequest
 from info_senders import SendAutomaticRequests
+# ---
+from re import match
 from datetime import datetime
-from file import SaveRequestsToFile
-import source
+# ---
+from telebot.types import Message
+
 
 
 def AutomaticChannelDispatcher(message: Message, file: str) -> None:

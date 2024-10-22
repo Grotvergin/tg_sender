@@ -1,4 +1,5 @@
 from common import Stamp
+# ---
 from json import load, dump
 from os.path import exists, getsize
 

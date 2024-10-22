@@ -1,9 +1,11 @@
-from telebot.types import Message
+import source
 from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE
 from common import ShowButtons, Stamp
 from file import SaveRequestsToFile
+# ---
 from typing import Callable
-import source
+# ---
+from telebot.types import Message
 
 
 def DeleteSingleRequest(message: Message, clbk: Callable) -> None:

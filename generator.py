@@ -1,5 +1,6 @@
-from random import choice
 from source import FAKER
+# ---
+from random import choice
 
 
 def GenerateRandomRussianName() -> (str, str):

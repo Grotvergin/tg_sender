@@ -1,15 +1,14 @@
 from common import Sleep, Stamp
 from source import ACCOUNTS, SHORT_SLEEP
-from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import SendReactionRequest
-from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
-                             ChannelPrivateError, ChatIdInvalidError,
-                             PeerIdInvalidError, ChannelInvalidError,
-                             InviteHashInvalidError)
-from telethon.tl.types import ReactionEmoji
-from telethon.tl.functions.messages import GetMessagesViewsRequest, ImportChatInviteRequest
-from telethon.errors import InviteRequestSentError
+# ---
 from asyncio import sleep as async_sleep
+# ---
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.messages import SendReactionRequest, GetMessagesViewsRequest, ImportChatInviteRequest
+from telethon.errors import (ReactionInvalidError, MessageIdInvalidError, ChannelPrivateError, ChatIdInvalidError,
+                             PeerIdInvalidError, ChannelInvalidError, InviteHashInvalidError)
+from telethon.tl.types import ReactionEmoji
+from telethon.errors import InviteRequestSentError
 
 
 async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, emoji: str) -> int:

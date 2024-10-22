@@ -1,18 +1,19 @@
+import source
+from file import SaveRequestsToFile
+from adders import PerformSubscription
+from secret import MY_TG_ID
+from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
+                    LINK_DECREASE_RATIO, LIMIT_DIALOGS)
+from common import Stamp, AsyncSleep
+# ---
+from re import compile
+from random import randint
+from datetime import datetime, timedelta
+# ---
 from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel
 from telethon.sync import TelegramClient
 from telethon.events import NewMessage
-from re import compile
-from random import randint
-from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
-                    LINK_DECREASE_RATIO, LIMIT_DIALOGS)
-from common import Stamp, AsyncSleep
-from datetime import datetime, timedelta
-from adders import PerformSubscription
-from secret import MY_TG_ID
-import source
-from file import SaveRequestsToFile
-from telebot.apihelper import ApiTelegramException
 
 
 async def RefreshEventHandler():
