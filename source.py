@@ -50,6 +50,7 @@ FAKER = Faker()
 init()
 seed()
 ADMIN_CHAT_ID = MY_TG_ID
+WARDEN_CHAT_ID = MY_TG_ID
 CODE = None
 ACC_TO_CHANGE = None
 LONG_SLEEP = 15

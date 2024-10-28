@@ -17,9 +17,6 @@ from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, P
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 
 
-
-
-
 def WaitForCode(max_wait_time: int) -> int | None:
     start = time()
     Stamp('Start of waiting for code', 'i')

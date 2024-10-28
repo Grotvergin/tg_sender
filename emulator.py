@@ -1,8 +1,7 @@
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import HOME_KEYCODE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, MAX_RECURSION
 from secret import UDID, APPIUM
-from api import GenerateRandomWord
-from generator import GenerateRandomRussianName
+from generator import GenerateRandomRussianName, GenerateRandomWord
 # ---
 from re import search, MULTILINE
 from time import sleep
@@ -122,9 +121,6 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 def SetPassword(driver: Remote, user_id: int, password: str) -> None:
     Stamp('Setting password ', 'i')
     BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта')
-    CloseTelegramApp(driver)
-    BackToHomeScreen(driver)
-    PressButton(driver, '//android.widget.TextView[@content-desc="Telegram"]', 'Telegram', 3)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', 'Menu', 3)
     PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
     PressButton(driver, '//android.widget.TextView[@text="Privacy and Security"]', 'Privacy & Security', 3)
@@ -135,8 +131,14 @@ def SetPassword(driver: Remote, user_id: int, password: str) -> None:
     InsertField(driver, '//android.widget.EditText[@content-desc="Re-enter password"]', 'Password repeat', password, 2)
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Next"]', 'Next', 3)
     PressButton(driver, '//android.widget.TextView[@text="Skip"]', 'Skip', 3)
-    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
-    InsertField(driver, '//android.widget.EditText[@content-desc="Email"]', 'Email', email, 2)
+    while True:
+        email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
+        InsertField(driver, '//android.widget.EditText[@content-desc="Email"]', 'Email', email, 5)
+        if IsElementPresent(driver, '//android.widget.TextView[@text="An error occurred.EMAIL_NOT_ALLOWED"]'):
+            PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK after email is not allowed', 3)
+            PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after email is not allowed', 3)
+            continue
+        break
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Next"]', 'Next', 3)
     code = GetEmailCode(token)
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)

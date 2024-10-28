@@ -1,8 +1,8 @@
 import source
 from source import BOT, IMG_PATH, LEFT_CORNER, RIGHT_CORNER
-from common import Stamp, UploadData, GetSector, BuildService
-from emulator import SetPassword, PrepareDriver
-from secret import PASSWORD, PROXY_KEY, SHEET_ID, SHEET_NAME
+from common import Stamp, UploadData, GetSector, BuildService, AsyncSleep
+from emulator import SetPassword, PrepareDriver, PressButton
+from secret import PASSWORD, PROXY_KEY, SHEET_ID, SHEET_NAME, AR_TG_ID
 from generator import GenerateRandomRussianName
 # ---
 from io import BytesIO
@@ -10,7 +10,9 @@ from os import remove, getcwd
 from os.path import split, join
 from random import randint, choice
 from asyncio import sleep as async_sleep
+from re import search
 # ---
+from appium.webdriver.common.appiumby import AppiumBy
 from requests import get, RequestException
 from PIL import Image
 from socks import SOCKS5
@@ -31,8 +33,8 @@ def buyProxy(api_key):
     params = {
         'count': 1,
         'period': 30,
-        'country': 'ru',
-        'version': 3,
+        'country': 'id',
+        'version': 4,
         'type': 'socks'
     }
     try:
@@ -63,30 +65,44 @@ def buyProxy(api_key):
 async def CheckProfileChange() -> None:
     while True:
         if source.ACC_TO_CHANGE:
-            SetPassword(PrepareDriver(), source.ADMIN_CHAT_ID, PASSWORD)
-            proxy = buyProxy(PROXY_KEY)
+            driver = PrepareDriver()
+            SetPassword(driver, AR_TG_ID, PASSWORD)
+            # proxy = buyProxy(PROXY_KEY)
+            proxy = (2, '181.177.100.240', '8000', True, 'd0qV1e', '16BRMs')
             num, api_id, api_hash = source.ACC_TO_CHANGE.split('|')
             session = join(getcwd(), 'sessions', f'{num}')
-            client = TelegramClient(session, api_id, api_hash, proxy=proxy)
-            await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback())
+            client = TelegramClient(session, api_id, api_hash)
+            await AsyncSleep(10)
+            await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
             source.ACCOUNTS.append(client)
             Stamp(f'Account {num} authorized', 's')
-            BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
-            await SetProfileInfo(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
-            await SetProfilePicture(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
-            await AddContacts(source.ACC_TO_CHANGE, 50, source.ADMIN_CHAT_ID)
-            await UpdatePrivacySettings(source.ACC_TO_CHANGE, source.ADMIN_CHAT_ID)
+            BOT.send_message(AR_TG_ID, f'✅ Аккаунт {num} авторизован')
+            await SetProfileInfo(client, AR_TG_ID)
+            await SetProfilePicture(client, AR_TG_ID)
+            await AddContacts(client, 50, AR_TG_ID)
+            await UpdatePrivacySettings(client, AR_TG_ID)
             srv = BuildService()
             row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
             UploadData([[num, api_id, api_hash, '-', proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
             Stamp(f'Data for number {num} added to the table', 's')
-            BOT.send_message(source.ADMIN_CHAT_ID, f'📊 Данные для номера {num} занесены в таблицу')
+            BOT.send_message(AR_TG_ID, f'📊 Данные для номера {num} занесены в таблицу')
             source.ACC_TO_CHANGE = None
         await async_sleep(source.SHORT_SLEEP)
 
 
-def emuAuthCallback() -> int:
-    pass
+def emuAuthCallback(driver) -> int:
+    PressButton(driver, "android.view.ViewGroup", 'Message with session code', 3, by=AppiumBy.CLASS_NAME)
+    element = driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("Код для входа в Telegram")')
+    print(element.text)
+    match = search(r'\b\d{5}\b', element.text)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
+    if match:
+        code = int(match.group())
+        Stamp(f'Code {code} found', 's')
+        return code
+    else:
+        Stamp('No code found in message', 'e')
+        raise ValueError("Код не найден в сообщении")
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:

@@ -35,6 +35,7 @@ def SendAPICode(message: Message, num: str) -> None:
             code = ExtractCodeFromMessage(driver)
             Stamp(f'API code received for number {num}: {code}', 's')
             BOT.send_message(message.from_user.id, f'✳️ Обнаружен код: {code}')
+            PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
             break
         Sleep(1)
     if not code:
