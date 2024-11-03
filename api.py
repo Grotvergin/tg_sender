@@ -13,21 +13,13 @@ from requests import Session
 from telebot.types import Message
 from appium.webdriver.common.appiumby import AppiumBy
 from bs4 import BeautifulSoup
+from appium.webdriver import Remote
 
 
-def SendAPICode(message: Message, num: str) -> None:
-    Stamp('Sending request to authorize on API', 'i')
-    BOT.send_message(message.from_user.id, f'📮 Отправляю код на номер {num} для авторизации API')
-    try:
-        session, rand_hash = RequestAPICode(message, num)
-    except RecursionError:
-        Stamp(f'Exiting because of requesting code fail', 'w')
-        BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
-                                               'завершаю процесс покупки...')
-        return
-    Sleep(10)
+def GetAPICode(driver: Remote, message: Message, num: str) -> None | str:
+    Stamp('Getting API code', 'i')
+    BOT.send_message(message.from_user.id, f'🔍 Получаю код для API')
     start_time = datetime.now()
-    driver = PrepareDriver()
     code = None
     PressButton(driver, 'new UiSelector().className("android.view.ViewGroup").index(0)', 'Chat', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
     while (datetime.now() - start_time).seconds < MAX_WAIT_CODE:
@@ -37,16 +29,18 @@ def SendAPICode(message: Message, num: str) -> None:
             BOT.send_message(message.from_user.id, f'✳️ Обнаружен код: {code}')
             PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
             break
-        Sleep(1)
+        Sleep(5)
     if not code:
         Stamp('No API code received', 'e')
-        BOT.send_message(message.from_user.id, '❌ Не удалось получить код для API, завершаю процесс покупки...')
-        return
-    HandleAPICode(message, session, num, rand_hash, code)
+        BOT.send_message(message.from_user.id, '❌ Не удалось получить код для API')
+        raise
+    return code
 
 
 @ControlRecursion
 def RequestAPICode(message: Message, num: str) -> (Session, str):
+    Stamp('Sending request to authorize on API', 'i')
+    BOT.send_message(message.from_user.id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
@@ -58,11 +52,11 @@ def RequestAPICode(message: Message, num: str) -> (Session, str):
         session, rand_hash = RequestAPICode(message, num)
     else:
         if str(response.status_code)[0] == '2':
-            Stamp(f'Sent API code to {num}', 's')
-            BOT.send_message(message.from_user.id, f'💬 Код для авторизации в API отправлен на {num}')
+            Stamp(f'Sent API code', 's')
+            BOT.send_message(message.from_user.id, f'💬 Код для авторизации в API отправлен')
             rand_hash = response.json()['random_hash']
         else:
-            Stamp(f'Failed to send API code to {num}: {response.text}', 'e')
+            Stamp(f'Failed to send API code: {response.text}', 'e')
             BOT.send_message(message.from_user.id, f'‼️ Не удалось запросить код для API, '
                                                    f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
@@ -70,28 +64,10 @@ def RequestAPICode(message: Message, num: str) -> (Session, str):
     return session, rand_hash
 
 
-def HandleAPICode(message: Message, session: Session, num: str, rand_hash: str, code: str) -> None:
-    try:
-        session = LoginAPI(message, session, num, rand_hash, code)
-    except RecursionError as e:
-        Stamp(f'Failed to login into API: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'🚫 Не удалось авторизоваться в API с номера {num}, '
-                                               f'перехожу к следующему номеру...')
-        return
-    Stamp(f'Getting hash for account {num}', 'i')
-    BOT.send_message(message.from_user.id, f'🔑 Получаю хеш для аккаунта {num}')
-    try:
-        cur_hash = GetHash(message, session)
-    except RecursionError as e:
-        Stamp(f'Failed to get hash: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'❌ Не удалось получить хеш для аккаунта {num}, '
-                                               f'завершаю процесс покупки...')
-        return
-    FinalStep(message, session, num, cur_hash)
-
-
 @ControlRecursion
 def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code: str) -> Session:
+    Stamp('Logging into API', 'i')
+    BOT.send_message(message.from_user.id, f'🔑 Пытаюсь зайти в API')
     data = {
         'phone': num,
         'random_hash': rand_hash,
@@ -107,18 +83,19 @@ def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code:
         session = LoginAPI(message, session, num, rand_hash, code)
     else:
         if str(response.status_code)[0] == '2':
-            Stamp(f'Logined into API for number {num}', 's')
+            Stamp(f'Login into API', 's')
             BOT.send_message(message.from_user.id, f'❇️ Зашёл в API для аккаунта {num}')
         else:
             Stamp(f'Failed to login into API: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, f'🛑 Не удалось зайти в API для номера {num}, '
-                                                   f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+            BOT.send_message(message.from_user.id, f'🛑 Не удалось зайти в API, пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             session = LoginAPI(message, session, num, rand_hash, code)
     return session
 
 
 def GetHash(message: Message, session: Session) -> str:
+    Stamp('Getting hash', 'i')
+    BOT.send_message(message.from_user.id, f'🔍 Получаю хеш с сайта...')
     try:
         response = session.get(URL_API_GET_APP, headers=HEADERS)
     except ConnectionError as e:
@@ -152,39 +129,12 @@ def ParseHash(message: Message, page: str) -> str | None:
         return hash_input.get('value')
     Stamp('Did not got hash', 'e')
     BOT.send_message(message.from_user.id, '❌ Не удалось найти хеш на странице')
-    return None
-
-
-def FinalStep(message: Message, session: Session, num: str, cur_hash: str) -> None:
-    Stamp(f'Creating app for account {num}', 'i')
-    BOT.send_message(message.from_user.id, f'🔨 Создаю приложение для аккаунта {num}')
-    try:
-        CreateApp(message, session, num, cur_hash)
-    except RecursionError as e:
-        Stamp(f'Failed to create app: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'📛 Не удалось создать приложение для аккаунта {num}')
-        return
-    BOT.send_message(message.from_user.id, f'✅ Приложение создано для аккаунта {num}, жду {LONG_SLEEP} секунд...')
-    Sleep(LONG_SLEEP)
-    Stamp(f'Getting HTML page for number {num}', 'i')
-    BOT.send_message(message.from_user.id, f'⏩ Получаю данные об API_ID и API_HASH...')
-    try:
-        api_id, api_hash = GetAppData(message, session)
-    except RecursionError:
-        Stamp(f'Exiting because of getting app data fail', 'w')
-        BOT.send_message(message.from_user.id, '❗️ Превышено максимальное количество попыток,'
-                                               'завершаю процесс покупки...')
-        return
-    Stamp(f'Got api_id: {api_id} and api_hash: {api_hash} for number {num}', 's')
-    BOT.send_message(message.from_user.id, f'✅ Получил данные для номера {num}:\n'
-                                           f'API_ID: {api_id}\n'
-                                           f'API_HASH: {api_hash}\n'
-                                           f'▶️ Начинаю авторизацию и изменение аккаунта...')
-    source.ACC_TO_CHANGE = num + '|' + api_id + '|' + api_hash
-    ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+    return
 
 
 def CreateApp(message: Message, session: Session, num: str, cur_hash: str) -> None:
+    Stamp('Creating app', 'i')
+    BOT.send_message(message.from_user.id, f'🔨 Создаю приложение')
     data = {
         'hash': cur_hash,
         'app_title': GenerateRandomWord(10),
@@ -210,6 +160,8 @@ def CreateApp(message: Message, session: Session, num: str, cur_hash: str) -> No
 
 @ControlRecursion
 def GetAppData(message: Message, session: Session) -> (str, str):
+    Stamp('Getting app data', 'i')
+    BOT.send_message(message.from_user.id, f'🔍 Получаю данные о приложении')
     try:
         response = session.get(URL_API_GET_APP, headers=HEADERS)
     except ConnectionError as e:
@@ -237,6 +189,6 @@ def ParseReadyHTML(page: str) -> (str, str):
     api_hash_pattern = r'<label for="app_hash" class="col-md-4 text-right control-label">App api_hash:</label>\s*<div class="col-md-7">\s*<span class="form-control input-xlarge uneditable-input"[^>]*>([a-f0-9]{32})</span>'
     api_id_match = search(api_id_pattern, page, IGNORECASE)
     api_hash_match = search(api_hash_pattern, page, IGNORECASE)
-    api_id = api_id_match.group(1) if api_id_match else 'Не нашёл!'
-    api_hash = api_hash_match.group(1) if api_hash_match else 'Не нашёл!'
+    api_id = api_id_match.group(1) if api_id_match else None
+    api_hash = api_hash_match.group(1) if api_hash_match else None
     return api_id, api_hash

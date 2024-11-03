@@ -1,6 +1,6 @@
 from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
 from source import HOME_KEYCODE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, MAX_RECURSION
-from secret import UDID, APPIUM
+from secret import UDID, APPIUM, PASSWORD
 from generator import GenerateRandomRussianName, GenerateRandomWord
 # ---
 from re import search, MULTILINE
@@ -11,6 +11,7 @@ from requests import get, post
 from appium.webdriver import Remote
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.options.android import UiAutomator2Options
+from telebot.types import Message
 
 
 def PrepareDriver() -> Remote:
@@ -118,9 +119,9 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
     return
 
 
-def SetPassword(driver: Remote, user_id: int, password: str) -> None:
+def SetPassword(driver: Remote, message: Message, password: str) -> None:
     Stamp('Setting password ', 'i')
-    BOT.send_message(user_id, f'🔒 Установка пароля для аккаунта')
+    BOT.send_message(message.from_user.id, f'🔒 Установка пароля')
     PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', 'Menu', 3)
     PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
     PressButton(driver, '//android.widget.TextView[@text="Privacy and Security"]', 'Privacy & Security', 3)
@@ -144,21 +145,14 @@ def SetPassword(driver: Remote, user_id: int, password: str) -> None:
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)
     PressButton(driver, '//android.widget.TextView[@text="Return to Settings"]', 'Done', 3)
     Stamp('Password set successfully', 's')
-    BOT.send_message(user_id, f'❇️ Пароль для аккаунта установлен')
+    BOT.send_message(message.from_user.id, f'❇️ Пароль для аккаунта установлен')
 
 
-def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, password: str) -> None:
-    Stamp('Asking for code', 'i')
-    BOT.send_message(user_id, f'💎 Запрос кода для номера {num}')
+def AskForCode(driver: Remote, num: str, message: Message, len_country_code: int) -> None:
+    Stamp(f'Asking for code', 'i')
+    BOT.send_message(message.from_user.id, f'📲 Запрос кода для входа в Telegram')
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
-    PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
-    PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', '|||', 3)
-    PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
-    PressButton(driver, '//android.widget.ImageButton[@content-desc="More options"]/android.widget.ImageView', '...', 3)
-    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])', 'Logout', 3)
-    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'One more logout', 3)
-    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'Final logout', 3)
     PressButton(driver, '//android.widget.TextView[@text="Start Messaging"]', 'Start Messaging', 3)
     country_code = num[1:1 + len_country_code]
     phone_number = num[1 + len_country_code:]
@@ -174,7 +168,7 @@ def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, pa
         PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit', 3)
         raise WeSentCodeToDevice
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Choose a login email"]'):
-        email, token = GetTemporaryEmail(MIN_LEN_EMAIL, password)
+        email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
         InsertField(driver, '//android.widget.EditText', 'Email', email, 2)
         PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 4)
         code = GetEmailCode(token)
@@ -183,17 +177,17 @@ def AskForCode(driver: Remote, user_id: int, num: str, len_country_code: int, pa
         Sleep(125)
         PressButton(driver, '//android.widget.TextView[@text="Get the code via SMS"]', 'Get the code via SMS', 5)
     Stamp('Code requested successfully', 's')
-    BOT.send_message(user_id, f'🔑 Код для номера {num} запрошен')
+    BOT.send_message(message.from_user.id, f'🔑 Код для входа в Telegram запрошен')
 
 
-def InsertCode(driver: Remote, user_id: int, code: str) -> None:
+def InsertCode(driver: Remote, message: Message, code: str) -> None:
     Stamp('Inserting code', 'i')
-    BOT.send_message(user_id, f'🗝 Ввод кода {code}')
+    BOT.send_message(message.from_user.id, f'🗝 Ввод кода {code}')
     DistributedInsertion(driver,
                          '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]',
                          'Code', code, 3, 1)
     Stamp('Code inserted successfully', 's')
-    BOT.send_message(user_id, f'✅ Код {code} введен')
+    BOT.send_message(message.from_user.id, f'✅ Код {code} введен')
     if IsElementPresent(driver, '//android.widget.TextView[@text="Profile info"]'):
         first_name, last_name = GenerateRandomRussianName()
         InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText', 'First Name', first_name, 4)
@@ -208,3 +202,14 @@ def ExtractCodeFromMessage(driver: Remote) -> str | None:
     if found:
         return found.group(1)
     return
+
+
+def ExitFromAccount(driver: Remote):
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', '|||', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
+    PressButton(driver, '//android.widget.ImageButton[@content-desc="More options"]/android.widget.ImageView', '...', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])', 'Logout', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'One more logout', 3)
+    PressButton(driver, '(//android.widget.TextView[@text="Log Out"])[2]', 'Final logout', 3)
+

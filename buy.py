@@ -1,15 +1,40 @@
+import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
                     AccountIsBanned, WeSentCodeToDevice)
-from api import SendAPICode
-from emulator import AskForCode, InsertCode, PrepareDriver
+from api import GetAPICode, RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
+from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword
 from secret import TOKEN_SIM, PASSWORD
 from info_senders import SendTariffInfo
 # ---
 from requests import get
 from telebot.types import Message
+
+
+@ControlRecursion
+def GetTariffInfo(message: Message) -> dict:
+    try:
+        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM})
+    except ConnectionError as e:
+        Stamp(f'Failed to connect to the server while getting tariffs: {e}', 'e')
+        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для получения тарифов, '
+                                               f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+        Sleep(LONG_SLEEP, 0.5)
+        data = GetTariffInfo(message, TOKEN_SIM)
+    else:
+        if str(response.status_code)[0] == '2':
+            Stamp('Successfully got tariffs', 's')
+            BOT.send_message(message.from_user.id, f'🔁 Получил тарифы')
+            data = response.json()
+        else:
+            Stamp(f'Failed to get tariffs: {response.text}', 'w')
+            BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось получить тарифы, '
+                                                    f'пробую ещё раз через {LONG_SLEEP} секунд...')
+            Sleep(LONG_SLEEP)
+            data = GetTariffInfo(message, TOKEN_SIM)
+    return data
 
 
 def AddAccounts(message: Message) -> None:
@@ -48,43 +73,60 @@ def ChooseCountry(message: Message, req_quantity: int, avail_codes: list) -> Non
         BOT.register_next_step_handler(message, ChooseCountry, req_quantity)
         return
     Stamp(f'Chosen country: {message.text}', 'i')
-    BOT.send_message(message.from_user.id, f'🔁 Выбрана страна: {message.text}. Начинаю процесс покупки...')
-    AddAccountRecursive(message, 0, req_quantity, country_code)
+    BOT.send_message(message.from_user.id, f'🔁 Выбрана страна {message.text}')
+    ProcessAccounts(message, req_quantity, country_code)
 
 
-def AddAccountRecursive(message: Message, current_index: int, total: int, country_code: int) -> None:
-    if current_index >= total:
-        BOT.send_message(message.from_user.id, f'✅ Было обработано {total} аккаунтов')
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-        return
-    Stamp(f'Adding {current_index + 1} account', 'i')
-    BOT.send_message(message.from_user.id, f'▫️ Добавляю {current_index + 1}-й аккаунт')
-    try:
-        num, tzid = BuyAccount(message, country_code)
-    except RecursionError:
-        Stamp(f'Exiting because of buying fail', 'w')
-        BOT.send_message(message.from_user.id, '❗️ Завершаю процесс покупки...')
-        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-        return
-    try:
-        AskForCode(PrepareDriver(), message.from_user.id, num, len(str(country_code)), PASSWORD)
-    except AccountIsBanned:
-        Stamp(f'Account {num} is banned', 'w')
-        BOT.send_message(message.from_user.id, f'❌ Аккаунт {num} заблокирован, отменяю и перехожу к следующему...')
-        CancelNumber(message, num, tzid)
-        AddAccountRecursive(message, current_index + 1, total, country_code)
-        return
-    except WeSentCodeToDevice:
-        Stamp(f'Code was sent to device for {num}', 's')
-        BOT.send_message(message.from_user.id, f'❌ Код отправлен на устройство для {num}, отменяю и перехожу к следующему...')
-        CancelNumber(message, num, tzid)
-        AddAccountRecursive(message, current_index + 1, total, country_code)
-        return
-    ProcessAccountSms(message, num, tzid, current_index, total, country_code)
+def ProcessAccounts(message: Message, req_quantity: int, country_code: int) -> None:
+    for i in range(req_quantity):
+        driver = PrepareDriver()
+        Stamp(f'Adding {i + 1} account', 'i')
+        BOT.send_message(message.from_user.id, f'▫️ Добавляю {i + 1}-й аккаунт')
+        try:
+            num, tzid = BuyAccount(message, country_code)
+            AskForCode(driver, num, message, len(str(country_code)))
+            code = GetCodeFromSms(message, num)
+            InsertCode(driver, message, code)
+            session, rand_hash = RequestAPICode(message, num)
+            Sleep(10, 0.3)
+            code = GetAPICode(driver, message, num)
+            LoginAPI(message, session, num, rand_hash, code)
+            cur_hash = GetHash(message, session)
+            CreateApp(message, session, num, cur_hash)
+            Sleep(LONG_SLEEP)
+            api_id, api_hash = GetAppData(message, session)
+            SetPassword(driver, message, PASSWORD)
+            source.ACC_TO_CHANGE = {
+                "num": num,
+                "api_id": api_id,
+                "api_hash": api_hash,
+                'user_id': message.from_user.id,
+                'driver': driver
+            }
+        except (AccountIsBanned, WeSentCodeToDevice):
+            Stamp(f'Account {i + 1} is banned or code was sent to another device', 'w')
+            BOT.send_message(message.from_user.id, f'❌ Аккаунт {i + 1} заблокирован или код отправлен на устройство, отменяю и перехожу к следующему...')
+            try:
+                CancelNumber(message, num, tzid)
+                continue
+            except RecursionError:
+                Stamp(f'Exiting because unable to cancel account', 'w')
+                BOT.send_message(message.from_user.id, '❗️ Не получилось отменить аккаунт, завершаю процесс...')
+        except RecursionError:
+            Stamp(f'Exiting because of recursion error', 'w')
+            BOT.send_message(message.from_user.id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки...')
+            break
+        except Exception as e:
+            Stamp(f'Error while adding accounts: {e}', 'e')
+            BOT.send_message(message.from_user.id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
+            break
+    ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
 @ControlRecursion
 def BuyAccount(message: Message, country_code: int) -> tuple:
+    Stamp('Trying to buy account', 'i')
+    BOT.send_message(message.from_user.id, '📲 Покупаю номер...')
     try:
         response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': country_code, 'number': True, 'lang': 'ru'})
     except ConnectionError as e:
@@ -104,7 +146,7 @@ def BuyAccount(message: Message, country_code: int) -> tuple:
                 Stamp(f'No "number" field in response <-> no available numbers in this region', 'e')
                 BOT.send_message(message.from_user.id, '⛔️ Нет доступных номеров в этом регионе, '
                                                        'прекращаю процесс покупки...')
-                raise RecursionError
+                raise
         else:
             Stamp(f'Failed to buy account: {response.text}', 'e')
             BOT.send_message(message.from_user.id, f'❌ Не удалось купить аккаунт, '
@@ -132,23 +174,22 @@ def CancelNumber(message: Message, num: str, tzid: str) -> None:
             Stamp(f'Failed to cancel number {num}: {response.text}', 'w')
             BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось отменить номер, '
                                                     f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
-            Sleep(LONG_SLEEP)
+            Sleep(LONG_SLEEP * 2)
             CancelNumber(message, num, tzid)
 
 
-def ProcessAccountSms(message: Message, num: str, tzid: str, current_index: int, total: int, country_code: int) -> None:
-    Stamp(f'Checking for all sms', 'i')
+@ControlRecursion
+def GetCodeFromSms(message: Message, num: str) -> int:
     sms_dict = CheckAllSms(message)
     if sms_dict and num in sms_dict:
-        Stamp('Found incoming sms for recently bought number', 's')
-        BOT.send_message(message.from_user.id, f'📲 Для номера {num} нашёл код: {sms_dict[num]}')
-        InsertCode(PrepareDriver(), message.from_user.id, sms_dict[num])
-        SendAPICode(message, num)
+        Stamp(f'Found incoming sms for num {num}', 's')
+        BOT.send_message(message.from_user.id, f'🔔 Нашёл код: {sms_dict[num]}')
+        return sms_dict[num]
     else:
         Stamp(f'No incoming sms for {num}', 'w')
-        BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений для {num}')
-        Sleep(10)
-        ProcessAccountSms(message, num, tzid, current_index, total, country_code)
+        BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений...')
+        Sleep(LONG_SLEEP)
+        return GetCodeFromSms(message, num)
 
 
 def CheckAllSms(message: Message) -> dict | None:
@@ -168,27 +209,3 @@ def CheckAllSms(message: Message) -> dict | None:
             Stamp(f'Failed to get list of sms: {response.text}', 'e')
             BOT.send_message(message.from_user.id, f'❌ Статус {response.status_code} при обновлении списка смс...')
     return res
-
-
-@ControlRecursion
-def GetTariffInfo(message: Message) -> dict:
-    try:
-        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM})
-    except ConnectionError as e:
-        Stamp(f'Failed to connect to the server while getting tariffs: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для получения тарифов, '
-                                               f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
-        Sleep(LONG_SLEEP, 0.5)
-        data = GetTariffInfo(message, TOKEN_SIM)
-    else:
-        if str(response.status_code)[0] == '2':
-            Stamp('Successfully got tariffs', 's')
-            BOT.send_message(message.from_user.id, f'🔁 Получил тарифы')
-            data = response.json()
-        else:
-            Stamp(f'Failed to get tariffs: {response.text}', 'w')
-            BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось получить тарифы, '
-                                                    f'пробую ещё раз через {LONG_SLEEP} секунд...')
-            Sleep(LONG_SLEEP)
-            data = GetTariffInfo(message, TOKEN_SIM)
-    return data
