@@ -65,7 +65,7 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
-        AddAccounts(message)
+        BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':

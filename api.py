@@ -175,6 +175,8 @@ def GetAppData(message: Message, session: Session) -> (str, str):
             Stamp(f'Got HTML page', 's')
             BOT.send_message(message.from_user.id, f'♻️ Получил страницу сайта, ищу необходимые данные')
             api_id, api_hash = ParseReadyHTML(response.text)
+            Stamp(f'Created an application with {api_id}:{api_hash}', 's')
+            BOT.send_message(message.from_user.id, f'⚡️ Создал приложение с {api_id}:{api_hash}')
         else:
             Stamp('Did not got HTML page', 'e')
             BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '

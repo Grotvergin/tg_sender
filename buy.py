@@ -1,16 +1,19 @@
 import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
-                    URL_SMS, URL_GET_TARIFFS)
-from common import (ShowButtons, Sleep, Stamp, ControlRecursion,
-                    AccountIsBanned, WeSentCodeToDevice)
+                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE)
+from common import (ShowButtons, Sleep, Stamp, ControlRecursion, SmsCodeNotFoundError,
+                    AccountIsBanned, WeSentCodeToDevice, WeSentCodeToEmail, EmailNotAllowed, TooManyAttempts)
 from api import GetAPICode, RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
-from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword
+from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword, PressButton, IsElementPresent, ExitFromAccount
 from secret import TOKEN_SIM, PASSWORD
 from info_senders import SendTariffInfo
 # ---
+from time import time
+# ---
 from requests import get
 from telebot.types import Message
+from appium.webdriver import Remote
 
 
 @ControlRecursion
@@ -44,11 +47,11 @@ def AddAccounts(message: Message) -> None:
     try:
         req_quantity = int(message.text)
     except ValueError:
-        ShowButtons(message, CANCEL_BTN, f'❌ Пожалуйста, введите только число. Введите от 0 до {MAX_ACCOUNTS_BUY}:')
+        ShowButtons(message, CANCEL_BTN, f'❌ Пожалуйста, введите только число. Введите от 1 до {MAX_ACCOUNTS_BUY}:')
         BOT.register_next_step_handler(message, AddAccounts)
         return
     if req_quantity > MAX_ACCOUNTS_BUY or req_quantity <= 0:
-        ShowButtons(message, CANCEL_BTN, f'❌ Введено некорректное число. Введите от 0 до {MAX_ACCOUNTS_BUY}:')
+        ShowButtons(message, CANCEL_BTN, f'❌ Введено некорректное число. Введите от 1 до {MAX_ACCOUNTS_BUY}:')
         BOT.register_next_step_handler(message, AddAccounts)
         return
     country_data = GetTariffInfo(message)
@@ -66,11 +69,11 @@ def ChooseCountry(message: Message, req_quantity: int, avail_codes: list) -> Non
         country_code = int(message.text)
     except ValueError:
         ShowButtons(message, CANCEL_BTN, '❌ Пожалуйста, введите только код страны (например, 7):')
-        BOT.register_next_step_handler(message, ChooseCountry, req_quantity)
+        BOT.register_next_step_handler(message, ChooseCountry, req_quantity, avail_codes)
         return
     if country_code not in avail_codes:
         ShowButtons(message, CANCEL_BTN, '❌ Введена некорректная страна. Попробуйте ещё раз:')
-        BOT.register_next_step_handler(message, ChooseCountry, req_quantity)
+        BOT.register_next_step_handler(message, ChooseCountry, req_quantity, avail_codes)
         return
     Stamp(f'Chosen country: {message.text}', 'i')
     BOT.send_message(message.from_user.id, f'🔁 Выбрана страна {message.text}')
@@ -78,14 +81,15 @@ def ChooseCountry(message: Message, req_quantity: int, avail_codes: list) -> Non
 
 
 def ProcessAccounts(message: Message, req_quantity: int, country_code: int) -> None:
-    for i in range(req_quantity):
+    i = 0
+    while i < req_quantity:
         driver = PrepareDriver()
         Stamp(f'Adding {i + 1} account', 'i')
         BOT.send_message(message.from_user.id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
             num, tzid = BuyAccount(message, country_code)
             AskForCode(driver, num, message, len(str(country_code)))
-            code = GetCodeFromSms(message, num)
+            code = GetCodeFromSms(driver, message, num)
             InsertCode(driver, message, code)
             session, rand_hash = RequestAPICode(message, num)
             Sleep(10, 0.3)
@@ -103,9 +107,10 @@ def ProcessAccounts(message: Message, req_quantity: int, country_code: int) -> N
                 'user_id': message.from_user.id,
                 'driver': driver
             }
-        except (AccountIsBanned, WeSentCodeToDevice):
-            Stamp(f'Account {i + 1} is banned or code was sent to another device', 'w')
-            BOT.send_message(message.from_user.id, f'❌ Аккаунт {i + 1} заблокирован или код отправлен на устройство, отменяю и перехожу к следующему...')
+            i += 1
+        except (AccountIsBanned, WeSentCodeToDevice, WeSentCodeToEmail, EmailNotAllowed, SmsCodeNotFoundError, TooManyAttempts):
+            Stamp(f'Account {i + 1} has problems when requesting code', 'w')
+            BOT.send_message(message.from_user.id, f'❌ В аккаунте {i + 1} проблема при запросе кода, отменяю и перехожу к следующему...')
             try:
                 CancelNumber(message, num, tzid)
                 continue
@@ -171,25 +176,27 @@ def CancelNumber(message: Message, num: str, tzid: str) -> None:
             Stamp(f'Successful cancelling of number {num}', 's')
             BOT.send_message(message.from_user.id, f'❇️ Номер {num} отменён')
         else:
-            Stamp(f'Failed to cancel number {num}: {response.text}', 'w')
+            Stamp(f'Failed to cancel number {num}', 'w')
             BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось отменить номер, '
                                                     f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
             Sleep(LONG_SLEEP * 2)
             CancelNumber(message, num, tzid)
 
 
-@ControlRecursion
-def GetCodeFromSms(message: Message, num: str) -> int:
-    sms_dict = CheckAllSms(message)
-    if sms_dict and num in sms_dict:
-        Stamp(f'Found incoming sms for num {num}', 's')
-        BOT.send_message(message.from_user.id, f'🔔 Нашёл код: {sms_dict[num]}')
-        return sms_dict[num]
-    else:
-        Stamp(f'No incoming sms for {num}', 'w')
-        BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений...')
+def GetCodeFromSms(driver: Remote, message: Message, num: str, timeout: int = MAX_WAIT_CODE) -> str:
+    start_time = time()
+    while time() - start_time < timeout:
+        sms_dict = CheckAllSms(message)
+        if sms_dict and num in sms_dict:
+            Stamp(f'Found incoming sms for num {num}', 's')
+            BOT.send_message(message.from_user.id, f'🔔 Нашёл код: {sms_dict[num]}')
+            return sms_dict[num]
+        Stamp(f'No incoming sms for {num} after {round(time() - start_time)} seconds of waiting', 'w')
+        BOT.send_message(message.from_user.id, f'💤 Не вижу входящих сообщений после {round(time() - start_time)} секунд ожидания...')
         Sleep(LONG_SLEEP)
-        return GetCodeFromSms(message, num)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after code not received', 3)
+    PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Another back after code not received', 3)
+    raise SmsCodeNotFoundError
 
 
 def CheckAllSms(message: Message) -> dict | None:

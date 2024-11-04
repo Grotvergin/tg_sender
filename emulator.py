@@ -1,4 +1,4 @@
-from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice
+from common import Stamp, Sleep, AccountIsBanned, WeSentCodeToDevice, WeSentCodeToEmail, EmailNotAllowed, TooManyAttempts
 from source import HOME_KEYCODE, BOT, MIN_LEN_EMAIL, SHORT_SLEEP, MAX_RECURSION
 from secret import UDID, APPIUM, PASSWORD
 from generator import GenerateRandomRussianName, GenerateRandomWord
@@ -144,6 +144,9 @@ def SetPassword(driver: Remote, message: Message, password: str) -> None:
     code = GetEmailCode(token)
     DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Email code', code, 3, 1)
     PressButton(driver, '//android.widget.TextView[@text="Return to Settings"]', 'Done', 3)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Back', 2)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Another back', 2)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Final back', 2)
     Stamp('Password set successfully', 's')
     BOT.send_message(message.from_user.id, f'❇️ Пароль для аккаунта установлен')
 
@@ -153,6 +156,7 @@ def AskForCode(driver: Remote, num: str, message: Message, len_country_code: int
     BOT.send_message(message.from_user.id, f'📲 Запрос кода для входа в Telegram')
     CloseTelegramApp(driver)
     BackToHomeScreen(driver)
+    PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
     PressButton(driver, '//android.widget.TextView[@text="Start Messaging"]', 'Start Messaging', 3)
     country_code = num[1:1 + len_country_code]
     phone_number = num[1 + len_country_code:]
@@ -161,11 +165,8 @@ def AskForCode(driver: Remote, num: str, message: Message, len_country_code: int
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', '->', 3)
     PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 10)
     if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]'):
-        PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK', 3)
         raise AccountIsBanned
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
-        PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back', 3)
-        PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit', 3)
         raise WeSentCodeToDevice
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Choose a login email"]'):
         email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
@@ -173,6 +174,24 @@ def AskForCode(driver: Remote, num: str, message: Message, len_country_code: int
         PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 4)
         code = GetEmailCode(token)
         DistributedInsertion(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]', 'Verification Code', code, 4, 1)
+        if IsElementPresent(driver, '//android.widget.TextView[@text="An error occurred.\nEMAIL_NOT_ALLOWED"]'):
+            PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK after email is not allowed', 3)
+            PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after email is not allowed', 3)
+            PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Another back after email is not allowed', 3)
+            raise EmailNotAllowed
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Check Your Email"]'):
+        PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after email is not allowed', 3)
+        raise WeSentCodeToEmail
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Too many attempts, please try again later."]'):
+        PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK', 1)
+        Stamp('Clearing cache', 'i')
+        driver.execute_script("mobile: shell", {
+            'command': 'pm clear',
+            'args': 'org.telegram.messenger',
+            'includeStderr': True,
+            'timeout': 5000
+        })
+        raise TooManyAttempts
     elif IsElementPresent(driver, 'path_to_get_via_sms'):
         Sleep(125)
         PressButton(driver, '//android.widget.TextView[@text="Get the code via SMS"]', 'Get the code via SMS', 5)
@@ -192,7 +211,9 @@ def InsertCode(driver: Remote, message: Message, code: str) -> None:
         first_name, last_name = GenerateRandomRussianName()
         InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText', 'First Name', first_name, 4)
         InsertField(driver, '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[2]/android.widget.EditText', 'Last Name', last_name, 3)
-        PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 3)
+        PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 1)
+    Sleep(10)
+    PressButton(driver, '//android.widget.TextView[@text="Not now"]', 'Not now in allowing contacts', 3)
 
 
 def ExtractCodeFromMessage(driver: Remote) -> str | None:
@@ -205,7 +226,6 @@ def ExtractCodeFromMessage(driver: Remote) -> str | None:
 
 
 def ExitFromAccount(driver: Remote):
-    PressButton(driver, '//android.widget.ImageView[@content-desc="Telegram"]', 'Telegram', 3)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Open navigation menu"]', '|||', 3)
     PressButton(driver, '(//android.widget.TextView[@text="Settings"])[2]', 'Settings', 3)
     PressButton(driver, '//android.widget.ImageButton[@content-desc="More options"]/android.widget.ImageView', '...', 3)

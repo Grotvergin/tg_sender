@@ -26,44 +26,38 @@ from telethon.tl.types import (InputPrivacyValueDisallowAll,
                                InputPhoneContact)
 
 
-def buyProxy(user_id: int):
-    Stamp('Buying proxy', 'i')
-    BOT.send_message(user_id, '🔒 Покупаю прокси...')
-    url = f"https://proxy6.net/api/{PROXY_KEY}/buy"
-    params = {
-        'count': 1,
-        'period': 30,
-        'country': 'id',
-        'version': 4,
-        'type': 'socks'
+def buyIpv4SharedProxy(api_key: str, user_id: int):
+    Stamp('Buying ipv4-shared proxy', 'i')
+    BOT.send_message(user_id, '🔒 Покупаю ipv4-shared прокси...')
+
+    url = f"https://api.dashboard.proxy.market/dev-api/v2/buy-proxies/{api_key}"
+    payload = {
+        "productId": 123,  # замените на ID продукта, соответствующего ipv4-shared
+        "duration": 30,  # длительность в днях (например, 30)
+        "count": 1,  # количество прокси
+        "promoCode": ""  # добавьте промокод, если есть
     }
+
     try:
-        response = get(url, params=params)
+        response = requests.post(url, json=payload)
         response.raise_for_status()
         data = response.json()
-        if data['status'] == 'yes':
-            proxy_data = list(data['list'].values())[0]
-            proxy = (
-                SOCKS5,
-                proxy_data['host'],
-                proxy_data['port'],
-                True,
-                proxy_data['user'],
-                proxy_data['pass']
-            )
-            Stamp(f'Proxy bought: {proxy[1]}:{proxy[2]}', 's')
-            BOT.send_message(user_id, f'✅ Прокси куплен: {proxy[1]}:{proxy[2]}')
-            return proxy
+
+        if data.get('success'):
+            Stamp('Proxy bought successfully', 's')
+            BOT.send_message(user_id, '✅ Прокси успешно куплен.')
+            return data  # возвращаем данные прокси, если нужно
         else:
-            Stamp(f'Error while buying proxy: {data}', 'e')
-            BOT.send_message(user_id, f'❌ Ошибка при покупке прокси')
-            raise Exception(f"Error: {data}")
-    except RequestException as e:
+            error_code = data.get('code', 'UNKNOWN_ERROR')
+            Stamp(f'Error while buying proxy: {error_code}', 'e')
+            BOT.send_message(user_id, f'❌ Ошибка при покупке прокси: {error_code}')
+            raise Exception(f"Error code: {error_code}")
+
+    except requests.RequestException as e:
         Stamp(f'HTTP Request failed: {e}', 'e')
-        return
+        BOT.send_message(user_id, '❌ Ошибка при покупке прокси. Проверьте соединение.')
     except Exception as e:
         Stamp(f'An error occurred: {e}', 'e')
-        return
 
 
 async def CheckProfileChange() -> None:
@@ -76,8 +70,8 @@ async def CheckProfileChange() -> None:
             driver = source.ACC_TO_CHANGE["driver"]
             Stamp('Account to change found', 'i')
             BOT.send_message(user_id, '🔄 Изменяю профиль...')
-            proxy = buyProxy(user_id)
-            # proxy = (2, '181.177.100.240', '8000', True, 'd0qV1e', '16BRMs')
+            # proxy = buyProxy(user_id)
+            proxy = (2, '138.36.139.13', '8000', True, 'eZ8JbY', 'PxtGtP')
             session = join(getcwd(), 'sessions', f'{num}')
             client = TelegramClient(session, api_id, api_hash)
             await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))

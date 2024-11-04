@@ -12,8 +12,7 @@ from faker import Faker
 from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
-# Button for returning the request
-# Buying more than one account test
+# Кнопка для возврата заявки
 # Функция забора кода из сообщения для авторизации
 
 WELCOME_BTNS = ('Разовые 1️⃣',
@@ -65,7 +64,7 @@ NOTIF_TIME_DELTA = 30
 HOME_KEYCODE = 3
 REQS_PORTION = 10
 MIN_LEN_EMAIL = 20
-MAX_RECURSION = 25
+MAX_RECURSION = 10
 NUMBER_LAST_FIN = 250
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 LINK_FORMAT = r'https://t\.me/'
