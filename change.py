@@ -1,8 +1,10 @@
+from telebot.apihelper import proxy
+
 import source
-from source import BOT, IMG_PATH, LEFT_CORNER, RIGHT_CORNER
+from source import BOT, IMG_PATH, LEFT_CORNER, RIGHT_CORNER, URL_BUY_PROXY, URL_RECEIVE_PROXY
 from common import Stamp, UploadData, GetSector, BuildService
 from emulator import PressButton, ExitFromAccount
-from secret import PASSWORD, PROXY_KEY, SHEET_ID, SHEET_NAME
+from secret import PASSWORD, SHEET_ID, SHEET_NAME, MY_TG_ID
 from generator import GenerateRandomRussianName, GenerateRandomDescription, GetRandomProfilePicture
 # ---
 from os import remove, getcwd
@@ -12,8 +14,7 @@ from asyncio import sleep as async_sleep
 from re import search
 # ---
 from appium.webdriver.common.appiumby import AppiumBy
-from requests import get, RequestException
-from socks import SOCKS5
+from requests import get, RequestException, post
 from telethon.sync import TelegramClient
 from telethon.tl.functions.account import UpdateProfileRequest, SetPrivacyRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
@@ -26,38 +27,62 @@ from telethon.tl.types import (InputPrivacyValueDisallowAll,
                                InputPhoneContact)
 
 
-def buyIpv4SharedProxy(api_key: str, user_id: int):
-    Stamp('Buying ipv4-shared proxy', 'i')
-    BOT.send_message(user_id, '🔒 Покупаю ipv4-shared прокси...')
-
-    url = f"https://api.dashboard.proxy.market/dev-api/v2/buy-proxies/{api_key}"
-    payload = {
-        "productId": 123,  # замените на ID продукта, соответствующего ipv4-shared
-        "duration": 30,  # длительность в днях (например, 30)
-        "count": 1,  # количество прокси
-        "promoCode": ""  # добавьте промокод, если есть
+def buyProxy(user_id: int):
+    Stamp('Buying proxy', 'i')
+    BOT.send_message(user_id, '🔒 Покупаю прокси...')
+    payload = {'PurchaseBilling':
+        {
+            "count": 1,
+            "duration": 30,
+            'type': 102,
+            'country': 'ru'
+        }
     }
-
     try:
-        response = requests.post(url, json=payload)
+        response = post(URL_BUY_PROXY, json=payload)
         response.raise_for_status()
         data = response.json()
-
         if data.get('success'):
-            Stamp('Proxy bought successfully', 's')
-            BOT.send_message(user_id, '✅ Прокси успешно куплен.')
-            return data  # возвращаем данные прокси, если нужно
+            Stamp('Proxy bought', 's')
+            BOT.send_message(user_id, '✅ Прокси куплен')
         else:
             error_code = data.get('code', 'UNKNOWN_ERROR')
             Stamp(f'Error while buying proxy: {error_code}', 'e')
             BOT.send_message(user_id, f'❌ Ошибка при покупке прокси: {error_code}')
             raise Exception(f"Error code: {error_code}")
-
-    except requests.RequestException as e:
+    except RequestException as e:
         Stamp(f'HTTP Request failed: {e}', 'e')
         BOT.send_message(user_id, '❌ Ошибка при покупке прокси. Проверьте соединение.')
-    except Exception as e:
-        Stamp(f'An error occurred: {e}', 'e')
+
+
+def receiveProxyInfo(user_id: str) -> tuple:
+    Stamp('Receiving proxy', 'i')
+    BOT.send_message(user_id, '🔒 Получаю данные о прокси...')
+    payload = {
+        "type": "ipv4-shared",
+        "proxy_type": "server",
+        "page": 1,
+        "page_size": 1,
+        "sort": 0
+    }
+    try:
+        response = post(URL_RECEIVE_PROXY, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        if data.get('success'):
+            Stamp('Proxy received', 's')
+            BOT.send_message(user_id, '🟢 Прокси получен')
+            cur = data['list']['data'][0]
+            proxy = (2, cur['ip'], cur['socks_port'], True, cur['login'], cur['password'])
+            return proxy
+        else:
+            error_code = data.get('message', 'UNKNOWN_ERROR')
+            Stamp(f'Error while receiving proxy: {error_code}', 'e')
+            BOT.send_message(user_id, f'❌ Ошибка при покупке прокси: {error_code}')
+            raise Exception(f"Error code: {error_code}")
+    except RequestException as e:
+        Stamp(f'HTTP Request failed: {e}', 'e')
+        BOT.send_message(user_id, '❌ Ошибка при получении прокси. Проверьте соединение.')
 
 
 async def CheckProfileChange() -> None:
@@ -70,25 +95,30 @@ async def CheckProfileChange() -> None:
             driver = source.ACC_TO_CHANGE["driver"]
             Stamp('Account to change found', 'i')
             BOT.send_message(user_id, '🔄 Изменяю профиль...')
-            # proxy = buyProxy(user_id)
-            proxy = (2, '138.36.139.13', '8000', True, 'eZ8JbY', 'PxtGtP')
-            session = join(getcwd(), 'sessions', f'{num}')
-            client = TelegramClient(session, api_id, api_hash)
-            await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
-            Stamp(f'Account {num} authorized', 's')
-            BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
-            source.ACCOUNTS.append(client)
-            await SetProfileInfo(client, user_id)
-            await SetProfilePicture(client, user_id)
-            await AddContacts(client, 50, user_id)
-            await UpdatePrivacySettings(client, user_id)
-            srv = BuildService()
-            row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-            UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
-            Stamp(f'Data for number {num} added to the table', 's')
-            BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
-            ExitFromAccount(driver)
-            source.ACC_TO_CHANGE = None
+            try:
+                buyProxy(user_id)
+                proxy = receiveProxyInfo(user_id)
+                # Good proxy: (2, '188.130.142.14', '1051', True, 'gwNf9l', '6g2sYtNVEo')
+                session = join(getcwd(), 'sessions', f'{num}')
+                client = TelegramClient(session, api_id, api_hash)
+                await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
+                Stamp(f'Account {num} authorized', 's')
+                BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
+                source.ACCOUNTS.append(client)
+                await SetProfileInfo(client, user_id)
+                await SetProfilePicture(client, user_id)
+                await AddContacts(client, 50, user_id)
+                await UpdatePrivacySettings(client, user_id)
+                srv = BuildService()
+                row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
+                UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+                Stamp(f'Data for number {num} added to the table', 's')
+                BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
+                ExitFromAccount(driver)
+                source.ACC_TO_CHANGE = None
+            except Exception as e:
+                Stamp(f'Error while changing account: {e}', 'e')
+                BOT.send_message(user_id, f'❌ Произошла ошибка при изменении данных: {e}')
         await async_sleep(source.SHORT_SLEEP)
 
 

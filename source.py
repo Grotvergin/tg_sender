@@ -1,4 +1,4 @@
-from secret import TOKEN, MY_TG_ID
+from secret import TOKEN, MY_TG_ID, PROXY_KEY
 # ---
 from random import seed
 from ssl import SSLEOFError
@@ -78,6 +78,9 @@ URL_API_GET_CODE = URL_TG + 'auth/send_password'
 URL_API_LOGIN = URL_TG + 'auth/login'
 URL_API_CREATE_APP = URL_TG + 'apps/create'
 URL_API_GET_APP = URL_TG + 'apps'
+URL_PROXY = 'https://api.dashboard.proxy.market/dev-api/'
+URL_BUY_PROXY = URL_PROXY + f'buy-proxy/{PROXY_KEY}'
+URL_RECEIVE_PROXY = URL_PROXY + f'list/{PROXY_KEY}'
 LEFT_CORNER = 'A2'
 RIGHT_CORNER = 'H500'
 FILE_FINISHED = 'finished.json'
