@@ -98,7 +98,6 @@ async def CheckProfileChange() -> None:
             try:
                 buyProxy(user_id)
                 proxy = receiveProxyInfo(user_id)
-                # Good proxy: (2, '188.130.142.14', '1051', True, 'gwNf9l', '6g2sYtNVEo')
                 session = join(getcwd(), 'sessions', f'{num}')
                 client = TelegramClient(session, api_id, api_hash)
                 await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
@@ -111,7 +110,7 @@ async def CheckProfileChange() -> None:
                 await UpdatePrivacySettings(client, user_id)
                 srv = BuildService()
                 row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-                UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+                UploadData([[num[1:], api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
                 Stamp(f'Data for number {num} added to the table', 's')
                 BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
                 ExitFromAccount(driver)
