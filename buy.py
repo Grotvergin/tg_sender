@@ -2,8 +2,7 @@ import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE)
-from common import (ShowButtons, Sleep, Stamp, ControlRecursion, SmsCodeNotFoundError,
-                    AccountIsBanned, WeSentCodeToDevice, WeSentCodeToEmail, EmailNotAllowed, TooManyAttempts)
+from common import ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion, PasswordRequired
 from api import GetAPICode, RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword, PressButton, IsElementPresent, ExitFromAccount
 from secret import TOKEN_SIM, PASSWORD
@@ -108,7 +107,7 @@ def ProcessAccounts(message: Message, req_quantity: int, country_code: int) -> N
                 'driver': driver
             }
             i += 1
-        except (AccountIsBanned, WeSentCodeToDevice, WeSentCodeToEmail, EmailNotAllowed, SmsCodeNotFoundError, TooManyAttempts):
+        except ErrorAfterNumberInsertion:
             Stamp(f'Account {i + 1} has problems when requesting code', 'w')
             BOT.send_message(message.from_user.id, f'❌ В аккаунте {i + 1} проблема при запросе кода, отменяю и перехожу к следующему...')
             try:
@@ -117,6 +116,10 @@ def ProcessAccounts(message: Message, req_quantity: int, country_code: int) -> N
             except RecursionError:
                 Stamp(f'Exiting because unable to cancel account', 'w')
                 BOT.send_message(message.from_user.id, '❗️ Не получилось отменить аккаунт, завершаю процесс...')
+        except PasswordRequired:
+            Stamp(f'Account {i + 1} requires password', 'w')
+            BOT.send_message(message.from_user.id, f'❌ Аккаунт {i + 1} требует пароль, перехожу к следующему...')
+            continue
         except RecursionError:
             Stamp(f'Exiting because of recursion error', 'w')
             BOT.send_message(message.from_user.id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки...')

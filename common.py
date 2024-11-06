@@ -13,31 +13,11 @@ from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from google.oauth2.service_account import Credentials
 
 
-class SkippedCodeInsertion(Exception):
+class ErrorAfterNumberInsertion(Exception):
     pass
 
 
-class AccountIsBanned(Exception):
-    pass
-
-
-class WeSentCodeToDevice(Exception):
-    pass
-
-
-class WeSentCodeToEmail(Exception):
-    pass
-
-
-class EmailNotAllowed(Exception):
-    pass
-
-
-class SmsCodeNotFoundError(Exception):
-    pass
-
-
-class TooManyAttempts(Exception):
+class PasswordRequired(Exception):
     pass
 
 
