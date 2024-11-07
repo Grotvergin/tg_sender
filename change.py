@@ -1,20 +1,16 @@
-from telebot.apihelper import proxy
-
 import source
-from source import BOT, IMG_PATH, LEFT_CORNER, RIGHT_CORNER, URL_BUY_PROXY, URL_RECEIVE_PROXY
-from common import Stamp, UploadData, GetSector, BuildService
-from emulator import PressButton, ExitFromAccount
-from secret import PASSWORD, SHEET_ID, SHEET_NAME, MY_TG_ID
+from source import BOT, IMG_PATH, URL_BUY_PROXY, URL_RECEIVE_PROXY
+from common import Stamp
+from emulator import PressButton
 from generator import GenerateRandomRussianName, GenerateRandomDescription, GetRandomProfilePicture
 # ---
-from os import remove, getcwd
-from os.path import split, join
+from os import remove
+from os.path import split
 from random import randint
-from asyncio import sleep as async_sleep
 from re import search
 # ---
 from appium.webdriver.common.appiumby import AppiumBy
-from requests import get, RequestException, post
+from requests import RequestException, post
 from telethon.sync import TelegramClient
 from telethon.tl.functions.account import UpdateProfileRequest, SetPrivacyRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
@@ -55,7 +51,7 @@ def buyProxy(user_id: int):
         BOT.send_message(user_id, '❌ Ошибка при покупке прокси. Проверьте соединение.')
 
 
-def receiveProxyInfo(user_id: str) -> tuple:
+def receiveProxyInfo(user_id: int) -> tuple:
     Stamp('Receiving proxy', 'i')
     BOT.send_message(user_id, '🔒 Получаю данные о прокси...')
     payload = {
@@ -70,10 +66,10 @@ def receiveProxyInfo(user_id: str) -> tuple:
         response.raise_for_status()
         data = response.json()
         if data.get('success'):
-            Stamp('Proxy received', 's')
-            BOT.send_message(user_id, '🟢 Прокси получен')
             cur = data['list']['data'][0]
             proxy = (2, cur['ip'], cur['socks_port'], True, cur['login'], cur['password'])
+            Stamp(f'Proxy received: {proxy}', 's')
+            BOT.send_message(user_id, f'🟢 Прокси получен: {proxy}')
             return proxy
         else:
             error_code = data.get('message', 'UNKNOWN_ERROR')
@@ -83,42 +79,6 @@ def receiveProxyInfo(user_id: str) -> tuple:
     except RequestException as e:
         Stamp(f'HTTP Request failed: {e}', 'e')
         BOT.send_message(user_id, '❌ Ошибка при получении прокси. Проверьте соединение.')
-
-
-async def CheckProfileChange() -> None:
-    while True:
-        if source.ACC_TO_CHANGE:
-            num = source.ACC_TO_CHANGE["num"]
-            api_id = source.ACC_TO_CHANGE["api_id"]
-            api_hash = source.ACC_TO_CHANGE["api_hash"]
-            user_id = source.ACC_TO_CHANGE["user_id"]
-            driver = source.ACC_TO_CHANGE["driver"]
-            Stamp('Account to change found', 'i')
-            BOT.send_message(user_id, '🔄 Изменяю профиль...')
-            try:
-                buyProxy(user_id)
-                proxy = receiveProxyInfo(user_id)
-                session = join(getcwd(), 'sessions', f'{num}')
-                client = TelegramClient(session, api_id, api_hash)
-                await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
-                Stamp(f'Account {num} authorized', 's')
-                BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
-                source.ACCOUNTS.append(client)
-                await SetProfileInfo(client, user_id)
-                await SetProfilePicture(client, user_id)
-                await AddContacts(client, 50, user_id)
-                await UpdatePrivacySettings(client, user_id)
-                srv = BuildService()
-                row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-                UploadData([[num[1:], api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
-                Stamp(f'Data for number {num} added to the table', 's')
-                BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
-                ExitFromAccount(driver)
-                source.ACC_TO_CHANGE = None
-            except Exception as e:
-                Stamp(f'Error while changing account: {e}', 'e')
-                BOT.send_message(user_id, f'❌ Произошла ошибка при изменении данных: {e}')
-        await async_sleep(source.SHORT_SLEEP)
 
 
 def emuAuthCallback(driver) -> int:
