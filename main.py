@@ -7,11 +7,10 @@ from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
-from buy import AddAccounts
+from buy import AddAccounts, CheckRefreshBuy
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
 from info_senders import ListAccountNumbers
-from change import CheckProfileChange
 # ---
 from asyncio import get_event_loop, gather, create_task, run
 from traceback import format_exc
@@ -26,12 +25,11 @@ async def Main() -> None:
     source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     loop = get_event_loop()
-    change_task = create_task(CheckProfileChange())
-    refresh_task = create_task(RefreshEventHandler())
-    process_task = create_task(ProcessRequests())
-    auth_task = create_task(CheckRefreshAuth())
     try:
-        await gather(refresh_task, process_task, auth_task, change_task)
+        await gather(create_task(CheckRefreshAuth()),
+                     create_task(CheckRefreshBuy()),
+                     create_task(RefreshEventHandler()),
+                     create_task(ProcessRequests()))
     finally:
         loop.close()
 

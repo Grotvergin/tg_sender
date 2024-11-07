@@ -16,9 +16,9 @@ from bs4 import BeautifulSoup
 from appium.webdriver import Remote
 
 
-def GetAPICode(driver: Remote, message: Message, num: str) -> None | str:
+def GetAPICode(driver: Remote, user_id: int, num: str) -> None | str:
     Stamp('Getting API code', 'i')
-    BOT.send_message(message.from_user.id, f'🔍 Получаю код для API')
+    BOT.send_message(user_id, f'🔍 Получаю код для API')
     start_time = datetime.now()
     code = None
     PressButton(driver, 'new UiSelector().className("android.view.ViewGroup").index(0)', 'Chat', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
@@ -26,48 +26,49 @@ def GetAPICode(driver: Remote, message: Message, num: str) -> None | str:
         if IsElementPresent(driver, 'new UiSelector().textContains("Код")', by=AppiumBy.ANDROID_UIAUTOMATOR):
             code = ExtractCodeFromMessage(driver)
             Stamp(f'API code received for number {num}: {code}', 's')
-            BOT.send_message(message.from_user.id, f'✳️ Обнаружен код: {code}')
+            BOT.send_message(user_id, f'✳️ Обнаружен код: {code}')
             PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
             break
         Sleep(5)
     if not code:
         Stamp('No API code received', 'e')
-        BOT.send_message(message.from_user.id, '❌ Не удалось получить код для API')
+        BOT.send_message(user_id, '❌ Не удалось получить код для API')
         raise
     return code
 
 
 @ControlRecursion
-def RequestAPICode(message: Message, num: str) -> (Session, str):
+def RequestAPICode(user_id: int, num: str) -> (Session, str):
     Stamp('Sending request to authorize on API', 'i')
-    BOT.send_message(message.from_user.id, f'📮 Отправляю код на номер {num} для авторизации API')
+    BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while requesting API code: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с API для запроса кода, '
+        BOT.send_message(user_id, f'‼️ Не удалось связаться с API для запроса кода, '
                                                f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        session, rand_hash = RequestAPICode(message, num)
+        session, rand_hash = RequestAPICode(user_id, num)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Sent API code', 's')
-            BOT.send_message(message.from_user.id, f'💬 Код для авторизации в API отправлен')
+            BOT.send_message(user_id, f'💬 Код для авторизации в API отправлен')
             rand_hash = response.json()['random_hash']
         else:
             Stamp(f'Failed to send API code: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, f'‼️ Не удалось запросить код для API, '
+            BOT.send_message(user_id, f'‼️ Не удалось запросить код для API, '
                                                    f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            session, rand_hash = RequestAPICode(message, num)
+            session, rand_hash = RequestAPICode(user_id, num)
+    Sleep(10, 0.3)
     return session, rand_hash
 
 
 @ControlRecursion
-def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code: str) -> Session:
+def LoginAPI(user_id: int, session: Session, num: str, rand_hash: str, code: str) -> Session:
     Stamp('Logging into API', 'i')
-    BOT.send_message(message.from_user.id, f'🔑 Пытаюсь зайти в API')
+    BOT.send_message(user_id, f'🔑 Пытаюсь зайти в API')
     data = {
         'phone': num,
         'random_hash': rand_hash,
@@ -77,44 +78,44 @@ def LoginAPI(message: Message, session: Session, num: str, rand_hash: str, code:
         response = session.post(URL_API_LOGIN, headers=HEADERS, data=data)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during API login: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с API для авторизации, '
+        BOT.send_message(user_id, f'‼️ Не удалось связаться с API для авторизации, '
                                                f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        session = LoginAPI(message, session, num, rand_hash, code)
+        session = LoginAPI(user_id, session, num, rand_hash, code)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Login into API', 's')
-            BOT.send_message(message.from_user.id, f'❇️ Зашёл в API для аккаунта {num}')
+            BOT.send_message(user_id, f'❇️ Зашёл в API для аккаунта {num}')
         else:
             Stamp(f'Failed to login into API: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, f'🛑 Не удалось зайти в API, пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+            BOT.send_message(user_id, f'🛑 Не удалось зайти в API, пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            session = LoginAPI(message, session, num, rand_hash, code)
+            session = LoginAPI(user_id, session, num, rand_hash, code)
     return session
 
 
-def GetHash(message: Message, session: Session) -> str:
+def GetHash(user_id: int, session: Session) -> str:
     Stamp('Getting hash', 'i')
-    BOT.send_message(message.from_user.id, f'🔍 Получаю хеш с сайта...')
+    BOT.send_message(user_id, f'🔍 Получаю хеш с сайта...')
     try:
         response = session.get(URL_API_GET_APP, headers=HEADERS)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during hash requesting: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сайтом для получения хеша, '
+        BOT.send_message(user_id, f'‼️ Не удалось связаться с сайтом для получения хеша, '
                                                f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        cur_hash = GetHash(message, session)
+        cur_hash = GetHash(user_id, session)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Got HTML page for hash', 's')
-            BOT.send_message(message.from_user.id, f'♻️ Получил страницу сайта, ищу необходимые данные')
-            cur_hash = ParseHash(message, response.text)
+            BOT.send_message(user_id, f'♻️ Получил страницу сайта, ищу необходимые данные')
+            cur_hash = ParseHash(user_id, response.text)
         else:
             Stamp('Did not got HTML page for hash', 'e')
-            BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с хешем, '
+            BOT.send_message(user_id, f'📛 Не удалось получить страницу сайта с хешем, '
                                                    f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            cur_hash = GetHash(message, session)
+            cur_hash = GetHash(user_id, session)
     return cur_hash
 
 
@@ -132,9 +133,10 @@ def ParseHash(message: Message, page: str) -> str | None:
     return
 
 
-def CreateApp(message: Message, session: Session, num: str, cur_hash: str) -> None:
+@ControlRecursion
+def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
     Stamp('Creating app', 'i')
-    BOT.send_message(message.from_user.id, f'🔨 Создаю приложение')
+    BOT.send_message(user_id, f'🔨 Создаю приложение')
     data = {
         'hash': cur_hash,
         'app_title': GenerateRandomWord(10),
@@ -147,42 +149,46 @@ def CreateApp(message: Message, session: Session, num: str, cur_hash: str) -> No
         response = session.post(URL_API_CREATE_APP, headers=HEADERS, data=data)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during app creation: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для создания приложения, '
-                                               f'перехожу к следующему номеру...')
+        BOT.send_message(user_id, f'‼️ Не удалось связаться с сервером для создания приложения, '
+                                  f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+        Sleep(LONG_SLEEP, 0.5)
+        CreateApp(user_id, session, num, cur_hash)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'App created for number {num}', 's')
-            BOT.send_message(message.from_user.id, f'🔧 Приложение создано для номера {num}')
+            BOT.send_message(user_id, f'🔧 Приложение создано для номера {num}')
         else:
             Stamp(f'Failed to create app for number {num}: {response.text}', 'e')
-            BOT.send_message(message.from_user.id, f'📛 Не удалось создать приложение для номера {num}')
+            BOT.send_message(user_id, f'📛 Не удалось создать приложение для номера {num}')
+            raise
+    Sleep(LONG_SLEEP, 0.3)
 
 
 @ControlRecursion
-def GetAppData(message: Message, session: Session) -> (str, str):
+def GetAppData(user_id: int, session: Session) -> (str, str):
     Stamp('Getting app data', 'i')
-    BOT.send_message(message.from_user.id, f'🔍 Получаю данные о приложении')
+    BOT.send_message(user_id, f'🔍 Получаю данные о приложении')
     try:
         response = session.get(URL_API_GET_APP, headers=HEADERS)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during app data requesting: {e}', 'e')
-        BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сайтом данных о приложении, '
+        BOT.send_message(user_id, f'‼️ Не удалось связаться с сайтом данных о приложении, '
                                                f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        api_id, api_hash = GetAppData(message, session)
+        api_id, api_hash = GetAppData(user_id, session)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Got HTML page', 's')
-            BOT.send_message(message.from_user.id, f'♻️ Получил страницу сайта, ищу необходимые данные')
+            BOT.send_message(user_id, f'♻️ Получил страницу сайта, ищу необходимые данные')
             api_id, api_hash = ParseReadyHTML(response.text)
             Stamp(f'Created an application with {api_id}:{api_hash}', 's')
-            BOT.send_message(message.from_user.id, f'⚡️ Создал приложение с {api_id}:{api_hash}')
+            BOT.send_message(user_id, f'⚡️ Создал приложение с {api_id}:{api_hash}')
         else:
             Stamp('Did not got HTML page', 'e')
-            BOT.send_message(message.from_user.id, f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '
+            BOT.send_message(user_id, f'📛 Не удалось получить страницу сайта с API_ID и API_HASH, '
                                                    f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            api_id, api_hash = GetAppData(message, session)
+            api_id, api_hash = GetAppData(user_id, session)
     return api_id, api_hash
 
 
