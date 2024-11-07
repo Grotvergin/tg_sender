@@ -7,3 +7,4 @@ sessions
 test.py
 *.json
 *.log
+logs
