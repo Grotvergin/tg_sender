@@ -1,16 +1,14 @@
-import source
-from emulator import PressButton, PrepareDriver, IsElementPresent, ExtractCodeFromMessage
+from emulator import PressButton, IsElementPresent, ExtractCodeFromMessage
 from headers_agents import HEADERS
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP,
-                    MAX_WAIT_CODE, URL_API_GET_APP, BOT, LONG_SLEEP, WELCOME_BTNS)
+                    MAX_WAIT_CODE, URL_API_GET_APP, BOT, LONG_SLEEP)
 from generator import GenerateRandomWord
-from common import Stamp, Sleep, ControlRecursion, ShowButtons
+from common import Stamp, Sleep, ControlRecursion
 # ---
 from re import search, IGNORECASE
 from datetime import datetime
 # ---
 from requests import Session
-from telebot.types import Message
 from appium.webdriver.common.appiumby import AppiumBy
 from bs4 import BeautifulSoup
 from appium.webdriver import Remote
@@ -119,17 +117,17 @@ def GetHash(user_id: int, session: Session) -> str:
     return cur_hash
 
 
-def ParseHash(message: Message, page: str) -> str | None:
+def ParseHash(user_id: int, page: str) -> str | None:
     Stamp('Parsing hash from HTML page', 'i')
-    BOT.send_message(message.from_user.id, '🔍 Ищу хеш на странице...')
+    BOT.send_message(user_id, '🔍 Ищу хеш на странице...')
     soup = BeautifulSoup(page, 'html.parser')
     hash_input = soup.find('input', {'name': 'hash'})
     if hash_input:
-        BOT.send_message(message.from_user.id, f'✅ Нашёл хеш: {hash_input.get("value")}')
+        BOT.send_message(user_id, f'✅ Нашёл хеш: {hash_input.get("value")}')
         Stamp(f'Got hash: {hash_input.get("value")}', 's')
         return hash_input.get('value')
     Stamp('Did not got hash', 'e')
-    BOT.send_message(message.from_user.id, '❌ Не удалось найти хеш на странице')
+    BOT.send_message(user_id, '❌ Не удалось найти хеш на странице')
     return
 
 
