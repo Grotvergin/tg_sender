@@ -102,12 +102,10 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
         Stamp(f'Adding {i + 1} account', 'i')
         BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
-            tzid = 0
-            num = '79289645927'
-            # num, tzid = BuyAccount(user_id, country_code)
-            # AskForCode(driver, num, user_id, len(str(country_code)))
-            # code = GetCodeFromSms(driver, user_id, num)
-            # InsertCode(driver, user_id, code)
+            num, tzid = BuyAccount(user_id, country_code)
+            AskForCode(driver, num, user_id, len(str(country_code)))
+            code = GetCodeFromSms(driver, user_id, num)
+            InsertCode(driver, user_id, code)
             session, rand_hash = RequestAPICode(user_id, num)
             code = GetAPICode(driver, user_id, num)
             LoginAPI(user_id, session, num, rand_hash, code)
