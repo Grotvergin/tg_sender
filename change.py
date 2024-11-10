@@ -92,7 +92,7 @@ def emuAuthCallback(driver) -> int:
         return code
     else:
         Stamp('No code found in message', 'e')
-        raise ValueError("Код не найден в сообщении")
+        raise ValueError
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:

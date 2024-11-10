@@ -234,7 +234,6 @@ def CheckAllSms(user_id: int) -> dict | None:
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером для получения кодов...')
     else:
         if str(response.status_code)[0] == '2':
-            Stamp('See some data about sms', 's')
             for item in response.json():
                 if 'msg' in item:
                     res[item['number']] = item['msg']

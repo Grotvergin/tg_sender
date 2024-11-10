@@ -20,6 +20,7 @@ def PrepareDriver() -> Remote:
     options.set_capability("deviceName", "Mi")
     options.set_capability("noReset", True)
     options.set_capability("udid", UDID)
+    options.set_capability("newCommandTimeout", 3600)
     driver = Remote(APPIUM, options=options)
     return driver
 
