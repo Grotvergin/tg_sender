@@ -115,6 +115,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             SetPassword(driver, user_id)
             buyProxy(user_id)
             proxy = receiveProxyInfo(user_id)
+            num = num[1:]
             session = join(getcwd(), 'sessions', f'{num}')
             client = TelegramClient(session, api_id, api_hash)
             await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
@@ -126,7 +127,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             await AddContacts(client, 50, user_id)
             await UpdatePrivacySettings(client, user_id)
             row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-            UploadData([[num[1:], api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+            UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
             BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
             ExitFromAccount(driver)
             i += 1
