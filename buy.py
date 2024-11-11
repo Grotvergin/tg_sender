@@ -3,7 +3,7 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
-                    PasswordRequired, SmsCodeNotFoundError, BuildService, GetSector, UploadData)
+                    PasswordRequired, BuildService, GetSector, UploadData)
 from api import GetAPICode, RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword, PressButton, ExitFromAccount
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
@@ -222,7 +222,7 @@ def GetCodeFromSms(driver: Remote, user_id: int, num: str) -> str:
         Sleep(LONG_SLEEP)
     PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after code not received', 3)
     PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Another back after code not received', 3)
-    raise SmsCodeNotFoundError
+    raise ErrorAfterNumberInsertion
 
 
 def CheckAllSms(user_id: int) -> dict | None:

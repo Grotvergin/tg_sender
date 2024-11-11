@@ -25,10 +25,6 @@ class SkippedCodeInsertion(Exception):
     pass
 
 
-class SmsCodeNotFoundError(Exception):
-    pass
-
-
 def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
     func.recursion_depth = 0
 
