@@ -164,7 +164,11 @@ def AskForCode(driver: Remote, num: str, user_id: int, len_country_code: int) ->
     InsertField(driver, '//android.widget.EditText[@content-desc="Phone number"]', 'Phone number', phone_number, 2)
     PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', '->', 3)
     PressButton(driver, '//android.widget.TextView[@text="Yes"]', 'Yes', 10)
-    if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]') or IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
+    if IsElementPresent(driver, '//android.widget.TextView[@text="This phone number is banned."]'):
+        raise ErrorAfterNumberInsertion
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Check your Telegram messages"]'):
+        PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after check your messages', 3)
+        PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit after check your messages', 3)
         raise ErrorAfterNumberInsertion
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Choose a login email"]'):
         email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
