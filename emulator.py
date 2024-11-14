@@ -202,6 +202,10 @@ def AskForCode(driver: Remote, num: str, user_id: int, len_country_code: int) ->
     elif IsElementPresent(driver, '//android.widget.TextView[@text="Invalid phone number. Please check the number and try again."]'):
         PressButton(driver, '//android.widget.TextView[@text="OK"]', 'OK after invalid phone number', 3)
         raise ErrorAfterNumberInsertion
+    elif IsElementPresent(driver, '//android.widget.TextView[@text="Phone Verification"]'):
+        PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after calling your phone', 3)
+        PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Edit after calling your phone', 2)
+        raise ErrorAfterNumberInsertion
     Stamp('Code requested successfully', 's')
     BOT.send_message(user_id, f'🔑 Код для входа в Telegram запрошен')
 
