@@ -117,7 +117,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             proxy = receiveProxyInfo(user_id)
             num = num[1:]
             session = join(getcwd(), 'sessions', f'{num}')
-            client = TelegramClient(session, api_id, api_hash)
+            client = TelegramClient(session, api_id, api_hash, proxy=proxy)
             await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
             Stamp(f'Account {num} authorized', 's')
             BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
