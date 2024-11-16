@@ -71,7 +71,7 @@ async def EventHandler(event: NewMessage.Event):
 
 
 def NeedToDecrease(message_text: str, channel_name: str) -> bool:
-    http_link = compile(r'https?://t\.me/[\w]+')
+    http_link = compile(r'https?://[^\s]+')
     dog_link = compile(r'@[\w]+')
     message_text = message_text.lower()
     channel_name = channel_name.lower()

@@ -12,7 +12,6 @@ from time import time, sleep
 from traceback import format_exc
 # ---
 from telethon.sync import TelegramClient
-from socks import SOCKS5
 from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError
 from telethon.errors.rpcerrorlist import PhoneCodeExpiredError
 
@@ -70,7 +69,7 @@ async def AuthorizeAccounts() -> None:
                 continue
             else:
                 Stamp(f'Processing account {num}', 'i')
-                client = TelegramClient(session, api_id, api_hash, proxy=(SOCKS5, ip, port, True, login, password_proxy))
+                client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
                 try:
                     await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num, source.ADMIN_CHAT_ID, MAX_WAIT_CODE))
                     source.ACCOUNTS.append(client)
