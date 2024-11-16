@@ -142,8 +142,8 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
                 BOT.send_message(user_id, '❗️ Не получилось отменить аккаунт, завершаю процесс...')
                 break
         except PasswordRequired:
-            Stamp(f'Account {i + 1} requires password', 'w')
-            BOT.send_message(user_id, f'❌ Аккаунт {i + 1} требует пароль, перехожу к следующему...')
+            Stamp(f'Account {i + 1} requires password or already registered', 'w')
+            BOT.send_message(user_id, f'❌ Аккаунт {i + 1} требует пароль или уже существует, перехожу к следующему...')
             continue
         except RecursionError:
             Stamp(f'Exiting because of recursion error', 'w')

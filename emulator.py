@@ -215,19 +215,20 @@ def InsertCode(driver: Remote, user_id: int, code: str) -> None:
     BOT.send_message(user_id, f'🗝 Ввод кода {code}')
     DistributedInsertion(driver,
                          '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.LinearLayout/android.widget.EditText[{}]',
-                         'Code', code, 3, 1)
+                         'Code', code, 5, 1)
     Stamp('Code inserted successfully', 's')
     BOT.send_message(user_id, f'✅ Код {code} введен')
-    if IsElementPresent(driver, '//android.widget.TextView[@text="Profile info"]'):
-        first_name, last_name = GenerateRandomRussianName()
-        InsertField(driver,
-                    '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText',
-                    'First Name', first_name, 4)
-        InsertField(driver,
-                    '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[2]/android.widget.EditText',
-                    'Last Name', last_name, 3)
-        PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 1)
-    Sleep(10)
+    if not IsElementPresent(driver, '//android.widget.TextView[@text="Profile info"]'):
+        ExitFromAccount(driver)
+        raise PasswordRequired
+    first_name, last_name = GenerateRandomRussianName()
+    InsertField(driver,
+                '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[1]/android.widget.EditText',
+                'First Name', first_name, 4)
+    InsertField(driver,
+                '//android.widget.ScrollView/android.widget.LinearLayout/android.widget.FrameLayout/android.widget.LinearLayout/android.widget.FrameLayout[2]/android.widget.FrameLayout[2]/android.widget.EditText',
+                'Last Name', last_name, 3)
+    PressButton(driver, '//android.widget.FrameLayout[@content-desc="Done"]/android.view.View', 'Done', 12)
     PressButton(driver, '//android.widget.TextView[@text="Not now"]', 'Not now in allowing contacts', 3)
 
 
