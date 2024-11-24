@@ -1,24 +1,22 @@
 import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
-                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP)
+                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
                     PasswordRequired, BuildService, GetSector, UploadData)
-from api import GetAPICode, RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
-from emulator import AskForCode, InsertCode, PrepareDriver, SetPassword, PressButton, ExitFromAccount
+from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import (SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings,
-                    buyProxy, receiveProxyInfo, emuAuthCallback)
+                    buyProxy, receiveProxyInfo)
 # ---
-from asyncio import sleep as async_sleep
+from asyncio import sleep as async_sleep, Queue, TimeoutError, wait_for
 from time import time
 from os import getcwd
 from os.path import join
 # ---
 from requests import get
 from telebot.types import Message
-from appium.webdriver import Remote
 from telethon.sync import TelegramClient
 
 
@@ -94,31 +92,49 @@ async def CheckRefreshBuy() -> None:
         await async_sleep(SHORT_SLEEP)
 
 
+async def get_user_input(user_id: int) -> str:
+    if user_id not in USER_RESPONSES:
+        USER_RESPONSES[user_id] = Queue()
+    try:
+        response = await wait_for(USER_RESPONSES[user_id].get(), USER_ANSWER_TIMEOUT)
+        return response.strip()
+    except TimeoutError:
+        BOT.send_message(user_id, "⏳ Превышено время ожидания ответа.")
+
+
 async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) -> None:
     i = 0
-    driver = PrepareDriver()
     srv = BuildService()
     while i < req_quantity:
         Stamp(f'Adding {i + 1} account', 'i')
         BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
             num, tzid = BuyAccount(user_id, country_code)
-            AskForCode(driver, num, user_id, len(str(country_code)))
-            code = GetCodeFromSms(driver, user_id, num)
-            InsertCode(driver, user_id, code)
+            ShowButtons(user_id, YES_NO_BTNS, f'Введите {num}. Продолжаем?')
+            answer = get_user_input(user_id)
+            if answer == YES_NO_BTNS[1]:
+                raise ErrorAfterNumberInsertion
+            code = GetCodeFromSms(user_id, num)
+            ShowButtons(user_id, YES_NO_BTNS, f'Введите {code}. Продолжаем?')
+            answer = get_user_input(user_id)
+            if answer == YES_NO_BTNS[1]:
+                raise PasswordRequired
             session, rand_hash = RequestAPICode(user_id, num)
-            code = GetAPICode(driver, user_id, num)
+            code = get_user_input(user_id)
             LoginAPI(user_id, session, num, rand_hash, code)
             cur_hash = GetHash(user_id, session)
             CreateApp(user_id, session, num, cur_hash)
             api_id, api_hash = GetAppData(user_id, session)
-            SetPassword(driver, user_id)
             buyProxy(user_id)
             proxy = receiveProxyInfo(user_id)
             num = num[1:]
             session = join(getcwd(), 'sessions', f'{num}')
             client = TelegramClient(session, api_id, api_hash, proxy=proxy)
-            await client.start(phone=num, password=PASSWORD, code_callback=lambda: emuAuthCallback(driver))
+            await client.connect()
+            await client.send_code_request(num)
+            BOT.send_message(user_id, "📩 Код подтверждения отправлен. Введите его:")
+            code = await get_user_input(user_id)
+            await client.sign_in(phone=num, code=code)
             Stamp(f'Account {num} authorized', 's')
             BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
             source.ACCOUNTS.append(client)
@@ -129,7 +145,6 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
             UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
             BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
-            ExitFromAccount(driver)
             i += 1
         except ErrorAfterNumberInsertion:
             Stamp(f'Account {i + 1} has problems when requesting code', 'w')
@@ -210,7 +225,7 @@ def CancelNumber(user_id: int, num: str, tzid: str) -> None:
             CancelNumber(user_id, num, tzid)
 
 
-def GetCodeFromSms(driver: Remote, user_id: int, num: str) -> str:
+def GetCodeFromSms(user_id: int, num: str) -> str:
     start_time = time()
     while time() - start_time < MAX_WAIT_CODE:
         sms_dict = CheckAllSms(user_id)
@@ -221,8 +236,6 @@ def GetCodeFromSms(driver: Remote, user_id: int, num: str) -> str:
         Stamp(f'No incoming sms for {num} after {round(time() - start_time)} seconds of waiting', 'w')
         BOT.send_message(user_id, f'💤 Не вижу входящих сообщений после {round(time() - start_time)} секунд ожидания...')
         Sleep(LONG_SLEEP)
-    PressButton(driver, '//android.widget.ImageView[@content-desc="Back"]', 'Back after code not received', 3)
-    PressButton(driver, '//android.widget.TextView[@text="Edit"]', 'Another back after code not received', 3)
     raise ErrorAfterNumberInsertion
 
 

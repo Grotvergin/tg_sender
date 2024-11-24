@@ -3,7 +3,7 @@ from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
-                    FILE_AUTO_VIEWS, FILE_AUTO_REPS)
+                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
@@ -26,10 +26,12 @@ async def Main() -> None:
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     loop = get_event_loop()
     try:
-        await gather(create_task(CheckRefreshAuth()),
+        #
+        await gather(
                      create_task(CheckRefreshBuy()),
                      create_task(RefreshEventHandler()),
-                     create_task(ProcessRequests()))
+                     create_task(ProcessRequests()),
+        create_task(CheckRefreshAuth()))
     finally:
         loop.close()
 
@@ -45,9 +47,15 @@ def BotPolling():
 
 @BOT.message_handler(content_types=['text'])
 def MessageAccept(message: Message) -> None:
-    Stamp(f'User {message.from_user.id} requested {message.text}', 'i')
+    user_id = message.from_user.id
+    Stamp(f'User {user_id} requested {message.text}', 'i')
+    print(USER_RESPONSES)
+    if user_id in USER_RESPONSES:
+        USER_RESPONSES[user_id].put_nowait(message.text)
+        return
+
     if message.text == '/start':
-        BOT.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
+        BOT.send_message(user_id, f'Привет, {message.from_user.first_name}!')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[0]:
         ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
@@ -56,21 +64,22 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == WELCOME_BTNS[2]:
-        Stamp(f'Setting ADMIN_CHAT_ID = {message.from_user.id} with ID = {id(source.ADMIN_CHAT_ID)}', 'w')
-        source.ADMIN_CHAT_ID = message.from_user.id
+        Stamp(f'Setting ADMIN_CHAT_ID = {user_id} with ID = {id(source.ADMIN_CHAT_ID)}', 'w')
+        source.ADMIN_CHAT_ID = user_id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(message.from_user.id, f'👁 Сейчас доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
+        BOT.send_message(user_id, f'👁 Сейчас доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
         BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text.isdigit() and len(message.text) == 5 or message.text == '-':
+    elif message.text.isdigit() and (len(message.text) == 5 or message.text == '-'):
         source.CODE = message.text
     else:
-        BOT.send_message(message.from_user.id, '❌ Я вас не понял...')
+        BOT.send_message(user_id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+
 
 
 if __name__ == '__main__':

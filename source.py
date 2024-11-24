@@ -37,9 +37,11 @@ SINGLE_BTNS = ('Активные 📅',
                'Удаление ❌',
                'Реакции 😍',
                CANCEL_BTN[0])
+YES_NO_BTNS = ('Да ✅', 'Нет ❌')
 BOT = TeleBot(TOKEN)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
 LAST_NOTIF_PROCESSOR = datetime.now()
+USER_RESPONSES = {}
 REQS_QUEUE = []
 ACCOUNTS = []
 FINISHED_REQS = []
@@ -66,6 +68,7 @@ REQS_PORTION = 10
 MIN_LEN_EMAIL = 15
 MAX_RECURSION = 10
 NUMBER_LAST_FIN = 250
+USER_ANSWER_TIMEOUT = 120
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 LINK_FORMAT = r'https://t\.me/'
 URL_SIM = 'https://onlinesim.io/api/'
