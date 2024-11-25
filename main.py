@@ -62,7 +62,7 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, AUTO_CHOICE, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == WELCOME_BTNS[2]:
-        Stamp(f'Setting ADMIN_CHAT_ID = {user_id} with ID = {id(source.ADMIN_CHAT_ID)}', 'w')
+        Stamp(f'Setting ADMIN_CHAT_ID = {user_id}', 'w')
         source.ADMIN_CHAT_ID = user_id
     elif message.text == WELCOME_BTNS[3]:
         BOT.send_message(user_id, f'👁 Доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
@@ -72,7 +72,7 @@ def MessageAccept(message: Message) -> None:
         BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE:
+    elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE[0]:
         source.CODE = message.text
     else:
         BOT.send_message(user_id, '❌ Я вас не понял...')

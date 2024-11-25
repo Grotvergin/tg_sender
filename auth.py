@@ -44,7 +44,7 @@ def AuthCallback(number: str, user_id: int, max_wait_time: int) -> int:
     code = WaitForCode(max_wait_time)
     if not code:
         raise TimeoutError('Too long code waiting')
-    elif code == SKIP_CODE:
+    elif code == SKIP_CODE[0]:
         raise SkippedCodeInsertion
     return int(code)
 
