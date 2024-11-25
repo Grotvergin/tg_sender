@@ -29,8 +29,8 @@ async def Main() -> None:
         #
         await gather(create_task(CheckRefreshBuy()),
                      create_task(RefreshEventHandler()),
-                     create_task(ProcessRequests()))
-        # create_task(CheckRefreshAuth()))
+                     create_task(ProcessRequests()),
+                     create_task(CheckRefreshAuth()))
     finally:
         loop.close()
 
@@ -77,7 +77,6 @@ def MessageAccept(message: Message) -> None:
     else:
         BOT.send_message(user_id, '❌ Я вас не понял...')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-
 
 
 if __name__ == '__main__':
