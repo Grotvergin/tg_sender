@@ -13,8 +13,7 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
-# Функция забора кода из сообщения для авторизации
-# Пропуск ввода кода по кнопке
+# Проверка на существование акка в тг после покупки номера
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -38,6 +37,8 @@ SINGLE_BTNS = ('Активные 📅',
                'Реакции 😍',
                CANCEL_BTN[0])
 YES_NO_BTNS = ('Да ✅', 'Нет ❌')
+PROBLEM_BTN = ('Проблема ⚠️',)
+SKIP_CODE = ('Пропуск ⏭️',)
 BOT = TeleBot(TOKEN)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
 LAST_NOTIF_PROCESSOR = datetime.now()
@@ -54,6 +55,8 @@ init()
 seed()
 ADMIN_CHAT_ID = MY_TG_ID
 CODE = None
+LEN_API_CODE = 11
+LEN_AUTO_CODE = 5
 LONG_SLEEP = 15
 SHORT_SLEEP = 1
 MAX_MINS = 300
@@ -68,7 +71,7 @@ REQS_PORTION = 10
 MIN_LEN_EMAIL = 15
 MAX_RECURSION = 10
 NUMBER_LAST_FIN = 250
-USER_ANSWER_TIMEOUT = 120
+USER_ANSWER_TIMEOUT = 300
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 LINK_FORMAT = r'https://t\.me/'
 URL_SIM = 'https://onlinesim.io/api/'
@@ -91,3 +94,4 @@ FILE_AUTO_VIEWS = 'auto_views.json'
 FILE_AUTO_REPS = 'auto_reps.json'
 FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
+KEY_PHRASE = 'Вот он:'

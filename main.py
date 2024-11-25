@@ -3,7 +3,7 @@ from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
-                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES)
+                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES, SKIP_CODE)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
@@ -27,11 +27,10 @@ async def Main() -> None:
     loop = get_event_loop()
     try:
         #
-        await gather(
-                     create_task(CheckRefreshBuy()),
+        await gather(create_task(CheckRefreshBuy()),
                      create_task(RefreshEventHandler()),
-                     create_task(ProcessRequests()),
-        create_task(CheckRefreshAuth()))
+                     create_task(ProcessRequests()))
+        # create_task(CheckRefreshAuth()))
     finally:
         loop.close()
 
@@ -49,7 +48,6 @@ def BotPolling():
 def MessageAccept(message: Message) -> None:
     user_id = message.from_user.id
     Stamp(f'User {user_id} requested {message.text}', 'i')
-    print(USER_RESPONSES)
     if user_id in USER_RESPONSES:
         USER_RESPONSES[user_id].put_nowait(message.text)
         return
@@ -67,14 +65,14 @@ def MessageAccept(message: Message) -> None:
         Stamp(f'Setting ADMIN_CHAT_ID = {user_id} with ID = {id(source.ADMIN_CHAT_ID)}', 'w')
         source.ADMIN_CHAT_ID = user_id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(user_id, f'👁 Сейчас доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
+        BOT.send_message(user_id, f'👁 Доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
         BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-    elif message.text.isdigit() and (len(message.text) == 5 or message.text == '-'):
+    elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE:
         source.CODE = message.text
     else:
         BOT.send_message(user_id, '❌ Я вас не понял...')

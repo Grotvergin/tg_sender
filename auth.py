@@ -1,6 +1,6 @@
 import source
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT,
-                    LEFT_CORNER, RIGHT_CORNER, WELCOME_BTNS)
+                    LEFT_CORNER, RIGHT_CORNER, WELCOME_BTNS, SKIP_CODE)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
                     Sleep, ShowButtons, BuildService, ParseAccountRow)
 from secret import SHEET_ID, SHEET_NAME
@@ -40,12 +40,11 @@ async def CheckRefreshAuth() -> None:
 
 
 def AuthCallback(number: str, user_id: int, max_wait_time: int) -> int:
-    BOT.send_message(user_id, f'❗️Введите код для {number} в течение {max_wait_time} секунд '
-                              f'(либо "-" для пропуска этого аккаунта):')
+    ShowButtons(user_id, SKIP_CODE, f'❗️Введите код для {number} в течение {max_wait_time} секунд:')
     code = WaitForCode(max_wait_time)
     if not code:
         raise TimeoutError('Too long code waiting')
-    elif code == '-':
+    elif code == SKIP_CODE:
         raise SkippedCodeInsertion
     return int(code)
 

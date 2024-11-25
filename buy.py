@@ -1,7 +1,7 @@
 import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
-                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS)
+                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, LEN_AUTO_CODE)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
                     PasswordRequired, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
@@ -14,6 +14,7 @@ from asyncio import sleep as async_sleep, Queue, TimeoutError, wait_for
 from time import time
 from os import getcwd
 from os.path import join
+from re import search
 # ---
 from requests import get
 from telebot.types import Message
@@ -102,6 +103,27 @@ async def get_user_input(user_id: int) -> str:
         BOT.send_message(user_id, "⏳ Превышено время ожидания ответа.")
 
 
+def ExtractAPICode(user_id: int, text: str):
+    if len(text) == LEN_API_CODE:
+        return text
+    if KEY_PHRASE in text:
+        code = text.split(KEY_PHRASE, 1)[1].strip().split()[0]
+        return code
+    Stamp('API code was not found in message', 'w')
+    BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для API')
+    raise PasswordRequired
+
+
+def ExtractAutomationCode(user_id: int, text: str):
+    code_match = search(r'\b\d{5}\b', text)
+    if code_match:
+        code = code_match.group(0)
+        return code
+    Stamp('Automation code was not found in message', 'w')
+    BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для авторизация юзербота')
+    raise PasswordRequired
+
+
 async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) -> None:
     i = 0
     srv = BuildService()
@@ -110,17 +132,25 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
         BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
             num, tzid = BuyAccount(user_id, country_code)
-            ShowButtons(user_id, YES_NO_BTNS, f'Введите {num}. Продолжаем?')
-            answer = get_user_input(user_id)
+            ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{num}`. Продолжаем?')
+            answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:
                 raise ErrorAfterNumberInsertion
             code = GetCodeFromSms(user_id, num)
-            ShowButtons(user_id, YES_NO_BTNS, f'Введите {code}. Продолжаем?')
-            answer = get_user_input(user_id)
+            ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{code}`. Продолжаем?')
+            answer = await get_user_input(user_id)
+            if answer == YES_NO_BTNS[1]:
+                raise PasswordRequired
+            ShowButtons(user_id, YES_NO_BTNS, f'🖊 Установите пароль `{PASSWORD}`. Продолжаем?')
+            answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:
                 raise PasswordRequired
             session, rand_hash = RequestAPICode(user_id, num)
-            code = get_user_input(user_id)
+            ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
+            answer = await get_user_input(user_id)
+            if answer == PROBLEM_BTN[0]:
+                raise PasswordRequired
+            code = ExtractAPICode(user_id, answer)
             LoginAPI(user_id, session, num, rand_hash, code)
             cur_hash = GetHash(user_id, session)
             CreateApp(user_id, session, num, cur_hash)
@@ -132,11 +162,14 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             client = TelegramClient(session, api_id, api_hash, proxy=proxy)
             await client.connect()
             await client.send_code_request(num)
-            BOT.send_message(user_id, "📩 Код подтверждения отправлен. Введите его:")
-            code = await get_user_input(user_id)
+            ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
+            answer = await get_user_input(user_id)
+            if answer == PROBLEM_BTN[0]:
+                raise PasswordRequired
+            code = ExtractAutomationCode(user_id, answer)
             await client.sign_in(phone=num, code=code)
             Stamp(f'Account {num} authorized', 's')
-            BOT.send_message(user_id, f'✅ Аккаунт {num} авторизован')
+            BOT.send_message(user_id, f'✅ Аккаунт авторизован')
             source.ACCOUNTS.append(client)
             await SetProfileInfo(client, user_id)
             await SetProfilePicture(client, user_id)
@@ -188,11 +221,9 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
                 num = response.json()['number']
                 tzid = response.json()['tzid']
                 Stamp(f'Bought account: {num}', 's')
-                BOT.send_message(user_id, f'📱 Куплен номер {num}')
             else:
-                Stamp(f'No "number" field in response <-> no available numbers in this region', 'e')
-                BOT.send_message(user_id, '⛔️ Нет доступных номеров в этом регионе, '
-                                                       'прекращаю процесс покупки...')
+                Stamp(f'No "number" field in response', 'e')
+                BOT.send_message(user_id, '⛔️ Проблема при покупке номера')
                 raise
         else:
             Stamp(f'Failed to buy account: {response.text}', 'e')
@@ -216,11 +247,10 @@ def CancelNumber(user_id: int, num: str, tzid: str) -> None:
     else:
         if str(response.status_code)[0] == '2' and str(response.json()['response']) == '1':
             Stamp(f'Successful cancelling of number {num}', 's')
-            BOT.send_message(user_id, f'❇️ Номер {num} отменён')
+            BOT.send_message(user_id, f'❇️ Номер отменён')
         else:
             Stamp(f'Failed to cancel number {num}', 'w')
-            BOT.send_message(user_id, f'ℹ️ Пока что не удалось отменить номер, '
-                                                    f'пробую ещё раз через {LONG_SLEEP * 2} секунд...')
+            BOT.send_message(user_id, f'ℹ️ Отменяю ещё раз...')
             Sleep(LONG_SLEEP * 2)
             CancelNumber(user_id, num, tzid)
 
@@ -231,7 +261,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
         sms_dict = CheckAllSms(user_id)
         if sms_dict and num in sms_dict:
             Stamp(f'Found incoming sms for num {num}', 's')
-            BOT.send_message(user_id, f'🔔 Нашёл код: {sms_dict[num]}')
+            BOT.send_message(user_id, f'🔔 Нашёл код')
             return sms_dict[num]
         Stamp(f'No incoming sms for {num} after {round(time() - start_time)} seconds of waiting', 'w')
         BOT.send_message(user_id, f'💤 Не вижу входящих сообщений после {round(time() - start_time)} секунд ожидания...')
