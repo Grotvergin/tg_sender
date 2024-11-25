@@ -75,7 +75,6 @@ def MessageAccept(message: Message) -> None:
         source.CODE = message.text
     else:
         BOT.send_message(user_id, '❌ Я вас не понял...')
-        BOT.send_message(user_id, SuchAccountExists(user_id, '+79152014847'))
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
