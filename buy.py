@@ -6,7 +6,7 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
                     PasswordRequired, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
-from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID, MY_NUM
+from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import (SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings,
                     buyProxy, receiveProxyInfo)
@@ -132,7 +132,7 @@ async def SuchAccountExists(user_id: int, num: str):
         Stamp('Such account already exists', 'w')
         BOT.send_message(user_id, '🟥 Такой аккаунт уже есть')
         return True
-    except PeerIdInvalidError:
+    except (PeerIdInvalidError, ValueError):
         Stamp('Such account does not exist', 's')
         BOT.send_message(user_id, '🟩 Такого аккаунта ещё нет')
         return False
@@ -145,8 +145,9 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
         Stamp(f'Adding {i + 1} account', 'i')
         BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
-            await SuchAccountExists(user_id, MY_NUM)
             num, tzid = BuyAccount(user_id, country_code)
+            if SuchAccountExists(user_id, num):
+                raise ErrorAfterNumberInsertion
             ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{num}`. Продолжаем?')
             answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:

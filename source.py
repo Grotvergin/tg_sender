@@ -13,7 +13,6 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
-# Проверка на существование аккаунта в тг после покупки номера
 # Структурировать buy
 
 WELCOME_BTNS = ('Разовые 1️⃣',
