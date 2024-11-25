@@ -13,7 +13,8 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
-# Проверка на существование акка в тг после покупки номера
+# Проверка на существование аккаунта в тг после покупки номера
+# Структурировать buy
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -56,7 +57,6 @@ seed()
 ADMIN_CHAT_ID = MY_TG_ID
 CODE = None
 LEN_API_CODE = 11
-LEN_AUTO_CODE = 5
 LONG_SLEEP = 15
 SHORT_SLEEP = 1
 MAX_MINS = 300

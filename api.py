@@ -1,38 +1,13 @@
-from emulator import PressButton, IsElementPresent, ExtractCodeFromMessage
 from headers_agents import HEADERS
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP,
-                    MAX_WAIT_CODE, URL_API_GET_APP, BOT, LONG_SLEEP)
+                    URL_API_GET_APP, BOT, LONG_SLEEP)
 from generator import GenerateRandomWord
 from common import Stamp, Sleep, ControlRecursion
 # ---
 from re import search, IGNORECASE
-from datetime import datetime
 # ---
 from requests import Session
-from appium.webdriver.common.appiumby import AppiumBy
 from bs4 import BeautifulSoup
-from appium.webdriver import Remote
-
-
-def GetAPICode(driver: Remote, user_id: int, num: str) -> None | str:
-    Stamp('Getting API code', 'i')
-    BOT.send_message(user_id, f'🔍 Получаю код для API')
-    start_time = datetime.now()
-    code = None
-    PressButton(driver, 'new UiSelector().className("android.view.ViewGroup").index(0)', 'Chat', 3, by=AppiumBy.ANDROID_UIAUTOMATOR)
-    while (datetime.now() - start_time).seconds < MAX_WAIT_CODE:
-        if IsElementPresent(driver, 'new UiSelector().textContains("Код")', by=AppiumBy.ANDROID_UIAUTOMATOR):
-            code = ExtractCodeFromMessage(driver)
-            Stamp(f'API code received for number {num}: {code}', 's')
-            BOT.send_message(user_id, f'✳️ Обнаружен код: {code}')
-            PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
-            break
-        Sleep(5)
-    if not code:
-        Stamp('No API code received', 'e')
-        BOT.send_message(user_id, '❌ Не удалось получить код для API')
-        raise
-    return code
 
 
 @ControlRecursion

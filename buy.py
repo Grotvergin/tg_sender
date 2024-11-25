@@ -1,7 +1,8 @@
 import source
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
-                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, LEN_AUTO_CODE)
+                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES,
+                    USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
                     PasswordRequired, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData

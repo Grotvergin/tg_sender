@@ -1,26 +1,19 @@
 import source
 from source import BOT, IMG_PATH, URL_BUY_PROXY, URL_RECEIVE_PROXY
 from common import Stamp
-from emulator import PressButton
 from generator import GenerateRandomRussianName, GenerateRandomDescription, GetRandomProfilePicture
 # ---
 from os import remove
 from os.path import split
 from random import randint
-from re import search
 # ---
-from appium.webdriver.common.appiumby import AppiumBy
 from requests import RequestException, post
 from telethon.sync import TelegramClient
 from telethon.tl.functions.account import UpdateProfileRequest, SetPrivacyRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
 from telethon.tl.functions.contacts import ImportContactsRequest
-from telethon.tl.types import (InputPrivacyValueDisallowAll,
-                               InputPrivacyKeyPhoneNumber,
-                               InputPrivacyKeyPhoneCall,
-                               InputPrivacyKeyChatInvite,
-                               InputPrivacyKeyStatusTimestamp,
-                               InputPhoneContact)
+from telethon.tl.types import (InputPrivacyValueDisallowAll, InputPrivacyKeyPhoneNumber, InputPrivacyKeyPhoneCall,
+                               InputPrivacyKeyChatInvite, InputPrivacyKeyStatusTimestamp, InputPhoneContact)
 
 
 def buyProxy(user_id: int):
@@ -79,20 +72,6 @@ def receiveProxyInfo(user_id: int) -> tuple:
     except RequestException as e:
         Stamp(f'HTTP Request failed: {e}', 'e')
         BOT.send_message(user_id, '❌ Ошибка при получении прокси. Проверьте соединение.')
-
-
-def emuAuthCallback(driver) -> int:
-    PressButton(driver, "android.view.ViewGroup", 'Message with session code', 3, by=AppiumBy.CLASS_NAME)
-    element = driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("Код для входа в Telegram")')
-    match = search(r'\b\d{5}\b', element.text)
-    PressButton(driver, '//android.widget.ImageView[@content-desc="Go back"]', 'Go back', 3)
-    if match:
-        code = int(match.group())
-        Stamp(f'Code {code} found', 's')
-        return code
-    else:
-        Stamp('No code found in message', 'e')
-        raise ValueError
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:
