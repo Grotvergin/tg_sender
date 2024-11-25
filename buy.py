@@ -20,6 +20,7 @@ from re import search
 from requests import get
 from telebot.types import Message
 from telethon.sync import TelegramClient
+from telethon.errors import PeerIdInvalidError
 
 
 @ControlRecursion
@@ -123,6 +124,18 @@ def ExtractAutomationCode(user_id: int, text: str):
     Stamp('Automation code was not found in message', 'w')
     BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для авторизация юзербота')
     raise PasswordRequired
+
+
+def SuchAccountExists(user_id: int, num: str):
+    try:
+        source.ACCOUNTS[0].get_entity(num)
+        Stamp('Such account already exists', 'w')
+        BOT.send_message(user_id, '🟥 Такой аккаунт уже есть')
+        return True
+    except PeerIdInvalidError:
+        Stamp('Such account does not exist', 's')
+        BOT.send_message(user_id, '🟩 Такого аккаунта ещё нет')
+        return False
 
 
 async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) -> None:

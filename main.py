@@ -7,7 +7,7 @@ from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
-from buy import AddAccounts, CheckRefreshBuy
+from buy import AddAccounts, CheckRefreshBuy, SuchAccountExists
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
 from info_senders import ListAccountNumbers
@@ -26,11 +26,10 @@ async def Main() -> None:
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     loop = get_event_loop()
     try:
-        #
         await gather(create_task(CheckRefreshBuy()),
-                     create_task(RefreshEventHandler()),
                      create_task(ProcessRequests()),
-                     create_task(CheckRefreshAuth()))
+                     create_task(CheckRefreshAuth()),
+                     create_task(RefreshEventHandler()))
     finally:
         loop.close()
 
@@ -76,6 +75,7 @@ def MessageAccept(message: Message) -> None:
         source.CODE = message.text
     else:
         BOT.send_message(user_id, '❌ Я вас не понял...')
+        BOT.send_message(user_id, SuchAccountExists(user_id, '+79152014847'))
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
