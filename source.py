@@ -13,7 +13,7 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
-# Структурировать buy
+# Заявки на эмодзи
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -65,7 +65,6 @@ LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
 MAX_ACCOUNTS_BUY = 10
 NOTIF_TIME_DELTA = 30
-HOME_KEYCODE = 3
 REQS_PORTION = 10
 MIN_LEN_EMAIL = 15
 MAX_RECURSION = 10

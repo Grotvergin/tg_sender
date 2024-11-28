@@ -14,7 +14,8 @@ from google.oauth2.service_account import Credentials
 
 
 class CancelAndNext(Exception):
-    pass
+    def __init__(self, tzid=None):
+        self.tzid = tzid
 
 
 class GoNextOnly(Exception):
