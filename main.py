@@ -7,7 +7,7 @@ from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
-from buy import AddAccounts, CheckRefreshBuy, SuchAccountExists
+from buy import AddAccounts, CheckRefreshBuy
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
 from info_senders import ListAccountNumbers

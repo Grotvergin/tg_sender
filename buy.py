@@ -1,10 +1,11 @@
 import source
+from generator import GenerateRandomRussianName
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
                     URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES,
                     USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE)
-from common import (ShowButtons, Sleep, Stamp, ControlRecursion, ErrorAfterNumberInsertion,
-                    PasswordRequired, BuildService, GetSector, UploadData)
+from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
+                    GoNextOnly, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
@@ -21,6 +22,8 @@ from requests import get
 from telebot.types import Message
 from telethon.sync import TelegramClient
 from telethon.errors import PeerIdInvalidError
+from telethon.tl.functions.contacts import DeleteContactsRequest, ImportContactsRequest
+from telethon.tl.types import InputPhoneContact
 
 
 @ControlRecursion
@@ -100,6 +103,7 @@ async def get_user_input(user_id: int) -> str:
         USER_RESPONSES[user_id] = Queue()
     try:
         response = await wait_for(USER_RESPONSES[user_id].get(), USER_ANSWER_TIMEOUT)
+        USER_RESPONSES.pop(user_id, None)
         return response.strip()
     except TimeoutError:
         BOT.send_message(user_id, "⏳ Превышено время ожидания ответа.")
@@ -107,35 +111,53 @@ async def get_user_input(user_id: int) -> str:
 
 def ExtractAPICode(user_id: int, text: str):
     if len(text) == LEN_API_CODE:
+        Stamp(f'Found API code {text}', 's')
+        BOT.send_message(user_id, f'❇️ Ввожу код из сообщения целиком: {text}')
         return text
     if KEY_PHRASE in text:
         code = text.split(KEY_PHRASE, 1)[1].strip().split()[0]
+        Stamp(f'Extracted API code {code}', 's')
+        BOT.send_message(user_id, f'❇️ Ввожу вырезанный код {code}')
         return code
     Stamp('API code was not found in message', 'w')
     BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для API')
-    raise PasswordRequired
+    raise GoNextOnly
 
 
 def ExtractAutomationCode(user_id: int, text: str):
     code_match = search(r'\b\d{5}\b', text)
     if code_match:
         code = code_match.group(0)
+        Stamp(f'Automation code found: {code}', 's')
+        BOT.send_message(user_id, f'✳️ Найден код для авторизации юзербота: {code}')
         return code
     Stamp('Automation code was not found in message', 'w')
     BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для авторизация юзербота')
-    raise PasswordRequired
+    raise GoNextOnly
 
 
-async def SuchAccountExists(user_id: int, num: str):
+async def AccountExists(user_id: int, client: TelegramClient, phone_number: str) -> bool:
     try:
-        await source.ACCOUNTS[0].get_entity(num)
-        Stamp('Such account already exists', 'w')
-        BOT.send_message(user_id, '🟥 Такой аккаунт уже есть')
-        return True
+        first_name, last_name = GenerateRandomRussianName()
+        contact = InputPhoneContact(client_id=0, phone=phone_number, first_name=first_name, last_name=last_name)
+        result = await client(ImportContactsRequest([contact]))
+        if result.imported:
+            entity = result.users[0]
+            Stamp('Such account already exists', 'w')
+            BOT.send_message(user_id, '🟥 Такой аккаунт уже есть')
+            await client(DeleteContactsRequest([entity.id]))
+            return True
+        else:
+            Stamp('Such account does not exist', 's')
+            BOT.send_message(user_id, '🟩 Такой аккаунт не найден')
+            return False
     except (PeerIdInvalidError, ValueError):
         Stamp('Such account does not exist', 's')
-        BOT.send_message(user_id, '🟩 Такого аккаунта ещё нет')
+        BOT.send_message(user_id, '🟨 Такой аккаунт не существует (сообщите админу и продолжайте)')
         return False
+    except Exception as e:
+        Stamp(f'Error when checking for existance: {e}', 'e')
+        BOT.send_message(user_id, '🟧 Ошибка при проверке на существование аккаунта')
 
 
 async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) -> None:
@@ -146,26 +168,26 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
         BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
         try:
             num, tzid = BuyAccount(user_id, country_code)
-            if SuchAccountExists(user_id, num):
-                raise ErrorAfterNumberInsertion
+            if await AccountExists(user_id, source.ACCOUNTS[0], num):
+                raise CancelAndNext
             ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{num}`. Продолжаем?')
             answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:
-                raise ErrorAfterNumberInsertion
+                raise CancelAndNext
             code = GetCodeFromSms(user_id, num)
             ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{code}`. Продолжаем?')
             answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:
-                raise PasswordRequired
+                raise GoNextOnly
             ShowButtons(user_id, YES_NO_BTNS, f'🖊 Установите пароль `{PASSWORD}`. Продолжаем?')
             answer = await get_user_input(user_id)
             if answer == YES_NO_BTNS[1]:
-                raise PasswordRequired
+                raise GoNextOnly
             session, rand_hash = RequestAPICode(user_id, num)
             ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
             answer = await get_user_input(user_id)
             if answer == PROBLEM_BTN[0]:
-                raise PasswordRequired
+                raise GoNextOnly
             code = ExtractAPICode(user_id, answer)
             LoginAPI(user_id, session, num, rand_hash, code)
             cur_hash = GetHash(user_id, session)
@@ -181,7 +203,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
             answer = await get_user_input(user_id)
             if answer == PROBLEM_BTN[0]:
-                raise PasswordRequired
+                raise GoNextOnly
             code = ExtractAutomationCode(user_id, answer)
             await client.sign_in(phone=num, code=code)
             Stamp(f'Account {num} authorized', 's')
@@ -195,7 +217,11 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
             BOT.send_message(user_id, f'📊 Данные для номера {num} занесены в таблицу')
             i += 1
-        except ErrorAfterNumberInsertion:
+            ShowButtons(user_id, YES_NO_BTNS, f'❔ Покупаем аккаунт №{i}?')
+            answer = await get_user_input(user_id)
+            if answer == YES_NO_BTNS[1]:
+                break
+        except CancelAndNext:
             Stamp(f'Account {i + 1} has problems when requesting code', 'w')
             BOT.send_message(user_id, f'❌ В аккаунте {i + 1} проблема при запросе кода, отменяю и перехожу к следующему...')
             try:
@@ -205,7 +231,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
                 Stamp(f'Exiting because unable to cancel account', 'w')
                 BOT.send_message(user_id, '❗️ Не получилось отменить аккаунт, завершаю процесс...')
                 break
-        except PasswordRequired:
+        except GoNextOnly:
             Stamp(f'Account {i + 1} requires password or already registered', 'w')
             BOT.send_message(user_id, f'❌ Аккаунт {i + 1} требует пароль или уже существует, перехожу к следующему...')
             continue
@@ -217,6 +243,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             Stamp(f'Error while adding accounts: {e}', 'e')
             BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
             break
+    ShowButtons(user_id, WELCOME_BTNS, '❔ Выберите действие:')
 
 
 @ControlRecursion
@@ -282,7 +309,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
         Stamp(f'No incoming sms for {num} after {round(time() - start_time)} seconds of waiting', 'w')
         BOT.send_message(user_id, f'💤 Не вижу входящих сообщений после {round(time() - start_time)} секунд ожидания...')
         Sleep(LONG_SLEEP)
-    raise ErrorAfterNumberInsertion
+    raise CancelAndNext
 
 
 def CheckAllSms(user_id: int) -> dict | None:
