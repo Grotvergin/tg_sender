@@ -156,7 +156,7 @@ async def AccountExists(user_id: int, client: TelegramClient, phone_number: str)
         BOT.send_message(user_id, '🟨 Аккаунт не существует (сообщите админу и продолжайте)')
         return False
     except Exception as e:
-        Stamp(f'Error when checking for existance: {e}', 'e')
+        Stamp(f'Error when checking for existence: {e}', 'e')
         BOT.send_message(user_id, '🟧 Ошибка при проверке на существование аккаунта')
 
 
@@ -237,7 +237,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     if answer == PROBLEM_BTN[0]:
         raise GoNextOnly
     code = ExtractAutomationCode(user_id, answer)
-    await client.sign_in(phone=num, code=code)
+    await client.sign_in(phone=num, code=code, password=PASSWORD)
     Stamp(f'Account authorized', 's')
     BOT.send_message(user_id, f'✅ Аккаунт авторизован')
     await SetProfileInfo(client, user_id)
@@ -245,7 +245,6 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     await AddContacts(client, 50, user_id)
     await UpdatePrivacySettings(client, user_id)
     source.ACCOUNTS.append(client)
-
 
 
 @ControlRecursion
