@@ -262,6 +262,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     LoginAPI(user_id, session, num, rand_hash, code)
     cur_hash = GetHash(user_id, session)
     CreateApp(user_id, session, num, cur_hash)
+    Sleep(15)
     api_id, api_hash = GetAppData(user_id, session)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
