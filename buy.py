@@ -44,7 +44,7 @@ def GetTariffInfo(message: Message) -> dict:
         else:
             Stamp(f'Failed to get tariffs: {response.text}', 'w')
             BOT.send_message(message.from_user.id, f'ℹ️ Пока что не удалось получить тарифы, '
-                                                    f'пробую ещё раз через {LONG_SLEEP} секунд...')
+                                                   f'пробую ещё раз через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP)
             data = GetTariffInfo(message, TOKEN_SIM)
     return data
@@ -194,48 +194,40 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
     ShowButtons(user_id, WELCOME_BTNS, '❔ Выберите действие:')
 
 
+async def askToProceed(user_id: int, buttons: tuple, text: str, condition: str, exception) -> str:
+    ShowButtons(user_id, buttons, text)
+    answer = await get_user_input(user_id)
+    if answer == condition:
+        raise exception
+    return answer
+
+
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     num, tzid = BuyAccount(user_id, country_code)
     if await AccountExists(user_id, source.ACCOUNTS[0], num):
         raise CancelAndNext(tzid)
-    ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{num}`. Продолжаем?')
-    answer = await get_user_input(user_id)
-    if answer == YES_NO_BTNS[1]:
-        raise CancelAndNext(tzid)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
     code = GetCodeFromSms(user_id, num)
-    ShowButtons(user_id, YES_NO_BTNS, f'🖊 Введите `{code}`. Продолжаем?')
-    answer = await get_user_input(user_id)
-    if answer == YES_NO_BTNS[1]:
-        raise GoNextOnly
-    ShowButtons(user_id, YES_NO_BTNS, f'🖊 Установите пароль `{PASSWORD}`. Продолжаем?')
-    answer = await get_user_input(user_id)
-    if answer == YES_NO_BTNS[1]:
-        raise GoNextOnly
-    session, rand_hash = RequestAPICode(user_id, num)
-    ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
-    answer = await get_user_input(user_id)
-    if answer == PROBLEM_BTN[0]:
-        raise GoNextOnly
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    buyProxy(user_id)
+    proxy = receiveProxyInfo(user_id)
+    session, rand_hash = RequestAPICode(user_id, num, proxy)
+    answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
     cur_hash = GetHash(user_id, session)
     CreateApp(user_id, session, num, cur_hash)
     api_id, api_hash = GetAppData(user_id, session)
-    buyProxy(user_id)
-    proxy = receiveProxyInfo(user_id)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
     UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
-    Stamp(f'Account was added to the list', 's')
     BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=proxy)
     await client.connect()
     await client.send_code_request(num)
-    ShowButtons(user_id, PROBLEM_BTN, '🖊 Введите код или пришлите сообщение с кодом:')
-    answer = await get_user_input(user_id)
-    if answer == PROBLEM_BTN[0]:
-        raise GoNextOnly
+    answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для юзербота:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAutomationCode(user_id, answer)
     await client.sign_in(phone=num, code=code, password=PASSWORD)
     Stamp(f'Account authorized', 's')
@@ -256,7 +248,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while buying account: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '
-                                               f'пробую ещё раз через {LONG_SLEEP} секунд...')
+                                  f'пробую ещё раз через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP)
         num, tzid = BuyAccount(user_id)
     else:
@@ -272,7 +264,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
         else:
             Stamp(f'Failed to buy account: {response.text}', 'e')
             BOT.send_message(user_id, f'❌ Не удалось купить аккаунт, '
-                                                   f'пробую ещё раз через {LONG_SLEEP} секунд...')
+                                      f'пробую ещё раз через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP)
             num, tzid = BuyAccount(user_id)
     return num, tzid

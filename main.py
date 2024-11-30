@@ -50,7 +50,6 @@ def MessageAccept(message: Message) -> None:
     if user_id in USER_RESPONSES:
         USER_RESPONSES[user_id].put_nowait(message.text)
         return
-
     if message.text == '/start':
         BOT.send_message(user_id, f'Привет, {message.from_user.first_name}!')
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')

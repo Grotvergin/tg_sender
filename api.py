@@ -11,18 +11,23 @@ from bs4 import BeautifulSoup
 
 
 @ControlRecursion
-def RequestAPICode(user_id: int, num: str) -> (Session, str):
+def RequestAPICode(user_id: int, num: str, proxy: tuple) -> (Session, str):
     Stamp('Sending request to authorize on API', 'i')
     BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
+    if proxy:
+        session.proxies = {
+            'http': f'socks5://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
+            'https': f'socks5://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
+        }
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while requesting API code: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с API для запроса кода, '
-                                               f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+                                  f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        session, rand_hash = RequestAPICode(user_id, num)
+        session, rand_hash = RequestAPICode(user_id, num, proxy)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Sent API code', 's')
@@ -31,9 +36,9 @@ def RequestAPICode(user_id: int, num: str) -> (Session, str):
         else:
             Stamp(f'Failed to send API code: {response.text}', 'e')
             BOT.send_message(user_id, f'‼️ Не удалось запросить код для API, '
-                                                   f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
+                                      f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            session, rand_hash = RequestAPICode(user_id, num)
+            session, rand_hash = RequestAPICode(user_id, num, proxy)
     Sleep(10, 0.3)
     return session, rand_hash
 

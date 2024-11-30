@@ -13,6 +13,7 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
+# Прокси при создании приложении
 # Заявки на эмодзи
 
 WELCOME_BTNS = ('Разовые 1️⃣',
