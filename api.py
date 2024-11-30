@@ -17,8 +17,8 @@ def RequestAPICode(user_id: int, num: str, proxy: tuple) -> (Session, str):
     session = Session()
     if proxy:
         session.proxies = {
-            'http': f'socks5://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
-            'https': f'socks5://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
+            'http': f'http://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
+            'https': f'http://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
         }
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
@@ -32,7 +32,7 @@ def RequestAPICode(user_id: int, num: str, proxy: tuple) -> (Session, str):
         if str(response.status_code)[0] == '2':
             Stamp(f'Sent API code', 's')
             BOT.send_message(user_id, f'💬 Код для авторизации в API отправлен')
-            rand_hash = response.json()['random_hash']
+            rand_hash = response.json().get('random_hash')
         else:
             Stamp(f'Failed to send API code: {response.text}', 'e')
             BOT.send_message(user_id, f'‼️ Не удалось запросить код для API, '

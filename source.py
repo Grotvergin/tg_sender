@@ -13,8 +13,8 @@ from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
-# Прокси при создании приложении
 # Заявки на эмодзи
+# Почта и код с нее автоматизировать
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -56,6 +56,7 @@ init()
 seed()
 ADMIN_CHAT_ID = MY_TG_ID
 CODE = None
+MIN_LEN_EMAIL = 15
 LEN_API_CODE = 11
 LONG_SLEEP = 15
 SHORT_SLEEP = 1

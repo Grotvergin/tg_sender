@@ -1,7 +1,7 @@
 import source
-from generator import GenerateRandomRussianName
+from generator import GenerateRandomRussianName, GenerateRandomWord
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
-                    LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL,
+                    LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, MIN_LEN_EMAIL,
                     URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES,
                     USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
@@ -18,7 +18,7 @@ from os import getcwd
 from os.path import join
 from re import search
 # ---
-from requests import get
+from requests import get, post
 from telebot.types import Message
 from telethon.sync import TelegramClient
 from telethon.errors import PeerIdInvalidError
@@ -202,6 +202,42 @@ async def askToProceed(user_id: int, buttons: tuple, text: str, condition: str, 
     return answer
 
 
+def GetTemporaryEmail(min_len: int, password: str) -> (str, str):
+    Stamp('Getting temporary email', 'i')
+    response = get('https://api.mail.tm/domains')
+    domain = response.json()['hydra:member'][0]['domain']
+    email_username = GenerateRandomWord(min_len)
+    email = f'{email_username}@{domain}'
+    data = {
+        "address": email,
+        "password": password
+    }
+    post('https://api.mail.tm/accounts', json=data)
+    token_response = post('https://api.mail.tm/token', json=data)
+    token = token_response.json()['token']
+    Stamp(f'Temporary email {email} received successfully', 's')
+    return email, token
+
+
+def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
+    Stamp('Getting email code', 'i')
+    for _ in range(max_attempts):
+        response = get('https://api.mail.tm/messages', headers={'Authorization': f'Bearer {token}'})
+        messages = response.json()['hydra:member']
+        if messages:
+            Stamp('Email message received', 's')
+            code_message = messages[0]['subject']
+            match = search(r'\b\d{6}\b', code_message)
+            if match:
+                Stamp('Email code received successfully', 's')
+                return match.group(0)
+            else:
+                Stamp('Email code not found in the message', 'w')
+        Sleep(SHORT_SLEEP * 5)
+    Stamp('Failed to get email code', 'w')
+    return
+
+
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     num, tzid = BuyAccount(user_id, country_code)
     if await AccountExists(user_id, source.ACCOUNTS[0], num):
@@ -210,9 +246,13 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     code = GetCodeFromSms(user_id, num)
     await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    code = GetEmailCode(token)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     buyProxy(user_id)
-    proxy = receiveProxyInfo(user_id)
-    session, rand_hash = RequestAPICode(user_id, num, proxy)
+    socks_proxy, http_proxy = receiveProxyInfo(user_id)
+    session, rand_hash = RequestAPICode(user_id, num, http_proxy)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
@@ -221,10 +261,10 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     api_id, api_hash = GetAppData(user_id, session)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-    UploadData([[num, api_id, api_hash, PASSWORD, proxy[1], proxy[2], proxy[4], proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+    UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
     BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
-    client = TelegramClient(session, api_id, api_hash, proxy=proxy)
+    client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
     await client.connect()
     await client.send_code_request(num)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для юзербота:', PROBLEM_BTN[0], GoNextOnly)

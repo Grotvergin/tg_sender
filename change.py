@@ -60,10 +60,11 @@ def receiveProxyInfo(user_id: int) -> tuple:
         data = response.json()
         if data.get('success'):
             cur = data['list']['data'][0]
-            proxy = (2, cur['ip'], cur['socks_port'], True, cur['login'], cur['password'])
-            Stamp(f'Proxy received: {proxy}', 's')
-            BOT.send_message(user_id, f'🟢 Прокси получен: {proxy}')
-            return proxy
+            socks_proxy = (2, cur['ip'], cur['socks_port'], True, cur['login'], cur['password'])
+            http_proxy = (2, cur['ip'], cur['http_port'], True, cur['login'], cur['password'])
+            Stamp(f'Proxy received: {socks_proxy}', 's')
+            BOT.send_message(user_id, f'🟢 Прокси получен: {socks_proxy}')
+            return socks_proxy, http_proxy
         else:
             error_code = data.get('message', 'UNKNOWN_ERROR')
             Stamp(f'Error while receiving proxy: {error_code}', 'e')
