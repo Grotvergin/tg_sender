@@ -14,7 +14,6 @@ from googleapiclient.errors import HttpError
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
 # Заявки на эмодзи
-# Почта и код с нее автоматизировать
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
