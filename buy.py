@@ -187,10 +187,10 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             Stamp(f'Exiting because of recursion error', 'w')
             BOT.send_message(user_id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки...')
             break
-        except Exception as e:
-            Stamp(f'Error while adding accounts: {e}', 'e')
-            BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
-            break
+        # except Exception as e:
+        #     Stamp(f'Error while adding accounts: {e}', 'e')
+        #     BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
+        #     break
     ShowButtons(user_id, WELCOME_BTNS, '❔ Выберите действие:')
 
 
