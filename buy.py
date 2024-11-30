@@ -25,6 +25,8 @@ from telethon.errors import PeerIdInvalidError
 from telethon.tl.functions.contacts import DeleteContactsRequest, ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
 
+from test import test_session
+
 
 @ControlRecursion
 def GetTariffInfo(message: Message) -> dict:
@@ -256,6 +258,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     Sleep(60)
     test_proxy_connection_with_session(http_proxy)
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
+    test_session(session)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
