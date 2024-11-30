@@ -43,6 +43,20 @@ def test_proxy_connection_with_session(proxy: tuple):
         session.close()
 
 
+def test_session(session: Session):
+    test_url = "https://api.ipify.org?format=json"
+    try:
+        response = session.get(test_url, timeout=10)
+        response.raise_for_status()
+        print(f"Your IP through session: {response.json()['ip']}")
+    except ProxyError as e:
+        print(f"Proxy error: {e}")
+    except RequestException as e:
+        print(f"Request failed: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
 @ControlRecursion
 def RequestAPICode(user_id: int, num: str, proxy: tuple) -> (Session, str):
     Stamp('Sending request to authorize on API', 'i')

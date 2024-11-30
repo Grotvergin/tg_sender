@@ -6,7 +6,7 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
-from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData, test_proxy_connection_with_session
+from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData, test_proxy_connection_with_session, test_session
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import (SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings,
@@ -24,8 +24,6 @@ from telethon.sync import TelegramClient
 from telethon.errors import PeerIdInvalidError
 from telethon.tl.functions.contacts import DeleteContactsRequest, ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
-
-from test import test_session
 
 
 @ControlRecursion
