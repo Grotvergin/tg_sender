@@ -14,6 +14,7 @@ from googleapiclient.errors import HttpError
 # ----- TODO LIST -----
 # Кнопка для возврата заявки
 # Заявки на эмодзи
+# Дрочка прокси до победного
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',

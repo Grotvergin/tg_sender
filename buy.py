@@ -1,4 +1,5 @@
 import source
+from auth import AuthCallback
 from generator import GenerateRandomRussianName, GenerateRandomWord
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
                     LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, MIN_LEN_EMAIL,
@@ -187,10 +188,10 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             Stamp(f'Exiting because of recursion error', 'w')
             BOT.send_message(user_id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки...')
             break
-        # except Exception as e:
-        #     Stamp(f'Error while adding accounts: {e}', 'e')
-        #     BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
-        #     break
+        except Exception as e:
+            Stamp(f'Error while adding accounts: {e}', 'e')
+            BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
+            break
     ShowButtons(user_id, WELCOME_BTNS, '❔ Выберите действие:')
 
 
@@ -239,19 +240,18 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    # num, tzid = BuyAccount(user_id, country_code)
-    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
-    #     raise CancelAndNext(tzid)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    # code = GetCodeFromSms(user_id, num)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    # code = GetEmailCode(token)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    num, tzid = BuyAccount(user_id, country_code)
+    if await AccountExists(user_id, source.ACCOUNTS[0], num):
+        raise CancelAndNext(tzid)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    code = GetCodeFromSms(user_id, num)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    code = GetEmailCode(token)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     buyProxy(user_id)
-    num = '+79870068167'
     socks_proxy, http_proxy = receiveProxyInfo(user_id)
     Sleep(60)
     test_proxy_connection_with_session(http_proxy)
@@ -270,11 +270,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
-    await client.connect()
-    await client.send_code_request(num)
-    answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для юзербота:', PROBLEM_BTN[0], GoNextOnly)
-    code = ExtractAutomationCode(user_id, answer)
-    await client.sign_in(phone=num, code=code, password=PASSWORD)
+    await client.start(phone=num, password=PASSWORD, code_callback=lambda: AuthCallback(num, user_id, MAX_WAIT_CODE))
     Stamp(f'Account authorized', 's')
     BOT.send_message(user_id, f'✅ Аккаунт авторизован')
     await SetProfileInfo(client, user_id)
