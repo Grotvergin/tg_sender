@@ -253,6 +253,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     buyProxy(user_id)
     num = '+79991559947'
     socks_proxy, http_proxy = receiveProxyInfo(user_id)
+    Sleep(30)
     test_proxy_connection_with_session(http_proxy)
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
