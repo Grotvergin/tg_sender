@@ -21,7 +21,7 @@ def test_proxy_connection_with_session(proxy: tuple):
         'http': proxy_url,
         'https': proxy_url,
     }
-    test_url = "https://api.ipify.org?format=json"  # Сервис для проверки внешнего IP
+    test_url = "https://api64.ipify.org?format=json"  # Сервис для проверки внешнего IP
 
     print(f"Testing proxy with Session: {proxy_url}")
 
