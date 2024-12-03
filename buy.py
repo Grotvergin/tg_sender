@@ -251,9 +251,11 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
     # code = GetEmailCode(token)
     # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = '+79289670331'
-    buyProxy(user_id)
-    socks_proxy, http_proxy = receiveProxyInfo(user_id)
+    num = '+79870068643'
+    # buyProxy(user_id)
+    socks_proxy = None
+    # socks_proxy, http_proxy = receiveProxyInfo(user_id)
+    http_proxy = (1, '188.119.124.186', 9562, True, '2oeqv3', 'PmrdMy')
     Sleep(60)
     test_proxy_connection_with_session(http_proxy)
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
