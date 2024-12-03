@@ -253,27 +253,28 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     num = '+79870068643'
     # buyProxy(user_id)
-    socks_proxy = None
+    socks_proxy = (2, '188.119.124.186', 9562, True, '2oeqv3', 'PmrdMy')
     # socks_proxy, http_proxy = receiveProxyInfo(user_id)
-    http_proxy = (1, '188.119.124.186', 9562, True, '2oeqv3', 'PmrdMy')
-    Sleep(60)
-    test_proxy_connection_with_session(http_proxy)
-    session, rand_hash = RequestAPICode(user_id, num, http_proxy)
-    test_session(session)
-    answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
-    code = ExtractAPICode(user_id, answer)
-    LoginAPI(user_id, session, num, rand_hash, code)
-    Sleep(10)
-    cur_hash = GetHash(user_id, session)
-    Sleep(10)
-    CreateApp(user_id, session, num, cur_hash)
-    Sleep(20)
-    test_session(session)
-    api_id, api_hash = GetAppData(user_id, session)
-    num = num[1:]
-    row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
-    UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
-    BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
+    # Sleep(60)
+    # test_proxy_connection_with_session(http_proxy)
+    # session, rand_hash = RequestAPICode(user_id, num, http_proxy)
+    # test_session(session)
+    # answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
+    # code = ExtractAPICode(user_id, answer)
+    # LoginAPI(user_id, session, num, rand_hash, code)
+    # Sleep(10)
+    # cur_hash = GetHash(user_id, session)
+    # Sleep(10)
+    # CreateApp(user_id, session, num, cur_hash)
+    # Sleep(20)
+    # test_session(session)
+    # api_id, api_hash = GetAppData(user_id, session)
+    # num = num[1:]
+    # row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
+    # UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+    # BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
+    api_id = 21275459
+    api_hash = '8979af95be37f8dbbe7b8dfd29480585'
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
     await client.start(phone=num, password=PASSWORD, code_callback=lambda: AuthCallback(num, user_id, MAX_WAIT_CODE))
