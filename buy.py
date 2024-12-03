@@ -240,17 +240,18 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    num, tzid = BuyAccount(user_id, country_code)
-    if await AccountExists(user_id, source.ACCOUNTS[0], num):
-        raise CancelAndNext(tzid)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    code = GetCodeFromSms(user_id, num)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    code = GetEmailCode(token)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # num, tzid = BuyAccount(user_id, country_code)
+    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
+    #     raise CancelAndNext(tzid)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    # code = GetCodeFromSms(user_id, num)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    # code = GetEmailCode(token)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    num = '+79289670331'
     buyProxy(user_id)
     socks_proxy, http_proxy = receiveProxyInfo(user_id)
     Sleep(60)
@@ -260,9 +261,12 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
+    Sleep(10)
     cur_hash = GetHash(user_id, session)
+    Sleep(10)
     CreateApp(user_id, session, num, cur_hash)
-    Sleep(15)
+    Sleep(20)
+    test_session(session)
     api_id, api_hash = GetAppData(user_id, session)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
