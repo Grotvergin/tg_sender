@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from headers_agents import HEADERS
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP,
                     URL_API_GET_APP, BOT, LONG_SLEEP)
@@ -172,6 +174,7 @@ def GetAppData(user_id: int, session: Session) -> (str, str):
 
 
 def ParseReadyHTML(page: str) -> (str, str):
+    pprint(page)
     api_id_pattern = r'<label for="app_id" class="col-md-4 text-right control-label">App api_id:</label>\s*<div class="col-md-7">\s*<span class="form-control input-xlarge uneditable-input"[^>]*><strong>(\d+)</strong></span>'
     api_hash_pattern = r'<label for="app_hash" class="col-md-4 text-right control-label">App api_hash:</label>\s*<div class="col-md-7">\s*<span class="form-control input-xlarge uneditable-input"[^>]*>([a-f0-9]{32})</span>'
     api_id_match = search(api_id_pattern, page, IGNORECASE)
