@@ -16,6 +16,10 @@ def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
     BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
     session.proxies = proxy
+    test_url = "https://api.ipify.org?format=json"
+    response = session.get(test_url, timeout=10)
+    response.raise_for_status()
+    print(f"Proxy test successful! Response: {response.json()}")
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
     except ConnectionError as e:

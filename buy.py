@@ -255,10 +255,6 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     http_proxy, socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
-    test_url = "https://api.ipify.org?format=json"
-    response = session.get(test_url, timeout=10)
-    response.raise_for_status()
-    print(f"Proxy test successful! Response: {response.json()}")
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
