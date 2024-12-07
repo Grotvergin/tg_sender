@@ -240,17 +240,18 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    num, tzid = BuyAccount(user_id, country_code)
-    if await AccountExists(user_id, source.ACCOUNTS[0], num):
-        raise CancelAndNext(tzid)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    code = GetCodeFromSms(user_id, num)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    code = GetEmailCode(token)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # num, tzid = BuyAccount(user_id, country_code)
+    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
+    #     raise CancelAndNext(tzid)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    # code = GetCodeFromSms(user_id, num)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    # code = GetEmailCode(token)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    num = '+79136172232'
     http_proxy, socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
