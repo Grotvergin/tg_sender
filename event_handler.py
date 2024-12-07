@@ -40,34 +40,40 @@ async def RefreshEventHandler():
 
 async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-    dicts_list = ({'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры'}, {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты'})
+    dicts_list = ({'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры'},
+                  {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты'},
+                  {'dict': source.AUTO_REAC_DICT, 'order_type': 'Реакции'})
     for item in dicts_list:
         dict_name = item['dict']
         order_type = item['order_type']
-        if event.chat.username in dict_name:
-            annual_amount = dict_name[event.chat.username]['annual']
-            Stamp(f'Annual amount before decision = {annual_amount}', 'i')
-            Stamp(f'Message text:\n{event.message.text}\n', 'i')
-            if NeedToDecrease(event.message.text, event.chat.username) and order_type == 'Репосты':
-                annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
-                Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
-            Stamp(f'Annual amount after decision = {annual_amount}', 'i')
-            rand_amount = randint(int((1 - (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount),
-                                  int((1 + (float(dict_name[event.chat.username]['spread']) / 100)) * annual_amount))
-            Stamp(f'Rand_amount = {rand_amount}', 'i')
-            if rand_amount > len(source.ACCOUNTS):
-                rand_amount = len(source.ACCOUNTS)
-            elif rand_amount <= 0:
-                rand_amount = 1
-            source.REQS_QUEUE.append({'order_type': order_type,
-                                      'initiator': f'Автоматическая от {dict_name[event.chat.username]["initiator"]}',
-                                      'link': f'{event.chat.username}/{event.message.id}',
-                                      'start': datetime.now().strftime(TIME_FORMAT),
-                                      'finish': (datetime.now() + timedelta(minutes=dict_name[event.chat.username]['time_limit'])).strftime(TIME_FORMAT),
-                                      'planned': rand_amount,
-                                      'cur_acc_index': randint(0, len(source.ACCOUNTS) - 1)})
-            SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
-    Stamp(f'Added automatic request for channel {event.chat.username}', 's')
+        for key, value in dict_name.items():
+            if event.chat.username in key:
+                if event.chat.username == key:
+                    channel_name = key
+                else:
+                    channel_name = key.split('_')[-2]
+                annual_amount = dict_name[key]['annual']
+                Stamp(f'Annual amount before decision = {annual_amount}', 'i')
+                if NeedToDecrease(event.message.text, key) and order_type == 'Репосты':
+                    annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
+                    Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
+                Stamp(f'Annual amount after decision = {annual_amount}', 'i')
+                rand_amount = randint(int((1 - (float(dict_name[key]['spread']) / 100)) * annual_amount),
+                                      int((1 + (float(dict_name[key]['spread']) / 100)) * annual_amount))
+                if rand_amount > len(source.ACCOUNTS):
+                    rand_amount = len(source.ACCOUNTS)
+                elif rand_amount <= 0:
+                    rand_amount = 1
+                source.REQS_QUEUE.append({'order_type': order_type,
+                                          'initiator': f'Автоматическая от {dict_name[key]["initiator"]}',
+                                          'link': f'{channel_name}/{event.message.id}',
+                                          'start': datetime.now().strftime(TIME_FORMAT),
+                                          'finish': (datetime.now() + timedelta(minutes=dict_name[key]['time_limit'])).strftime(TIME_FORMAT),
+                                          'planned': rand_amount,
+                                          'cur_acc_index': randint(0, len(source.ACCOUNTS) - 1),
+                                          'emoji': dict_name[key].get('emoji', 'N/A')})
+                SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+                Stamp(f'Added automatic request for channel {channel_name}', 's')
 
 
 def NeedToDecrease(message_text: str, channel_name: str) -> bool:

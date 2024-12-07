@@ -8,64 +8,14 @@ from re import search, IGNORECASE
 # ---
 from requests import Session
 from bs4 import BeautifulSoup
-from requests.exceptions import ProxyError, RequestException
-
-
-def test_proxy_connection_with_session(proxy: tuple):
-    """
-    Тестирует соединение через прокси с использованием объекта Session.
-    :param proxy: Кортеж с данными прокси (2, ip, port, True, login, password).
-    """
-    proxy_url = f"http://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}"
-    proxies = {
-        'http': proxy_url,
-        'https': proxy_url,
-    }
-    test_url = "https://api64.ipify.org?format=json"  # Сервис для проверки внешнего IP
-
-    print(f"Testing proxy with Session: {proxy_url}")
-
-    # Создаём сессию
-    session = Session()
-    session.proxies = proxies
-
-    try:
-        response = session.get(test_url, timeout=10)
-        response.raise_for_status()
-        print(f"Proxy test successful! Response: {response.json()}")
-    except ProxyError as e:
-        print(f"Proxy error: {e}")
-    except RequestException as e:
-        print(f"Request failed: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-    finally:
-        session.close()
-
-
-def test_session(session: Session):
-    test_url = "https://api.ipify.org?format=json"
-    try:
-        response = session.get(test_url, timeout=10)
-        response.raise_for_status()
-        print(f"Your IP through session: {response.json()['ip']}")
-    except ProxyError as e:
-        print(f"Proxy error: {e}")
-    except RequestException as e:
-        print(f"Request failed: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
 
 
 @ControlRecursion
-def RequestAPICode(user_id: int, num: str, proxy: tuple) -> (Session, str):
+def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
     Stamp('Sending request to authorize on API', 'i')
     BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
-    session.proxies = {
-        'http': f'http://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
-        'https': f'http://{proxy[4]}:{proxy[5]}@{proxy[1]}:{proxy[2]}',
-    }
+    session.proxies = proxy
     try:
         response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
     except ConnectionError as e:

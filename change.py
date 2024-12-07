@@ -1,5 +1,5 @@
 import source
-from source import BOT, IMG_PATH, URL_BUY_PROXY, URL_RECEIVE_PROXY
+from source import BOT, IMG_PATH
 from common import Stamp
 from generator import GenerateRandomRussianName, GenerateRandomDescription, GetRandomProfilePicture
 # ---
@@ -7,72 +7,12 @@ from os import remove
 from os.path import split
 from random import randint
 # ---
-from requests import RequestException, post
 from telethon.sync import TelegramClient
 from telethon.tl.functions.account import UpdateProfileRequest, SetPrivacyRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import (InputPrivacyValueDisallowAll, InputPrivacyKeyPhoneNumber, InputPrivacyKeyPhoneCall,
                                InputPrivacyKeyChatInvite, InputPrivacyKeyStatusTimestamp, InputPhoneContact)
-
-
-def buyProxy(user_id: int):
-    Stamp('Buying proxy', 'i')
-    BOT.send_message(user_id, '🔒 Покупаю прокси...')
-    payload = {'PurchaseBilling':
-        {
-            "count": 1,
-            "duration": 30,
-            'type': 102,
-            'country': 'ru'
-        }
-    }
-    try:
-        response = post(URL_BUY_PROXY, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        if data.get('success'):
-            Stamp('Proxy bought', 's')
-            BOT.send_message(user_id, '✅ Прокси куплен')
-        else:
-            error_code = data.get('code', 'UNKNOWN_ERROR')
-            Stamp(f'Error while buying proxy: {error_code}', 'e')
-            BOT.send_message(user_id, f'❌ Ошибка при покупке прокси: {error_code}')
-            raise Exception(f"Error code: {error_code}")
-    except RequestException as e:
-        Stamp(f'HTTP Request failed: {e}', 'e')
-        BOT.send_message(user_id, '❌ Ошибка при покупке прокси. Проверьте соединение.')
-
-
-def receiveProxyInfo(user_id: int) -> tuple:
-    Stamp('Receiving proxy', 'i')
-    BOT.send_message(user_id, '🔒 Получаю данные о прокси...')
-    payload = {
-        "type": "ipv4-shared",
-        "proxy_type": "server",
-        "page": 1,
-        "page_size": 1,
-        "sort": 0
-    }
-    try:
-        response = post(URL_RECEIVE_PROXY, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        if data.get('success'):
-            cur = data['list']['data'][0]
-            socks_proxy = (2, cur['ip'], int(cur['socks_port']), True, cur['login'], cur['password'])
-            http_proxy = (1, cur['ip'], int(cur['http_port']), True, cur['login'], cur['password'])
-            Stamp(f'Proxy received: {http_proxy}', 's')
-            BOT.send_message(user_id, f'🟢 Прокси получен: {http_proxy}')
-            return socks_proxy, http_proxy
-        else:
-            error_code = data.get('message', 'UNKNOWN_ERROR')
-            Stamp(f'Error while receiving proxy: {error_code}', 'e')
-            BOT.send_message(user_id, f'❌ Ошибка при покупке прокси: {error_code}')
-            raise Exception(f"Error code: {error_code}")
-    except RequestException as e:
-        Stamp(f'HTTP Request failed: {e}', 'e')
-        BOT.send_message(user_id, '❌ Ошибка при получении прокси. Проверьте соединение.')
 
 
 def FindAccountByNumber(num: int) -> TelegramClient | None:

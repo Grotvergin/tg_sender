@@ -12,9 +12,9 @@ from faker import Faker
 from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
-# Кнопка для возврата заявки
 # Заявки на эмодзи
-# Дрочка прокси до победного
+# Система автономной покупки прокси
+# Проверка прокси если необходимо
 
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -24,6 +24,7 @@ WELCOME_BTNS = ('Разовые 1️⃣',
 CANCEL_BTN = ('Меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀',
                'Репосты 📢',
+               'Реакции 😮',
                CANCEL_BTN[0])
 AUTO_BTNS = ('Добавление 📌',
              'Удаление ❌',
@@ -50,6 +51,7 @@ FINISHED_REQS = []
 CUR_REQ = {}
 AUTO_VIEWS_DICT = {}
 AUTO_REPS_DICT = {}
+AUTO_REAC_DICT = {}
 BUYING_INFO = {}
 FAKER = Faker()
 init()
@@ -68,7 +70,6 @@ MAX_MINS_REQ = 20
 MAX_ACCOUNTS_BUY = 10
 NOTIF_TIME_DELTA = 30
 REQS_PORTION = 10
-MIN_LEN_EMAIL = 15
 MAX_RECURSION = 10
 NUMBER_LAST_FIN = 250
 USER_ANSWER_TIMEOUT = 300
@@ -84,14 +85,17 @@ URL_API_GET_CODE = URL_TG + 'auth/send_password'
 URL_API_LOGIN = URL_TG + 'auth/login'
 URL_API_CREATE_APP = URL_TG + 'apps/create'
 URL_API_GET_APP = URL_TG + 'apps'
-URL_PROXY = 'https://api.dashboard.proxy.market/dev-api/'
+URL_PROXY = f'https://proxy6.net/api/{PROXY_KEY}/'
 URL_BUY_PROXY = URL_PROXY + f'buy-proxy/{PROXY_KEY}'
-URL_RECEIVE_PROXY = URL_PROXY + f'list/{PROXY_KEY}'
+URL_GET_PROXY = URL_PROXY + 'getproxy?state=all'
+URL_CHANGE_TYPE_PROXY = URL_PROXY + 'settype?'
+URL_SET_COMMENT_PROXY = URL_PROXY + 'setdescr?'
 LEFT_CORNER = 'A2'
 RIGHT_CORNER = 'H500'
 FILE_FINISHED = 'finished.json'
 FILE_AUTO_VIEWS = 'auto_views.json'
 FILE_AUTO_REPS = 'auto_reps.json'
+FILE_AUTO_REAC = 'auto_reac.json'
 FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 KEY_PHRASE = 'Вот он:'

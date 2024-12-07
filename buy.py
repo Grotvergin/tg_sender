@@ -1,17 +1,17 @@
 import source
 from auth import AuthCallback
 from generator import GenerateRandomRussianName, GenerateRandomWord
-from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER,
-                    LONG_SLEEP, URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, MIN_LEN_EMAIL,
-                    URL_SMS, URL_GET_TARIFFS, MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES,
-                    USER_ANSWER_TIMEOUT, YES_NO_BTNS, PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION)
+from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER, LONG_SLEEP,
+                    URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
+                    MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
+                    PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION, MIN_LEN_EMAIL)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
-from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData, test_proxy_connection_with_session, test_session
+from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
-from change import (SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings,
-                    buyProxy, receiveProxyInfo)
+from change import SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings
+from proxy import getProxyByComment, changeProxyType, setProxyComment
 # ---
 from asyncio import sleep as async_sleep, Queue, TimeoutError, wait_for
 from time import time
@@ -99,7 +99,7 @@ async def CheckRefreshBuy() -> None:
         await async_sleep(SHORT_SLEEP)
 
 
-async def get_user_input(user_id: int) -> str:
+async def getUserInput(user_id: int) -> str:
     if user_id not in USER_RESPONSES:
         USER_RESPONSES[user_id] = Queue()
     try:
@@ -171,7 +171,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
             await ProcessSingleAccount(user_id, country_code, srv)
             i += 1
             ShowButtons(user_id, YES_NO_BTNS, f'❔ Покупаем аккаунт №{i + 1}?')
-            answer = await get_user_input(user_id)
+            answer = await getUserInput(user_id)
             if answer == YES_NO_BTNS[1]:
                 break
         except CancelAndNext as e:
@@ -197,7 +197,7 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
 
 async def askToProceed(user_id: int, buttons: tuple, text: str, condition: str, exception) -> str:
     ShowButtons(user_id, buttons, text)
-    answer = await get_user_input(user_id)
+    answer = await getUserInput(user_id)
     if answer == condition:
         raise exception
     return answer
@@ -240,39 +240,31 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    # num, tzid = BuyAccount(user_id, country_code)
-    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
-    #     raise CancelAndNext(tzid)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    # code = GetCodeFromSms(user_id, num)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    # code = GetEmailCode(token)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = '+79963304226'
-    # buyProxy(user_id)
-    http_proxy = (2, '217.29.53.90', 11618, True, '669tBr', '2WHzJD')
-    socks_proxy = (2, '217.29.53.90', 11618, True, '669tBr', '2WHzJD')
-    # socks_proxy, http_proxy = receiveProxyInfo(user_id)
-    # Sleep(60)
-    test_proxy_connection_with_session(http_proxy)
-    Sleep(10)
+    num, tzid = BuyAccount(user_id, country_code)
+    if await AccountExists(user_id, source.ACCOUNTS[0], num):
+        raise CancelAndNext(tzid)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    code = GetCodeFromSms(user_id, num)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    code = GetEmailCode(token)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    http_proxy, socks_proxy, proxy_id = getProxyByComment(user_id, '')
+    setProxyComment(user_id, proxy_id, 'busy')
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
-    test_session(session)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
-    Sleep(10)
+    Sleep(10, 0.3)
     cur_hash = GetHash(user_id, session)
-    Sleep(10)
+    Sleep(10, 0.3)
     CreateApp(user_id, session, num, cur_hash)
-    Sleep(20)
-    test_session(session)
+    Sleep(20, 0.3)
     api_id, api_hash = GetAppData(user_id, session)
-    print('CHANGE PROXY TYPEEEEEEE')
-    Sleep(120)
+    changeProxyType(user_id, proxy_id, 'socks')
+    Sleep(20)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
     UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)

@@ -1,5 +1,5 @@
 import source
-from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE
+from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE, FILE_AUTO_VIEWS, FILE_AUTO_REPS, FILE_AUTO_REAC
 from common import ShowButtons, Stamp
 from file import SaveRequestsToFile
 # ---
@@ -27,14 +27,20 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
 
 
 def DeleteAutomaticRequest(message: Message, path: str) -> None:
-    if message.text in source.AUTO_VIEWS_DICT.keys() and path == 'auto_views.json':
-        del source.AUTO_VIEWS_DICT[message.text]
-        SaveRequestsToFile(source.AUTO_VIEWS_DICT, 'automatic subs', path)
-        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на просмотры для канала {message.text} удалена')
-    elif message.text in source.AUTO_REPS_DICT.keys() and path == 'auto_reps.json':
-        del source.AUTO_REPS_DICT[message.text]
-        SaveRequestsToFile(source.AUTO_REPS_DICT, 'automatic reps', path)
-        BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на репосты для канала {message.text} удалена')
+    PATH_TO_DATA_MAP = {
+        FILE_AUTO_VIEWS: (source.AUTO_VIEWS_DICT, 'automatic subscriptions'),
+        FILE_AUTO_REPS: (source.AUTO_REPS_DICT, 'automatic reposts'),
+        FILE_AUTO_REAC: (source.AUTO_REAC_DICT, 'automatic reactions'),
+    }
+    data_info = PATH_TO_DATA_MAP.get(path)
+    if data_info:
+        data_dict, description = data_info
+        if message.text in data_dict.keys():
+            del data_dict[message.text]
+            SaveRequestsToFile(data_dict, description, path)
+            BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на {description} для канала {message.text} удалена')
+        else:
+            BOT.send_message(message.from_user.id, '❌ Не нашёл автоматической заявки на такой канал')
     else:
-        BOT.send_message(message.from_user.id, '❌ Не нашёл автоматической заявки на такой канал')
+        BOT.send_message(message.from_user.id, '❌ Некорректный путь файла')
     ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')

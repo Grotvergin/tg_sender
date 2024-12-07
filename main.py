@@ -3,7 +3,7 @@ from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
-                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES, SKIP_CODE)
+                    FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES, SKIP_CODE, FILE_AUTO_REAC)
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
 from event_handler import RefreshEventHandler
@@ -24,6 +24,7 @@ async def Main() -> None:
     source.FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)
     source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
+    source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', FILE_AUTO_REAC)
     loop = get_event_loop()
     try:
         await gather(create_task(CheckRefreshBuy()),
