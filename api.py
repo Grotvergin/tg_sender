@@ -90,6 +90,7 @@ def GetHash(user_id: int, session: Session) -> str:
                                                    f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             cur_hash = GetHash(user_id, session)
+    Sleep(LONG_SLEEP, 0.5)
     return cur_hash
 
 
@@ -113,8 +114,8 @@ def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
     BOT.send_message(user_id, f'🔨 Создаю приложение')
     data = {
         'hash': cur_hash,
-        'app_title': GenerateRandomWord(10),
-        'app_shortname': GenerateRandomWord(7),
+        'app_title': GenerateRandomWord(15),
+        'app_shortname': GenerateRandomWord(10),
         'app_url': '',
         'app_platform': 'android',
         'app_desc': '',
@@ -135,7 +136,7 @@ def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
             Stamp(f'Failed to create app for number {num}: {response.text}', 'e')
             BOT.send_message(user_id, f'📛 Не удалось создать приложение для номера {num}')
             raise
-    Sleep(LONG_SLEEP, 0.3)
+    Sleep(LONG_SLEEP, 0.2)
 
 
 @ControlRecursion

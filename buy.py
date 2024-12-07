@@ -255,17 +255,17 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     http_proxy, socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
     session, rand_hash = RequestAPICode(user_id, num, http_proxy)
+    test_url = "https://api.ipify.org?format=json"
+    response = session.get(test_url, timeout=10)
+    response.raise_for_status()
+    print(f"Proxy test successful! Response: {response.json()}")
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
-    Sleep(10, 0.3)
     cur_hash = GetHash(user_id, session)
-    Sleep(10, 0.3)
     CreateApp(user_id, session, num, cur_hash)
-    Sleep(20, 0.3)
     api_id, api_hash = GetAppData(user_id, session)
     changeProxyType(user_id, proxy_id, 'socks')
-    Sleep(20)
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
     UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)

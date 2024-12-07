@@ -1,6 +1,6 @@
 from requests import get, RequestException
-from common import Stamp
-from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PROXY
+from common import Stamp, Sleep
+from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PROXY, LONG_SLEEP
 
 
 def getProxyByComment(user_id, comment):
@@ -44,6 +44,7 @@ def changeProxyType(user_id, proxy_id, target_type):
     except RequestException as e:
         Stamp(f'Error during type change request: {e}', 'e')
         BOT.send_message(user_id, f'🟥 Ошибка при выполнении запроса на изменение типа прокси: {e}')
+    Sleep(LONG_SLEEP*2, 0.3)
 
 
 def setProxyComment(user_id, proxy_id, comment):
