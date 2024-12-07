@@ -4,7 +4,7 @@ from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PR
 
 
 def getProxyByComment(user_id, comment):
-    Stamp('Trying to buy proxy', 'i')
+    Stamp('Trying to get proxy', 'i')
     try:
         response = get(URL_GET_PROXY)
         data = response.json()
@@ -42,11 +42,11 @@ def getProxyByComment(user_id, comment):
 def changeProxyType(user_id, proxy_id, target_type):
     Stamp(f'Trying to change proxy {proxy_id} type to {target_type}', 'i')
     try:
-        response = get(URL_CHANGE_TYPE_PROXY + f'id={proxy_id}&type={target_type}')
+        response = get(URL_CHANGE_TYPE_PROXY + f'ids={proxy_id}&type={target_type}')
         data = response.json()
         if data['status'] == 'yes':
             Stamp(f'Proxy type change initiated for ID {proxy_id}', 's')
-            BOT.send_message(user_id, f'🟨 У прокси {proxy_id} тип изменен на {target_type}')
+            BOT.send_message(user_id, f'🟢 У прокси {proxy_id} тип изменен на {target_type}')
         else:
             Stamp(f'Error during proxy type change: {data.get("error", "Unknown")}', 'e')
             BOT.send_message(user_id, f'🟥 Ошибка при изменении типа прокси: {data.get("error", "Unknown")}')
@@ -58,7 +58,7 @@ def changeProxyType(user_id, proxy_id, target_type):
 def setProxyComment(user_id, proxy_id, comment):
     Stamp(f'Setting comment "{comment}" for proxy ID {proxy_id}', 'i')
     try:
-        response = get(URL_SET_COMMENT_PROXY + f'id={proxy_id}&new={comment}')
+        response = get(URL_SET_COMMENT_PROXY + f'ids={proxy_id}&new={comment}')
         data = response.json()
         if data['status'] == 'yes':
             Stamp(f'Comment "{comment}" successfully set for proxy ID {proxy_id}', 's')

@@ -39,7 +39,7 @@ def AutomaticAcceptEmoji(message: Message) -> None:
             ShowButtons(message, CANCEL_BTN, "❌ Вы ввели не эмодзи. Пожалуйста, введите только эмодзи")
             BOT.register_next_step_handler(message, AutomaticAcceptEmoji)
     else:
-        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name или @name):')
+        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REAC)
 
 
