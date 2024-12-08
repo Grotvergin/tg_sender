@@ -312,7 +312,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
 def CancelNumber(user_id: int, tzid: str) -> bool:
     for attempt in range(MAX_RECURSION):
         try:
-            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'}, proxies=BASE_HTTP_PROXY)
+            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'}, proxies=FOREIGN_PROXY)
             if response.status_code // 100 == 2 and str(response.json().get('response')) == '1':
                 Stamp(f'Successfully canceled number', 's')
                 BOT.send_message(user_id, f'❇️ Номер отменён')
@@ -348,7 +348,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
 def CheckAllSms(user_id: int) -> dict | None:
     res = {}
     try:
-        response = get(URL_SMS, params={'apikey': TOKEN_SIM}, proxies=BASE_HTTP_PROXY)
+        response = get(URL_SMS, params={'apikey': TOKEN_SIM}, proxies=FOREIGN_PROXY)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером для получения кодов...')
