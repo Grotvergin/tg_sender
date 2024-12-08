@@ -251,7 +251,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
     # code = GetEmailCode(token)
     # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = '+79961243026'
+    num = '+79136112682'
     session, rand_hash = RequestAPICode(user_id, num, API_PROXY)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
