@@ -1,8 +1,8 @@
 from pprint import pprint
 
-from headers_agents import HEADERS
+from headers_agents import FIRST_TOUCH_HEADERS, HEADERS_REQUEST_CODE, HEADERS_AFTER_LOGIN, HEADERS_FOR_APP, HEADERS_CREATE_APP, HEADERS_GET_APP, HEADERS_LOGIN
 from source import (URL_API_GET_CODE, URL_API_LOGIN, URL_API_CREATE_APP,
-                    URL_API_GET_APP, BOT, LONG_SLEEP)
+                    URL_API_GET_APP, BOT, LONG_SLEEP, URL_TG, URL_API_SECOND_TOUCH)
 from generator import GenerateRandomWord
 from common import Stamp, Sleep, ControlRecursion
 # ---
@@ -23,7 +23,10 @@ def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
     response.raise_for_status()
     print(f"Proxy test successful! Response: {response.json()}")
     try:
-        response = session.post(URL_API_GET_CODE, headers=HEADERS, data={'phone': num})
+        session.get(URL_TG, headers=FIRST_TOUCH_HEADERS)
+        session.get(URL_API_SECOND_TOUCH, headers=FIRST_TOUCH_HEADERS)
+        Sleep(10, 0.2)
+        response = session.post(URL_API_GET_CODE, headers=HEADERS_REQUEST_CODE, data={'phone': num})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while requesting API code: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с API для запроса кода, '
@@ -55,7 +58,7 @@ def LoginAPI(user_id: int, session: Session, num: str, rand_hash: str, code: str
         'password': code,
     }
     try:
-        response = session.post(URL_API_LOGIN, headers=HEADERS, data=data)
+        response = session.post(URL_API_LOGIN, headers=HEADERS_LOGIN, data=data)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during API login: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с API для авторизации, '
@@ -71,6 +74,7 @@ def LoginAPI(user_id: int, session: Session, num: str, rand_hash: str, code: str
             BOT.send_message(user_id, f'🛑 Не удалось зайти в API, пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
             session = LoginAPI(user_id, session, num, rand_hash, code)
+    Sleep(10, 0.2)
     return session
 
 
@@ -78,7 +82,9 @@ def GetHash(user_id: int, session: Session) -> str:
     Stamp('Getting hash', 'i')
     BOT.send_message(user_id, f'🔍 Получаю хеш с сайта...')
     try:
-        response = session.get(URL_API_GET_APP, headers=HEADERS)
+        session.get(URL_TG, headers=HEADERS_AFTER_LOGIN)
+        Sleep(4, 0.3)
+        response = session.get(URL_API_GET_APP, headers=HEADERS_FOR_APP)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during hash requesting: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с сайтом для получения хеша, '
@@ -127,7 +133,7 @@ def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
         'app_desc': '',
     }
     try:
-        response = session.post(URL_API_CREATE_APP, headers=HEADERS, data=data)
+        response = session.post(URL_API_CREATE_APP, headers=HEADERS_CREATE_APP, data=data)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during app creation: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с сервером для создания приложения, '
@@ -142,7 +148,7 @@ def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
             Stamp(f'Failed to create app for number {num}: {response.text}', 'e')
             BOT.send_message(user_id, f'📛 Не удалось создать приложение для номера {num}')
             raise
-    Sleep(LONG_SLEEP, 0.2)
+    Sleep(4)
 
 
 @ControlRecursion
@@ -150,7 +156,7 @@ def GetAppData(user_id: int, session: Session) -> (str, str):
     Stamp('Getting app data', 'i')
     BOT.send_message(user_id, f'🔍 Получаю данные о приложении')
     try:
-        response = session.get(URL_API_GET_APP, headers=HEADERS)
+        response = session.get(URL_API_GET_APP, headers=HEADERS_GET_APP)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server during app data requesting: {e}', 'e')
         BOT.send_message(user_id, f'‼️ Не удалось связаться с сайтом данных о приложении, '
