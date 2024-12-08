@@ -121,11 +121,11 @@ def CreateApp(user_id: int, session: Session, num: str, cur_hash: str) -> None:
     BOT.send_message(user_id, f'🔨 Создаю приложение')
     data = {
         'hash': cur_hash,
-        'app_title': GenerateRandomWord(15),
-        'app_shortname': GenerateRandomWord(10),
+        'app_title': 'wrgwgfrfggfbzfdgfdgfdg',
+        'app_shortname': 'fdgfdggudd',
         'app_url': '',
         'app_platform': 'android',
-        'app_desc': '',
+        'app_desc': GenerateRandomWord(30),
     }
     try:
         response = session.post(URL_API_CREATE_APP, headers=HEADERS_CREATE_APP, data=data)

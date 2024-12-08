@@ -8,10 +8,10 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER, LO
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
-from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID, BASE_HTTP_PROXY
+from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings
-from proxy import getProxyByComment, changeProxyType, setProxyComment
+from proxy import getProxyByComment, setProxyComment
 # ---
 from asyncio import sleep as async_sleep, Queue, TimeoutError, wait_for
 from time import time
@@ -240,17 +240,18 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    num, tzid = BuyAccount(user_id, country_code)
-    if await AccountExists(user_id, source.ACCOUNTS[0], num):
-        raise CancelAndNext(tzid)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    code = GetCodeFromSms(user_id, num)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    code = GetEmailCode(token)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # num, tzid = BuyAccount(user_id, country_code)
+    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
+    #     raise CancelAndNext(tzid)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    # code = GetCodeFromSms(user_id, num)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    # code = GetEmailCode(token)
+    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    num = '+79221553069'
     session, rand_hash = RequestAPICode(user_id, num)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
