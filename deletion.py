@@ -1,5 +1,3 @@
-from prompt_toolkit.key_binding.key_bindings import key_binding
-
 import source
 from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE, FILE_AUTO_VIEWS, FILE_AUTO_REPS, FILE_AUTO_REAC
 from common import ShowButtons, Stamp
