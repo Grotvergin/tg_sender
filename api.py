@@ -13,15 +13,10 @@ from bs4 import BeautifulSoup
 
 
 @ControlRecursion
-def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
+def RequestAPICode(user_id: int, num: str) -> (Session, str):
     Stamp('Sending request to authorize on API', 'i')
     BOT.send_message(user_id, f'📮 Отправляю код на номер {num} для авторизации API')
     session = Session()
-    session.proxies = proxy
-    test_url = "https://api.ipify.org?format=json"
-    response = session.get(test_url, timeout=10)
-    response.raise_for_status()
-    print(f"Proxy test successful! Response: {response.json()}")
     try:
         session.get(URL_TG, headers=FIRST_TOUCH_HEADERS)
         session.get(URL_API_SECOND_TOUCH, headers=FIRST_TOUCH_HEADERS)
@@ -32,7 +27,7 @@ def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
         BOT.send_message(user_id, f'‼️ Не удалось связаться с API для запроса кода, '
                                   f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
         Sleep(LONG_SLEEP, 0.5)
-        session, rand_hash = RequestAPICode(user_id, num, proxy)
+        session, rand_hash = RequestAPICode(user_id, num)
     else:
         if str(response.status_code)[0] == '2':
             Stamp(f'Sent API code', 's')
@@ -43,7 +38,7 @@ def RequestAPICode(user_id: int, num: str, proxy: dict) -> (Session, str):
             BOT.send_message(user_id, f'‼️ Не удалось запросить код для API, '
                                       f'пробую ещё раз примерно через {LONG_SLEEP} секунд...')
             Sleep(LONG_SLEEP, 0.5)
-            session, rand_hash = RequestAPICode(user_id, num, proxy)
+            session, rand_hash = RequestAPICode(user_id, num)
     Sleep(10, 0.3)
     return session, rand_hash
 

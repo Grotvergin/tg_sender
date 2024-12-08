@@ -1,12 +1,12 @@
 from requests import get, RequestException
 from common import Stamp, Sleep
-from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PROXY, LONG_SLEEP
+from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PROXY, LONG_SLEEP, FOREIGN_PROXY
 
 
 def getProxyByComment(user_id, comment):
     Stamp('Trying to get proxy', 'i')
     try:
-        response = get(URL_GET_PROXY)
+        response = get(URL_GET_PROXY, proxies=FOREIGN_PROXY)
         data = response.json()
 
         if data['status'] == 'yes':
@@ -33,7 +33,7 @@ def getProxyByComment(user_id, comment):
 def changeProxyType(user_id, proxy_id, target_type):
     Stamp(f'Trying to change proxy {proxy_id} type to {target_type}', 'i')
     try:
-        response = get(URL_CHANGE_TYPE_PROXY + f'ids={proxy_id}&type={target_type}')
+        response = get(URL_CHANGE_TYPE_PROXY + f'ids={proxy_id}&type={target_type}', proxies=FOREIGN_PROXY)
         data = response.json()
         if data['status'] == 'yes':
             Stamp(f'Proxy type change initiated for ID {proxy_id}', 's')
@@ -50,7 +50,7 @@ def changeProxyType(user_id, proxy_id, target_type):
 def setProxyComment(user_id, proxy_id, comment):
     Stamp(f'Setting comment "{comment}" for proxy ID {proxy_id}', 'i')
     try:
-        response = get(URL_SET_COMMENT_PROXY + f'ids={proxy_id}&new={comment}')
+        response = get(URL_SET_COMMENT_PROXY + f'ids={proxy_id}&new={comment}', proxies=FOREIGN_PROXY)
         data = response.json()
         if data['status'] == 'yes':
             Stamp(f'Comment "{comment}" successfully set for proxy ID {proxy_id}', 's')

@@ -4,7 +4,7 @@ from generator import GenerateRandomRussianName, GenerateRandomWord
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER, LONG_SLEEP,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
                     MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
-                    PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION, MIN_LEN_EMAIL, API_PROXY)
+                    PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION, MIN_LEN_EMAIL, FOREIGN_PROXY)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
@@ -30,7 +30,7 @@ from telethon.tl.types import InputPhoneContact
 @ControlRecursion
 def GetTariffInfo(message: Message) -> dict:
     try:
-        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM})
+        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM}, proxies=FOREIGN_PROXY)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while getting tariffs: {e}', 'e')
         BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для получения тарифов, '
@@ -240,26 +240,24 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    # num, tzid = BuyAccount(user_id, country_code)
-    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
-    #     raise CancelAndNext(tzid)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    # code = GetCodeFromSms(user_id, num)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    # code = GetEmailCode(token)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = '+79136112682'
-    session, rand_hash = RequestAPICode(user_id, num, API_PROXY)
+    num, tzid = BuyAccount(user_id, country_code)
+    if await AccountExists(user_id, source.ACCOUNTS[0], num):
+        raise CancelAndNext(tzid)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    code = GetCodeFromSms(user_id, num)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    code = GetEmailCode(token)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    session, rand_hash = RequestAPICode(user_id, num)
     answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
     code = ExtractAPICode(user_id, answer)
     LoginAPI(user_id, session, num, rand_hash, code)
     cur_hash = GetHash(user_id, session)
     CreateApp(user_id, session, num, cur_hash)
     api_id, api_hash = GetAppData(user_id, session)
-    # changeProxyType(user_id, proxy_id, 'socks')
     num = num[1:]
     row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
@@ -283,7 +281,9 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
     Stamp('Trying to buy account', 'i')
     BOT.send_message(user_id, '📲 Покупаю номер...')
     try:
-        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': country_code, 'number': True, 'lang': 'ru'})
+        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram',
+                                        'country': country_code, 'number': True, 'lang': 'ru'},
+                       proxies=FOREIGN_PROXY)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while buying account: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '

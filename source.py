@@ -99,4 +99,4 @@ FILE_AUTO_REAC = 'auto_reac.json'
 FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 KEY_PHRASE = 'Вот он:'
-API_PROXY = {'http': BASE_HTTP_PROXY, 'https': BASE_HTTP_PROXY}
+FOREIGN_PROXY = {'http': BASE_HTTP_PROXY, 'https': BASE_HTTP_PROXY}
