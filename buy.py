@@ -8,7 +8,7 @@ from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER, LO
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
 from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
-from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
+from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID, BASE_HTTP_PROXY
 from info_senders import SendTariffInfo
 from change import SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings
 from proxy import getProxyByComment, changeProxyType, setProxyComment
@@ -312,7 +312,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
 def CancelNumber(user_id: int, tzid: str) -> bool:
     for attempt in range(MAX_RECURSION):
         try:
-            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'})
+            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'}, proxies=BASE_HTTP_PROXY)
             if response.status_code // 100 == 2 and str(response.json().get('response')) == '1':
                 Stamp(f'Successfully canceled number', 's')
                 BOT.send_message(user_id, f'❇️ Номер отменён')
@@ -348,7 +348,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
 def CheckAllSms(user_id: int) -> dict | None:
     res = {}
     try:
-        response = get(URL_SMS, params={'apikey': TOKEN_SIM})
+        response = get(URL_SMS, params={'apikey': TOKEN_SIM}, proxies=BASE_HTTP_PROXY)
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером для получения кодов...')
