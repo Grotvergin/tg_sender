@@ -1,3 +1,5 @@
+from prompt_toolkit.key_binding.key_bindings import key_binding
+
 import source
 from source import BOT, WELCOME_BTNS, SINGLE_BTNS, FILE_ACTIVE, FILE_AUTO_VIEWS, FILE_AUTO_REPS, FILE_AUTO_REAC
 from common import ShowButtons, Stamp
@@ -26,7 +28,7 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
     BOT.register_next_step_handler(message, clbk)
 
 
-def DeleteAutomaticRequest(message: Message, path: str) -> None:
+def DeleteAutomaticRequest(message: Message, path: str, emoji: str = None) -> None:
     PATH_TO_DATA_MAP = {
         FILE_AUTO_VIEWS: (source.AUTO_VIEWS_DICT, 'automatic subscriptions'),
         FILE_AUTO_REPS: (source.AUTO_REPS_DICT, 'automatic reposts'),
@@ -35,8 +37,12 @@ def DeleteAutomaticRequest(message: Message, path: str) -> None:
     data_info = PATH_TO_DATA_MAP.get(path)
     if data_info:
         data_dict, description = data_info
-        if message.text in data_dict.keys():
-            del data_dict[message.text]
+        if emoji:
+            key = message.text + '_' + emoji
+        else:
+            key = message.text
+        if key in data_dict.keys():
+            del data_dict[key]
             SaveRequestsToFile(data_dict, description, path)
             BOT.send_message(message.from_user.id, f'✅ Автоматическая заявка на {description} для канала {message.text} удалена')
         else:

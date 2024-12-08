@@ -15,10 +15,10 @@ def getProxyByComment(user_id, comment):
                 if proxy_data.get('descr') == comment:
                     Stamp('Found a free proxy', 's')
                     BOT.send_message(user_id, f"🟩 Нашёл свободный прокси {proxy_data['host']}:{proxy_data['port']}")
-                    address = f"http://{proxy_data['user']}:{proxy_data['pass']}@{proxy_data['host']}:{proxy_data['port']}"
-                    http_proxy = {'http': address, 'https': address}
+                    # address = f"http://{proxy_data['user']}:{proxy_data['pass']}@{proxy_data['host']}:{proxy_data['port']}"
+                    # http_proxy = {'http': address, 'https': address}
                     socks_proxy = (2, proxy_data['host'], int(proxy_data['port']), True, proxy_data['user'], proxy_data['pass'])
-                    return http_proxy, socks_proxy, proxy_id
+                    return socks_proxy, proxy_id
             Stamp('No free proxies', 'e')
             BOT.send_message(user_id, '🟥 Нет свободных прокси')
             return

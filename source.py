@@ -1,4 +1,4 @@
-from secret import TOKEN, MY_TG_ID, PROXY_KEY
+from secret import TOKEN, MY_TG_ID, PROXY_KEY, BASE_HTTP_PROXY
 # ---
 from random import seed
 from ssl import SSLEOFError
@@ -12,7 +12,6 @@ from faker import Faker
 from googleapiclient.errors import HttpError
 
 # ----- TODO LIST -----
-# Заявки на эмодзи
 # Система автономной покупки прокси
 # Проверка прокси если необходимо
 
@@ -99,3 +98,4 @@ FILE_AUTO_REAC = 'auto_reac.json'
 FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 KEY_PHRASE = 'Вот он:'
+API_PROXY = {'http': BASE_HTTP_PROXY, 'https': BASE_HTTP_PROXY}

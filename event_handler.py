@@ -18,7 +18,11 @@ from telethon.events import NewMessage
 
 async def RefreshEventHandler():
     while True:
-        channels = list(source.AUTO_VIEWS_DICT.keys()) + list(source.AUTO_REPS_DICT.keys())
+        channels = (
+                list(source.AUTO_VIEWS_DICT.keys()) +
+                list(source.AUTO_REPS_DICT.keys()) +
+                [key.split('_')[0] for key in source.AUTO_REAC_DICT.keys()]
+        )
         if not source.ACCOUNTS:
             Stamp("No accounts available to set up event handler", 'w')
             BOT.send_message(MY_TG_ID, '💀 Нет аккаунтов для запуска EventHandler')

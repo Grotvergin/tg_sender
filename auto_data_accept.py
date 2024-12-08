@@ -40,16 +40,16 @@ def AutomaticAcceptEmoji(message: Message) -> None:
             BOT.register_next_step_handler(message, AutomaticAcceptEmoji)
     else:
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REAC)
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REAC, message.text)
 
 
-def AutomaticChannelDispatcher(message: Message, file: str) -> None:
+def AutomaticChannelDispatcher(message: Message, file: str, emoji: str = None) -> None:
     if message.text == AUTO_BTNS[0]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name или @name):')
-        BOT.register_next_step_handler(message, AutomaticChannelAction, file)
+        BOT.register_next_step_handler(message, AutomaticChannelAction, file, emoji)
     elif message.text == AUTO_BTNS[1]:
         BOT.send_message(message.from_user.id, '❔ Введите имя канала (name):')
-        BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
+        BOT.register_next_step_handler(message, DeleteAutomaticRequest, file, emoji)
     elif message.text == AUTO_BTNS[2]:
         FILE_TO_DATA_MAP = {
             source.FILE_AUTO_VIEWS: source.AUTO_VIEWS_DICT,
@@ -155,7 +155,10 @@ def InsertSpread(message: Message, path: str) -> None:
             'spread': int(message.text)
         }
         link = source.CUR_REQ['link']
+        print(link)
+        print(source.CUR_REQ)
         if 'emoji' in source.CUR_REQ:
+            print('here')
             record['emoji'] = source.CUR_REQ['emoji']
             link += '_' + source.CUR_REQ['emoji']
         data_dict[link] = record
