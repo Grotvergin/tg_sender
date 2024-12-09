@@ -44,21 +44,17 @@ def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 @ControlRecursion
-def UploadData(list_of_rows: list, sheet_name: str, sheet_id: str, service: Resource, row: int = 2, start_column: str = 'A') -> None:
+def UploadData(start: str, finish: str, list_of_rows: list, sheet_name: str, sheet_id: str, service: Resource) -> None:
     Stamp(f'Trying to upload data to sheet {sheet_name}', 'i')
     try:
-        width = len(list_of_rows[0])
-    except IndexError:
-        width = 0
-    try:
         res = service.spreadsheets().values().update(spreadsheetId=sheet_id,
-                                                     range=f'{sheet_name}!{start_column}{row}:{MakeColumnIndexes()[width]}{row + len(list_of_rows)}',
+                                                     range=f'{sheet_name}!{start}:{finish}',
                                                      valueInputOption='USER_ENTERED',
                                                      body={'values': list_of_rows}).execute()
     except CONN_ERRORS as err:
         Stamp(f'Status = {err} on uploading data to sheet {sheet_name}', 'e')
         Sleep(LONG_SLEEP)
-        UploadData(list_of_rows, sheet_name, sheet_id, service, row)
+        UploadData(start, finish, list_of_rows, sheet_name, sheet_id, service)
     else:
         Stamp(f"On uploading: {res.get('updatedRows')} rows in range {res.get('updatedRange')}", 's')
 

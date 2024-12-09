@@ -1,10 +1,10 @@
 import source
 from auth import AuthCallback
 from generator import GenerateRandomRussianName, GenerateRandomWord
-from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP, LEFT_PHONE_CORNER,
+from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
                     MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
-                    MAX_RECURSION, MIN_LEN_EMAIL, RIGHT_PHONE_CORNER)
+                    MAX_RECURSION, MIN_LEN_EMAIL)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
@@ -238,9 +238,9 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     num = num[1:]
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
-    row = len(GetSector(LEFT_PHONE_CORNER, RIGHT_PHONE_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
+    row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID)) + 2
     api_id, api_hash = GetSector(f'A{row}', f'B{row}', srv, SHEET_NAME, SHEET_ID)[0]
-    UploadData([[num, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row, 'C')
+    UploadData(f'C{row}', f'H{row}', [[num, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv)
     BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
