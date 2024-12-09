@@ -154,10 +154,11 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
         try:
             await ProcessSingleAccount(user_id, country_code, srv)
             i += 1
-            ShowButtons(user_id, YES_NO_BTNS, f'❔ Покупаем аккаунт №{i + 1}?')
-            answer = await getUserInput(user_id)
-            if answer == YES_NO_BTNS[1]:
-                break
+            if i < req_quantity:
+                ShowButtons(user_id, YES_NO_BTNS, f'❔ Покупаем аккаунт №{i + 1}?')
+                answer = await getUserInput(user_id)
+                if answer == YES_NO_BTNS[1]:
+                    break
         except CancelAndNext as e:
             Stamp(f'Account {i + 1} has problems when requesting code', 'w')
             BOT.send_message(user_id, f'❗️ Аккаунт {i + 1} обработать не удалось, отменяю и перехожу к следующему...')
