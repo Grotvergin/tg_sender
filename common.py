@@ -44,7 +44,7 @@ def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 @ControlRecursion
-def UploadData(list_of_rows: list, sheet_name: str, sheet_id: str, service: Resource, row: int = 2) -> None:
+def UploadData(list_of_rows: list, sheet_name: str, sheet_id: str, service: Resource, row: int = 2, start_column: str = 'A') -> None:
     Stamp(f'Trying to upload data to sheet {sheet_name}', 'i')
     try:
         width = len(list_of_rows[0])
@@ -52,7 +52,7 @@ def UploadData(list_of_rows: list, sheet_name: str, sheet_id: str, service: Reso
         width = 0
     try:
         res = service.spreadsheets().values().update(spreadsheetId=sheet_id,
-                                                     range=f'{sheet_name}!A{row}:{MakeColumnIndexes()[width]}{row + len(list_of_rows)}',
+                                                     range=f'{sheet_name}!{start_column}{row}:{MakeColumnIndexes()[width]}{row + len(list_of_rows)}',
                                                      valueInputOption='USER_ENTERED',
                                                      body={'values': list_of_rows}).execute()
     except CONN_ERRORS as err:

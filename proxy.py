@@ -1,6 +1,6 @@
 from requests import get, RequestException
-from common import Stamp, Sleep
-from source import URL_GET_PROXY, BOT, URL_CHANGE_TYPE_PROXY, URL_SET_COMMENT_PROXY, LONG_SLEEP, FOREIGN_PROXY
+from common import Stamp
+from source import URL_GET_PROXY, BOT, URL_SET_COMMENT_PROXY, FOREIGN_PROXY
 
 
 def getProxyByComment(user_id, comment):
@@ -26,23 +26,6 @@ def getProxyByComment(user_id, comment):
     except RequestException as e:
         Stamp(f'Error during request: {e}')
         return
-
-
-def changeProxyType(user_id, proxy_id, target_type):
-    Stamp(f'Trying to change proxy {proxy_id} type to {target_type}', 'i')
-    try:
-        response = get(URL_CHANGE_TYPE_PROXY + f'ids={proxy_id}&type={target_type}', proxies=FOREIGN_PROXY)
-        data = response.json()
-        if data['status'] == 'yes':
-            Stamp(f'Proxy type change initiated for ID {proxy_id}', 's')
-            BOT.send_message(user_id, f'🟢 У прокси {proxy_id} тип изменен на {target_type}')
-        else:
-            Stamp(f'Error during proxy type change: {data.get("error", "Unknown")}', 'e')
-            BOT.send_message(user_id, f'🟥 Ошибка при изменении типа прокси: {data.get("error", "Unknown")}')
-    except RequestException as e:
-        Stamp(f'Error during type change request: {e}', 'e')
-        BOT.send_message(user_id, f'🟥 Ошибка при выполнении запроса на изменение типа прокси: {e}')
-    Sleep(LONG_SLEEP*2, 0.3)
 
 
 def setProxyComment(user_id, proxy_id, comment):

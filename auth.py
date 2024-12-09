@@ -57,7 +57,7 @@ async def AuthorizeAccounts() -> None:
         this_run_auth = [client.session.filename for client in source.ACCOUNTS]
         for index, account in enumerate(data):
             try:
-                num, api_id, api_hash, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
+                api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
             except IndexError:
                 Stamp(f'Invalid account data: {account}', 'e')
                 BOT.send_message(source.ADMIN_CHAT_ID, f'❌ Неверные данные для аккаунта в строке {index + 2}!')

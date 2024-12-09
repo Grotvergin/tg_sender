@@ -1,13 +1,12 @@
 import source
 from auth import AuthCallback
 from generator import GenerateRandomRussianName, GenerateRandomWord
-from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LEFT_CORNER, RIGHT_CORNER, LONG_SLEEP,
+from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP, LEFT_PHONE_CORNER,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
                     MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
-                    PROBLEM_BTN, LEN_API_CODE, KEY_PHRASE, MAX_RECURSION, MIN_LEN_EMAIL, FOREIGN_PROXY)
+                    MAX_RECURSION, MIN_LEN_EMAIL, RIGHT_PHONE_CORNER)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData)
-from api import RequestAPICode, LoginAPI, GetHash, CreateApp, GetAppData
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings
@@ -30,7 +29,7 @@ from telethon.tl.types import InputPhoneContact
 @ControlRecursion
 def GetTariffInfo(message: Message) -> dict:
     try:
-        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM}, proxies=FOREIGN_PROXY)
+        response = get(URL_GET_TARIFFS, params={'apikey': TOKEN_SIM})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while getting tariffs: {e}', 'e')
         BOT.send_message(message.from_user.id, f'‼️ Не удалось связаться с сервером для получения тарифов, '
@@ -108,21 +107,6 @@ async def getUserInput(user_id: int) -> str:
         return response.strip()
     except TimeoutError:
         BOT.send_message(user_id, "⏳ Превышено время ожидания ответа.")
-
-
-def ExtractAPICode(user_id: int, text: str):
-    if len(text) == LEN_API_CODE:
-        Stamp(f'Found API code {text}', 's')
-        BOT.send_message(user_id, f'❇️ Ввожу код из сообщения целиком: {text}')
-        return text
-    if KEY_PHRASE in text:
-        code = text.split(KEY_PHRASE, 1)[1].strip().split()[0]
-        Stamp(f'Extracted API code {code}', 's')
-        BOT.send_message(user_id, f'❇️ Ввожу вырезанный код {code}')
-        return code
-    Stamp('API code was not found in message', 'w')
-    BOT.send_message(user_id, '🛑 В сообщении не обнаружено кода для API')
-    raise GoNextOnly
 
 
 def ExtractAutomationCode(user_id: int, text: str):
@@ -240,30 +224,23 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
 
 
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
-    # num, tzid = BuyAccount(user_id, country_code)
-    # if await AccountExists(user_id, source.ACCOUNTS[0], num):
-    #     raise CancelAndNext(tzid)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    # code = GetCodeFromSms(user_id, num)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    # email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    # code = GetEmailCode(token)
-    # await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = '+79221553069'
-    session, rand_hash = RequestAPICode(user_id, num)
-    answer = await askToProceed(user_id, PROBLEM_BTN, '🖊 Ввод кода/сообщения для API:', PROBLEM_BTN[0], GoNextOnly)
-    code = ExtractAPICode(user_id, answer)
-    LoginAPI(user_id, session, num, rand_hash, code)
-    cur_hash = GetHash(user_id, session)
-    CreateApp(user_id, session, num, cur_hash)
-    api_id, api_hash = GetAppData(user_id, session)
+    num, tzid = BuyAccount(user_id, country_code)
+    if await AccountExists(user_id, source.ACCOUNTS[0], num):
+        raise CancelAndNext(tzid)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
+    code = GetCodeFromSms(user_id, num)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+    code = GetEmailCode(token)
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     num = num[1:]
-    row = len(GetSector(LEFT_CORNER, RIGHT_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
-    UploadData([[num, api_id, api_hash, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row)
+    row = len(GetSector(LEFT_PHONE_CORNER, RIGHT_PHONE_CORNER, srv, SHEET_NAME, SHEET_ID)) + 2
+    api_id, api_hash = GetSector(f'A{row}', f'B{row}', srv, SHEET_NAME, SHEET_ID)[0]
+    UploadData([[num, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv, row, 'C')
     BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
@@ -282,9 +259,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
     Stamp('Trying to buy account', 'i')
     BOT.send_message(user_id, '📲 Покупаю номер...')
     try:
-        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram',
-                                        'country': country_code, 'number': True, 'lang': 'ru'},
-                       proxies=FOREIGN_PROXY)
+        response = get(URL_BUY, params={'apikey': TOKEN_SIM, 'service': 'telegram', 'country': country_code, 'number': True, 'lang': 'ru'})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server while buying account: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером покупки аккаунтов, '
@@ -313,7 +288,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
 def CancelNumber(user_id: int, tzid: str) -> bool:
     for attempt in range(MAX_RECURSION):
         try:
-            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'}, proxies=FOREIGN_PROXY)
+            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'})
             if response.status_code // 100 == 2 and str(response.json().get('response')) == '1':
                 Stamp(f'Successfully canceled number', 's')
                 BOT.send_message(user_id, f'❇️ Номер отменён')
@@ -349,7 +324,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
 def CheckAllSms(user_id: int) -> dict | None:
     res = {}
     try:
-        response = get(URL_SMS, params={'apikey': TOKEN_SIM}, proxies=FOREIGN_PROXY)
+        response = get(URL_SMS, params={'apikey': TOKEN_SIM})
     except ConnectionError as e:
         Stamp(f'Failed to connect to the server: {e}', 'e')
         BOT.send_message(user_id, f'❌ Не удалось связаться с сервером для получения кодов...')
