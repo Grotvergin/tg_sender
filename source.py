@@ -1,4 +1,4 @@
-from secret import TOKEN, MY_TG_ID, PROXY_KEY, BASE_HTTP_PROXY
+from secret import TOKEN, MY_TG_ID, PROXY_KEY
 # ---
 from random import seed
 from ssl import SSLEOFError
