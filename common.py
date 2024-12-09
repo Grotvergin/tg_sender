@@ -154,12 +154,12 @@ async def AsyncSleep(timer: int, ratio: float = 0.0) -> None:
 
 
 def ParseAccountRow(account: list) -> tuple:
-    num = account[0]
-    api_id = account[1]
-    api_hash = account[2]
+    api_id = account[0]
+    api_hash = account[1]
+    num = account[2]
     password_tg = account[3] if account[3] != '-' else None
     ip = account[4]
     port = int(account[5])
     login = account[6]
     password_proxy = account[7]
-    return num, api_id, api_hash, password_tg, ip, port, login, password_proxy
+    return api_id, api_hash, num, password_tg, ip, port, login, password_proxy

@@ -1,6 +1,7 @@
 import source
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT,
-                    LEFT_CORNER, RIGHT_CORNER, WELCOME_BTNS, SKIP_CODE)
+                    LEFT_PHONE_CORNER, RIGHT_PHONE_CORNER,
+                    WELCOME_BTNS, SKIP_CODE, LEFT_CORNER)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
                     Sleep, ShowButtons, BuildService, ParseAccountRow)
 from secret import SHEET_ID, SHEET_NAME
@@ -53,7 +54,9 @@ async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     try:
         BOT.send_message(source.ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
-        data = GetSector(LEFT_CORNER, RIGHT_CORNER, BuildService(), SHEET_NAME, SHEET_ID)
+        srv = BuildService()
+        row = len(GetSector(LEFT_PHONE_CORNER, RIGHT_PHONE_CORNER, srv, SHEET_NAME, SHEET_ID)) + 1
+        data = GetSector(LEFT_CORNER, f'H{row}', srv, SHEET_NAME, SHEET_ID)
         this_run_auth = [client.session.filename for client in source.ACCOUNTS]
         for index, account in enumerate(data):
             try:
