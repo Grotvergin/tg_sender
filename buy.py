@@ -4,9 +4,9 @@ from generator import GenerateRandomRussianName, GenerateRandomWord
 from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
                     MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
-                    MAX_RECURSION, MIN_LEN_EMAIL)
+                    MAX_RECURSION, MIN_LEN_EMAIL, STOP_PROCESS)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
-                    GoNextOnly, BuildService, GetSector, UploadData)
+                    GoNextOnly, BuildService, GetSector, UploadData, FinishProcess)
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
 from info_senders import SendTariffInfo
 from change import SetProfileInfo, SetProfilePicture, AddContacts, UpdatePrivacySettings
@@ -161,30 +161,36 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
                     break
         except CancelAndNext as e:
             Stamp(f'Account {i + 1} has problems when requesting code', 'w')
-            BOT.send_message(user_id, f'❗️ Аккаунт {i + 1} обработать не удалось, отменяю и перехожу к следующему...')
+            BOT.send_message(user_id, f'❗️ Аккаунт {i + 1} обработать не удалось, отменяю и перехожу к следующему')
             if not CancelNumber(user_id, e.tzid):
                 Stamp(f'Exiting because unable to cancel account', 'w')
-                BOT.send_message(user_id, '📛 Не получилось отменить аккаунт, завершаю процесс...')
+                BOT.send_message(user_id, '📛 Не получилось отменить аккаунт, завершаю процесс')
                 break
         except GoNextOnly:
             Stamp(f'Account {i + 1} requires password or already registered', 'w')
             BOT.send_message(user_id, f'❌ Аккаунт {i + 1} обработать не удалось, перехожу к следующему без возврата')
         except RecursionError:
             Stamp(f'Exiting because of recursion error', 'w')
-            BOT.send_message(user_id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки...')
+            BOT.send_message(user_id, '❗️ Завершаю процесс покупки из-за рекурсивной ошибки')
+            break
+        except FinishProcess:
+            Stamp('Process was stopped', 'w')
+            BOT.send_message(user_id, '⏹️ Завершаю процесс')
             break
         except Exception as e:
             Stamp(f'Error while adding accounts: {e}', 'e')
-            BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс...')
+            BOT.send_message(user_id, f'❌ Произошла неизвестная ошибка при добавлении аккаунта {i + 1}, завершаю процесс')
             break
     ShowButtons(user_id, WELCOME_BTNS, '❔ Выберите действие:')
 
 
 async def askToProceed(user_id: int, buttons: tuple, text: str, condition: str, exception) -> str:
-    ShowButtons(user_id, buttons, text)
+    ShowButtons(user_id, buttons, text, parse_mode='Markdown')
     answer = await getUserInput(user_id)
     if answer == condition:
         raise exception
+    elif answer == STOP_PROCESS:
+        raise FinishProcess
     return answer
 
 
@@ -242,12 +248,12 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv):
     row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID)) + 2
     api_id, api_hash = GetSector(f'A{row}', f'B{row}', srv, SHEET_NAME, SHEET_ID)[0]
     UploadData(f'C{row}', f'H{row}', [[num, PASSWORD, socks_proxy[1], socks_proxy[2], socks_proxy[4], socks_proxy[5]]], SHEET_NAME, SHEET_ID, srv)
-    BOT.send_message(user_id, f'📊 Данные занесены в таблицу')
+    BOT.send_message(user_id, '📊 Данные занесены в таблицу')
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=socks_proxy)
     await client.start(phone=num, password=PASSWORD, code_callback=lambda: AuthCallback(num, user_id, MAX_WAIT_CODE))
-    Stamp(f'Account authorized', 's')
-    BOT.send_message(user_id, f'✅ Аккаунт авторизован')
+    Stamp('Account authorized', 's')
+    BOT.send_message(user_id, '✅ Аккаунт авторизован')
     await SetProfileInfo(client, user_id)
     await SetProfilePicture(client, user_id)
     await AddContacts(client, 50, user_id)

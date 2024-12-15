@@ -26,6 +26,10 @@ class SkippedCodeInsertion(Exception):
     pass
 
 
+class FinishProcess(Exception):
+    pass
+
+
 def ControlRecursion(func: Callable[..., Any]) -> Callable[..., Any]:
     func.recursion_depth = 0
 
@@ -103,7 +107,7 @@ def BuildService() -> Resource:
         return service
 
 
-def ShowButtons(message: Message | int, buttons: tuple, answer: str) -> None:
+def ShowButtons(message: Message | int, buttons: tuple, answer: str, parse_mode: str = None) -> None:
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
     if type(message) == Message:
         user_id = message.from_user.id
@@ -118,7 +122,7 @@ def ShowButtons(message: Message | int, buttons: tuple, answer: str) -> None:
             row_buttons = buttons[i:i + 2]
             markup.row(*[KeyboardButton(btn) for btn in row_buttons])
         markup.row(KeyboardButton(buttons[-1]))
-    BOT.send_message(user_id, answer, reply_markup=markup)
+    BOT.send_message(user_id, answer, reply_markup=markup, parse_mode=parse_mode)
 
 
 def GetSector(start: str, finish: str, service: Resource, sheet_name: str, sheet_id: str) -> list:

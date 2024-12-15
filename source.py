@@ -29,6 +29,7 @@ AUTO_BTNS = ('Добавление 📌',
              'Удаление ❌',
              'Активные 📅',
              CANCEL_BTN[0])
+STOP_PROCESS = 'Остановка ⏹️'
 SINGLE_BTNS = ('Активные 📅',
                'Выполненные 📋',
                'Подписки 🔔',
@@ -37,8 +38,7 @@ SINGLE_BTNS = ('Активные 📅',
                'Удаление ❌',
                'Реакции 😍',
                CANCEL_BTN[0])
-YES_NO_BTNS = ('Да ✅', 'Нет ❌')
-PROBLEM_BTN = ('Проблема ⚠️',)
+YES_NO_BTNS = ('Да ✅', 'Нет ❌', STOP_PROCESS)
 SKIP_CODE = ('Пропуск ⏭️',)
 BOT = TeleBot(TOKEN)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
@@ -61,7 +61,7 @@ MIN_LEN_EMAIL = 15
 LONG_SLEEP = 15
 SHORT_SLEEP = 1
 MAX_MINS = 300
-MAX_WAIT_CODE = 121
+MAX_WAIT_CODE = 301
 LINK_DECREASE_RATIO = 3
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
