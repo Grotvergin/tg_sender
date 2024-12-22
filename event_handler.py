@@ -55,7 +55,7 @@ async def EventHandler(event: NewMessage.Event):
                 if event.chat.username == key:
                     channel_name = key
                 else:
-                    channel_name = key.split('_')[-2]
+                    channel_name = key.rpartition('_')[0]
                 annual_amount = dict_name[key]['annual']
                 Stamp(f'Annual amount before decision = {annual_amount}', 'i')
                 if NeedToDecrease(event.message.text, key) and order_type == 'Репосты':
