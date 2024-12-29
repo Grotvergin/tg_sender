@@ -1,10 +1,10 @@
 import source
 from auth import AuthCallback
 from generator import GenerateRandomRussianName, GenerateRandomWord
-from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP,
+from source import (CANCEL_BTN, WELCOME_BTNS, BOT, LONG_SLEEP, ONLINESIM_COMPULSORY_BUFFER,
                     URL_BUY, MAX_ACCOUNTS_BUY, URL_CANCEL, URL_SMS, URL_GET_TARIFFS,
                     MAX_WAIT_CODE, SHORT_SLEEP, USER_RESPONSES, USER_ANSWER_TIMEOUT, YES_NO_BTNS,
-                    MAX_RECURSION, MIN_LEN_EMAIL, STOP_PROCESS)
+                    MAX_RECURSION, MIN_LEN_EMAIL, STOP_PROCESS, ONLINESIM_CANCEL_BUFFER)
 from common import (ShowButtons, Sleep, Stamp, ControlRecursion, CancelAndNext,
                     GoNextOnly, BuildService, GetSector, UploadData, FinishProcess)
 from secret import TOKEN_SIM, PASSWORD, SHEET_NAME, SHEET_ID
@@ -160,11 +160,12 @@ async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) ->
                 if answer == YES_NO_BTNS[1]:
                     break
         except CancelAndNext as e:
-            Stamp(f'Account {i + 1} has problems when requesting code', 'w')
-            BOT.send_message(user_id, f'❗️ Аккаунт {i + 1} обработать не удалось, отменяю и перехожу к следующему')
+            Stamp(f'Waiting for {e.time_to_wait} seconds, cancelling and going on', 'w')
+            BOT.send_message(user_id, f'❗️Жду {e.time_to_wait} секунд, отменяю номер и перехожу к следующему')
+            Sleep(e.time_to_wait)
             if not CancelNumber(user_id, e.tzid):
                 Stamp(f'Exiting because unable to cancel account', 'w')
-                BOT.send_message(user_id, '📛 Не получилось отменить аккаунт, завершаю процесс')
+                BOT.send_message(user_id, '📛 Не получилось отменить номер, завершаю процесс')
                 break
         except GoNextOnly:
             Stamp(f'Account {i + 1} requires password or already registered', 'w')
@@ -230,12 +231,18 @@ def GetEmailCode(token: str, max_attempts: int = MAX_RECURSION) -> str | None:
     return
 
 
+def remainingTime(start):
+    elapsed = time() - start
+    return int(max(ONLINESIM_CANCEL_BUFFER - elapsed, ONLINESIM_COMPULSORY_BUFFER))
+
+
 async def ProcessSingleAccount(user_id: int, country_code: int, srv):
+    start = time()
     num, tzid = BuyAccount(user_id, country_code)
     if await AccountExists(user_id, source.ACCOUNTS[0], num):
-        raise CancelAndNext(tzid)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid))
-    code = GetCodeFromSms(user_id, num)
+        raise CancelAndNext(tzid, remainingTime(start))
+    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid, remainingTime(start)))
+    code = GetCodeFromSms(user_id, num, tzid)
     await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
     email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
@@ -295,7 +302,7 @@ def BuyAccount(user_id: int, country_code: int) -> tuple:
 def CancelNumber(user_id: int, tzid: str) -> bool:
     for attempt in range(MAX_RECURSION):
         try:
-            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'ban': 1, 'lang': 'ru'})
+            response = get(URL_CANCEL, params={'apikey': TOKEN_SIM, 'tzid': tzid, 'lang': 'ru'})
             if response.status_code // 100 == 2 and str(response.json().get('response')) == '1':
                 Stamp(f'Successfully canceled number', 's')
                 BOT.send_message(user_id, f'❇️ Номер отменён')
@@ -309,12 +316,10 @@ def CancelNumber(user_id: int, tzid: str) -> bool:
                                       f'Пробую снова примерно через {LONG_SLEEP} секунд...')
         finally:
             Sleep(LONG_SLEEP, 0.5)
-    Stamp(f'Failed to cancel number after {MAX_RECURSION} attempts', 'e')
-    BOT.send_message(user_id, f'❌ Не удалось отменить номер после {MAX_RECURSION} попыток')
     return False
 
 
-def GetCodeFromSms(user_id: int, num: str) -> str:
+def GetCodeFromSms(user_id: int, num: str, tzid: str) -> str:
     start_time = time()
     while time() - start_time < MAX_WAIT_CODE:
         sms_dict = CheckAllSms(user_id)
@@ -325,7 +330,7 @@ def GetCodeFromSms(user_id: int, num: str) -> str:
         Stamp(f'No incoming sms for {num} after {round(time() - start_time)} seconds of waiting', 'w')
         BOT.send_message(user_id, f'💤 Не вижу входящих сообщений после {round(time() - start_time)} секунд ожидания...')
         Sleep(LONG_SLEEP)
-    raise CancelAndNext
+    raise CancelAndNext(tzid, ONLINESIM_COMPULSORY_BUFFER)
 
 
 def CheckAllSms(user_id: int) -> dict | None:

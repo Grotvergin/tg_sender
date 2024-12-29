@@ -14,8 +14,9 @@ from google.oauth2.service_account import Credentials
 
 
 class CancelAndNext(Exception):
-    def __init__(self, tzid=None):
+    def __init__(self, tzid: str, time_to_wait: int):
         self.tzid = tzid
+        self.time_to_wait = time_to_wait
 
 
 class GoNextOnly(Exception):
