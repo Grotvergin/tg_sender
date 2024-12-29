@@ -11,10 +11,6 @@ from colorama import init
 from faker import Faker
 from googleapiclient.errors import HttpError
 
-# ----- TODO LIST -----
-# Система автономной покупки прокси
-# Проверка прокси если необходимо
-
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
                 'Авторизация 🔐',
@@ -62,7 +58,7 @@ LONG_SLEEP = 15
 SHORT_SLEEP = 1
 MAX_MINS = 300
 MAX_WAIT_CODE = 120
-LINK_DECREASE_RATIO = 3
+LINK_DECREASE_RATIO = 8
 LIMIT_DIALOGS = 1000
 MAX_MINS_REQ = 20
 MAX_ACCOUNTS_BUY = 10

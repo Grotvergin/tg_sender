@@ -58,7 +58,7 @@ async def EventHandler(event: NewMessage.Event):
                     channel_name = key.rpartition('_')[0]
                 annual_amount = dict_name[key]['annual']
                 Stamp(f'Annual amount before decision = {annual_amount}', 'i')
-                if NeedToDecrease(event.message.text, key) and order_type == 'Репосты':
+                if NeedToDecrease(event.message.text, key) and order_type in ('Репосты', 'Реакции'):
                     annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
                     Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
                 Stamp(f'Annual amount after decision = {annual_amount}', 'i')
