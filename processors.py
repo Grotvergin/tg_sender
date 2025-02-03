@@ -65,42 +65,42 @@ async def ProcessOrder(req: dict, to_add: int):
 
 async def ProcessRequests() -> None:
     while True:
-        # try:
-        Stamp('Pending requests', 'i')
-        if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
-            Stamp('Sending notification about proper work', 'i')
-            BOT.send_message(MY_TG_ID, '🔄 OK')
-            BOT.send_message(AR_TG_ID, '🔄 OK')
-            source.LAST_NOTIF_PROCESSOR = datetime.now()
-        for req in source.REQS_QUEUE:
-            finish = datetime.strptime(req['finish'], TIME_FORMAT)
-            start = datetime.strptime(req['start'], TIME_FORMAT)
-            now = datetime.now()
-            if now < finish:
-                duration = (finish - start).total_seconds()
-                interval = duration / req['planned']
-                elapsed = (now - start).total_seconds()
-                expected = int(elapsed / interval)
-                current = req.get('current', 0)
-                to_add = expected - current
-                if to_add > 0:
-                    await ProcessOrder(req, to_add)
-            else:
-                if now < finish + timedelta(minutes=MAX_MINS_REQ) and req.get('current', 0) < req['planned']:
-                    to_add = req['planned'] - req.get('current', 0)
-                    await ProcessOrder(req, to_add)
+        try:
+            Stamp('Pending requests', 'i')
+            if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
+                Stamp('Sending notification about proper work', 'i')
+                BOT.send_message(MY_TG_ID, '🔄 OK')
+                BOT.send_message(AR_TG_ID, '🔄 OK')
+                source.LAST_NOTIF_PROCESSOR = datetime.now()
+            for req in source.REQS_QUEUE:
+                finish = datetime.strptime(req['finish'], TIME_FORMAT)
+                start = datetime.strptime(req['start'], TIME_FORMAT)
+                now = datetime.now()
+                if now < finish:
+                    duration = (finish - start).total_seconds()
+                    interval = duration / req['planned']
+                    elapsed = (now - start).total_seconds()
+                    expected = int(elapsed / interval)
+                    current = req.get('current', 0)
+                    to_add = expected - current
+                    if to_add > 0:
+                        await ProcessOrder(req, to_add)
                 else:
-                    if req.get('current', 0) < req['planned']:
-                        message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
+                    if now < finish + timedelta(minutes=MAX_MINS_REQ) and req.get('current', 0) < req['planned']:
+                        to_add = req['planned'] - req.get('current', 0)
+                        await ProcessOrder(req, to_add)
                     else:
-                        message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
-                    source.REQS_QUEUE.remove(req)
-                    SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
-                    source.FINISHED_REQS.append(req)
-                    SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
-                    user_id = req['initiator'].split(' ')[-1]
-                    BOT.send_message(user_id, message, parse_mode='HTML')
-        # except Exception as e:
-        #     Stamp(f'Uncaught exception in processor happened: {e}', 'w')
-        #     BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
+                        if req.get('current', 0) < req['planned']:
+                            message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
+                        else:
+                            message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
+                        source.REQS_QUEUE.remove(req)
+                        SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+                        source.FINISHED_REQS.append(req)
+                        SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
+                        user_id = req['initiator'].split(' ')[-1]
+                        BOT.send_message(user_id, message, parse_mode='HTML')
+        except Exception as e:
+            Stamp(f'Uncaught exception in processor happened: {e}', 'w')
+            BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
         await AsyncSleep(LONG_SLEEP, 0.5)
