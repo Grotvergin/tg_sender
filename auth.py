@@ -2,7 +2,7 @@ import source
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT,
                     WELCOME_BTNS, SKIP_CODE)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
-                    Sleep, ShowButtons, BuildService, ParseAccountRow)
+                    ShowButtons, BuildService, ParseAccountRow)
 from secret import SHEET_ID, SHEET_NAME
 # ---
 from asyncio import sleep as async_sleep
@@ -76,7 +76,6 @@ async def AuthorizeAccounts() -> None:
                     source.ACCOUNTS.append(client)
                     Stamp(f'Account {num} authorized', 's')
                     BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
-                    Sleep(SHORT_SLEEP, 0.5)
                 except PhoneCodeInvalidError:
                     BOT.send_message(source.ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
                     Stamp(f'Invalid code for {num}', 'e')

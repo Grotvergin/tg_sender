@@ -1,7 +1,5 @@
-from common import Sleep, Stamp
-from source import ACCOUNTS, SHORT_SLEEP
-# ---
-from asyncio import sleep as async_sleep
+from common import Stamp
+from source import ACCOUNTS
 # ---
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import SendReactionRequest, GetMessagesViewsRequest, ImportChatInviteRequest
@@ -29,7 +27,6 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
             raise e
         except Exception as e:
             Stamp(f"Failed to add reaction to {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
-        Sleep(SHORT_SLEEP, 0.5)
     return cnt_success_reactions
 
 
@@ -45,7 +42,6 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
             raise e
         except Exception as e:
             Stamp(f"Failed to view post {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
-        Sleep(SHORT_SLEEP, 0.5)
     return cnt_success_views
 
 
@@ -68,7 +64,6 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
             raise e
         except Exception as e:
             Stamp(f"Failed to subscribe {acc.session.filename.split('_')[-1]} to {link}: {e}", 'e')
-        Sleep(SHORT_SLEEP, 0.5)
     return cnt_success_subs
 
 
@@ -86,5 +81,4 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
             raise e
         except Exception as e:
             Stamp(f"Failed to repost {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
-        await async_sleep(SHORT_SLEEP)
     return cnt_success_reposts

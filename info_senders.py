@@ -1,6 +1,6 @@
 import source
 from common import Sleep
-from source import BOT, REQS_PORTION
+from source import BOT, REQS_PORTION, SHORT_SLEEP
 # ---
 from os.path import split
 # ---
@@ -35,7 +35,7 @@ def SendRequests(message: Message, reqs: list, amount: int = None, portion: int 
                 msg += f"{separator} {idx * portion + j} {separator}\n"
                 msg += PrintRequest(req) + '\n'
             BOT.send_message(message.from_user.id, msg, parse_mode='HTML')
-            Sleep(1)
+            Sleep(SHORT_SLEEP)
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет разовых заявок')
 
@@ -53,7 +53,7 @@ def SendAutomaticRequests(message: Message, data: dict, portion: int = REQS_PORT
                 msg += f"{separator} {idx * portion + j} {separator}\n"
                 msg += PrintAutomaticRequest(chan, data) + '\n'
             BOT.send_message(message.from_user.id, msg, parse_mode='HTML')
-            Sleep(1)
+            Sleep(SHORT_SLEEP)
     else:
         BOT.send_message(message.from_user.id, '🔍 Нет автоматических заявок')
 
