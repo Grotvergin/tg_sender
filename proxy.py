@@ -24,7 +24,7 @@ def getProxyByComment(user_id, comment):
             Stamp(f'Error when getting list of proxies: {data.get('error', 'Unknown')}', 'e')
             return
     except RequestException as e:
-        Stamp(f'Error during request: {e}')
+        Stamp(f'Error during request: {e}', 'e')
         return
 
 

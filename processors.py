@@ -97,7 +97,7 @@ async def ProcessRequests() -> None:
                         SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
                         user_id = req['initiator'].split(' ')[-1]
                         BOT.send_message(user_id, message, parse_mode='HTML')
-        except Exception as e:
-            Stamp(f'Uncaught exception in processor happened: {e}', 'w')
-            BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
+        # except Exception as e:
+        #     Stamp(f'Uncaught exception in processor happened: {e}', 'w')
+        #     BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
         await AsyncSleep(LONG_SLEEP, 0.5)

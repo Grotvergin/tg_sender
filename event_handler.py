@@ -122,6 +122,8 @@ async def EventHandler(event: NewMessage.Event):
 def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
     if diff_reac_num > len(reac_list):
         diff_reac_num = len(reac_list)
+    if annual_amount < len(reac_list):
+        annual_amount = len(reac_list)
     chosen_reactions = sample(reac_list, diff_reac_num)
     dominant_share = uniform(0.4, 0.7)
     remaining_share = 1 - dominant_share
