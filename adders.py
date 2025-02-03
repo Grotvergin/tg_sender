@@ -11,6 +11,9 @@ from telethon.errors import InviteRequestSentError
 
 async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, emoji: str) -> int:
     cnt_success_reactions = 0
+    if len(ACCOUNTS) == 0:
+        Stamp('No available accounts', 'e')
+        return cnt_success_reactions
     for i in range(reactions_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
@@ -32,6 +35,9 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
 
 async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -> int:
     cnt_success_views = 0
+    if len(ACCOUNTS) == 0:
+        Stamp('No available accounts', 'e')
+        return cnt_success_views
     for i in range(views_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
@@ -47,6 +53,9 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
 
 async def PerformSubscription(link: str, amount: int, channel_type: str, acc_index: int) -> int:
     cnt_success_subs = 0
+    if len(ACCOUNTS) == 0:
+        Stamp('No available accounts', 'e')
+        return cnt_success_subs
     for i in range(amount):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:
@@ -69,6 +78,9 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
 
 async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> int:
     cnt_success_reposts = 0
+    if len(ACCOUNTS) == 0:
+        Stamp('No available accounts', 'e')
+        return cnt_success_reposts
     for i in range(reposts_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
         try:

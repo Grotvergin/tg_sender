@@ -56,6 +56,9 @@ async def ProcessOrder(req: dict, to_add: int):
     else:
         Stamp('Unknown order type', 'e')
         return
+    if len(source.ACCOUNTS) == 0:
+        Stamp('No available accounts', 'e')
+        return
     req['cur_acc_index'] = (req['cur_acc_index'] + to_add) % len(source.ACCOUNTS)
     req['current'] = req.get('current', 0) + cnt_success
 
