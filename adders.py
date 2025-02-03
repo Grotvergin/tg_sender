@@ -12,7 +12,6 @@ from telethon.errors import InviteRequestSentError
 
 
 async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, emoji: str) -> int:
-    Stamp('Reaction adding procedure started', 'b')
     cnt_success_reactions = 0
     for i in range(reactions_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
@@ -31,12 +30,10 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
         except Exception as e:
             Stamp(f"Failed to add reaction to {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
-    Stamp('Reaction adding procedure finished', 'b')
     return cnt_success_reactions
 
 
 async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -> int:
-    Stamp('View increasing procedure started', 'b')
     cnt_success_views = 0
     for i in range(views_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
@@ -49,12 +46,10 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
         except Exception as e:
             Stamp(f"Failed to view post {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
-    Stamp('View increasing procedure finished', 'b')
     return cnt_success_views
 
 
 async def PerformSubscription(link: str, amount: int, channel_type: str, acc_index: int) -> int:
-    Stamp('Subscription procedure started', 'b')
     cnt_success_subs = 0
     for i in range(amount):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
@@ -74,12 +69,10 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
         except Exception as e:
             Stamp(f"Failed to subscribe {acc.session.filename.split('_')[-1]} to {link}: {e}", 'e')
         Sleep(SHORT_SLEEP, 0.5)
-    Stamp('Subscription procedure finished', 'b')
     return cnt_success_subs
 
 
 async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> int:
-    Stamp('Reposting procedure started', 'b')
     cnt_success_reposts = 0
     for i in range(reposts_needed):
         acc = ACCOUNTS[(acc_index + i) % len(ACCOUNTS)]
@@ -94,5 +87,4 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
         except Exception as e:
             Stamp(f"Failed to repost {post_link} using account {acc.session.filename.split('_')[-1]}: {e}", 'e')
         await async_sleep(SHORT_SLEEP)
-    Stamp('Reposting procedure finished', 'b')
     return cnt_success_reposts

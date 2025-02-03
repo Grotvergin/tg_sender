@@ -126,7 +126,7 @@ def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
     dominant_share = uniform(0.4, 0.7)
     remaining_share = 1 - dominant_share
     num_remaining = len(chosen_reactions) - 1
-    random_shares = [uniform(0, remaining_share) for _ in range(num_remaining)]
+    random_shares = [uniform(1, remaining_share) for _ in range(num_remaining)]
     sum_random_shares = sum(random_shares)
     normalized_shares = [share * (remaining_share / sum_random_shares) for share in random_shares]
     shares = [dominant_share] + normalized_shares
