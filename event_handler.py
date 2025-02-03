@@ -90,33 +90,33 @@ async def EventHandler(event: NewMessage.Event):
         dict_name, order_type = item['dict'], item['order_type']
 
         for channel_name, value in dict_name.items():
-            annual_amount = value['annual']
-            diff_reac_num = randint(4, 7)
-
-            Stamp(f'Annual amount before decision = {annual_amount}', 'i')
-            if NeedToDecrease(event.message.text, channel_name):
-                if order_type in ('Репосты', 'Реакции'):
-                    annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
-                    Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
-                if order_type == 'Реакции':
-                    diff_reac_num = randint(2, 4)
-            Stamp(f'Annual amount after decision = {annual_amount}', 'i')
-            rand_amount = randint(
-                int((1 - (float(value['spread']) / 100)) * annual_amount),
-                int((1 + (float(value['spread']) / 100)) * annual_amount)
-            )
-            rand_amount = max(1, min(rand_amount, len(source.ACCOUNTS)))
-            link = f'{channel_name}/{event.message.id}'
-            if order_type == 'Реакции':
-                await handleReactions(value, link, annual_amount, diff_reac_num)
-            else:
-                await createRequest(
-                    order_type=order_type,
-                    initiator=f'Автоматическая от {value["initiator"]}',
-                    link=link,
-                    planned=rand_amount,
-                    time_limit=value['time_limit']
+            if event.chat.username == channel_name:
+                annual_amount = value['annual']
+                diff_reac_num = randint(4, 7)
+                Stamp(f'Annual amount before decision = {annual_amount}', 'i')
+                if NeedToDecrease(event.message.text, channel_name):
+                    if order_type in ('Репосты', 'Реакции'):
+                        annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
+                        Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
+                    if order_type == 'Реакции':
+                        diff_reac_num = randint(2, 4)
+                Stamp(f'Annual amount after decision = {annual_amount}', 'i')
+                rand_amount = randint(
+                    int((1 - (float(value['spread']) / 100)) * annual_amount),
+                    int((1 + (float(value['spread']) / 100)) * annual_amount)
                 )
+                rand_amount = max(1, min(rand_amount, len(source.ACCOUNTS)))
+                link = f'{channel_name}/{event.message.id}'
+                if order_type == 'Реакции':
+                    await handleReactions(value, link, annual_amount, diff_reac_num)
+                else:
+                    await createRequest(
+                        order_type=order_type,
+                        initiator=f'Автоматическая от {value["initiator"]}',
+                        link=link,
+                        planned=rand_amount,
+                        time_limit=value['time_limit']
+                    )
 
 
 def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
