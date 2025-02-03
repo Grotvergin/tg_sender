@@ -10,7 +10,6 @@ from re import match
 from datetime import datetime
 # ---
 from telebot.types import Message
-from emoji import EMOJI_DATA
 
 
 def AutomaticChoice(message: Message) -> None:
@@ -21,8 +20,8 @@ def AutomaticChoice(message: Message) -> None:
         ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REPS)
     elif message.text == AUTO_CHOICE[2]:
-        ShowButtons(message, CANCEL_BTN, '❔ Отправьте эмодзи:')
-        BOT.register_next_step_handler(message, AutomaticAcceptEmoji)
+        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
+        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REAC)
     elif message.text == AUTO_CHOICE[3]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     else:
@@ -30,26 +29,13 @@ def AutomaticChoice(message: Message) -> None:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
-def AutomaticAcceptEmoji(message: Message) -> None:
-    Stamp('Emoji inserting procedure', 'i')
-    if message.text not in EMOJI_DATA:
-        if message.text == CANCEL_BTN[0]:
-            ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
-        else:
-            ShowButtons(message, CANCEL_BTN, "❌ Вы ввели не эмодзи. Пожалуйста, введите только эмодзи")
-            BOT.register_next_step_handler(message, AutomaticAcceptEmoji)
-    else:
-        ShowButtons(message, AUTO_BTNS, '❔ Выберите действие:')
-        BOT.register_next_step_handler(message, AutomaticChannelDispatcher, FILE_AUTO_REAC, message.text)
-
-
-def AutomaticChannelDispatcher(message: Message, file: str, emoji: str = None) -> None:
+def AutomaticChannelDispatcher(message: Message, file: str) -> None:
     if message.text == AUTO_BTNS[0]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name или @name):')
-        BOT.register_next_step_handler(message, AutomaticChannelAction, file, emoji)
+        BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     elif message.text == AUTO_BTNS[1]:
         BOT.send_message(message.from_user.id, '❔ Введите имя канала (name):')
-        BOT.register_next_step_handler(message, DeleteAutomaticRequest, file, emoji)
+        BOT.register_next_step_handler(message, DeleteAutomaticRequest, file)
     elif message.text == AUTO_BTNS[2]:
         FILE_TO_DATA_MAP = {
             source.FILE_AUTO_VIEWS: source.AUTO_VIEWS_DICT,
@@ -67,7 +53,7 @@ def AutomaticChannelDispatcher(message: Message, file: str, emoji: str = None) -
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
 
 
-def AutomaticChannelAction(message: Message, file: str, emoji: str = None) -> None:
+def AutomaticChannelAction(message: Message, file: str) -> None:
     Stamp('Automatic channel link inserting procedure', 'i')
     if message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
@@ -78,8 +64,6 @@ def AutomaticChannelAction(message: Message, file: str, emoji: str = None) -> No
         BOT.register_next_step_handler(message, AutomaticChannelAction, file)
     else:
         source.CUR_REQ = {'initiator': f'{message.from_user.username} – {message.from_user.id}'}
-        if emoji:
-            source.CUR_REQ['emoji'] = emoji
         cut_link = message.text.split('/')[-1]
         if cut_link[0] == '@':
             cut_link = cut_link[1:]
@@ -155,12 +139,6 @@ def InsertSpread(message: Message, path: str) -> None:
             'spread': int(message.text)
         }
         link = source.CUR_REQ['link']
-        print(link)
-        print(source.CUR_REQ)
-        if 'emoji' in source.CUR_REQ:
-            print('here')
-            record['emoji'] = source.CUR_REQ['emoji']
-            link += '_' + source.CUR_REQ['emoji']
         data_dict[link] = record
         SaveRequestsToFile(data_dict, description, file_name)
         BOT.send_message(message.from_user.id, f"🆗 Заявка принята. Буду следить за обновлениями в канале {source.CUR_REQ['link']}...")

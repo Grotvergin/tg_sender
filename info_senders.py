@@ -75,8 +75,7 @@ def PrintAutomaticRequest(chan: str, data: dict) -> str:
             f"<b>Временной интервал</b>: {data[chan]['time_limit']}\n"
             f"<b>Создана</b>: {data[chan]['approved']}\n"
             f"<b>На публикацию</b>: {data[chan]['annual']}\n"
-            f"<b>Разброс</b>: {data[chan]['spread']}%\n"
-            f"<b>Эмодзи</b>: {data[chan].get('emoji', 'N/A')}")
+            f"<b>Разброс</b>: {data[chan]['spread']}%\n")
 
 
 def ListAccountNumbers() -> str:
