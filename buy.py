@@ -87,7 +87,7 @@ def ChooseCountry(message: Message, req_quantity: int, avail_codes: list) -> Non
         return
     Stamp(f'Chosen country: {message.text}', 'i')
     BOT.send_message(message.from_user.id, f'🔁 Выбрана страна {message.text}')
-    source.BUYING_INFO = {'user_id': message.from_user.id, 'req_quantity': req_quantity, 'country_code': country_code}
+    source.BUYING_INFO = {'user_id': message.from_user.id, 'req_quantity': req_quantity, 'country_code': country_code, 'is_buy': True}
 
 
 async def CheckRefreshBuy() -> None:
@@ -145,17 +145,17 @@ async def AccountExists(user_id: int, client: TelegramClient, phone_number: str)
         BOT.send_message(user_id, '🟧 Ошибка при проверке на существование аккаунта')
 
 
-async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int) -> None:
+async def ProcessAccounts(user_id: int, req_quantity: int, country_code: int, is_buy: bool) -> None:
     i = 0
     srv = BuildService()
     while i < req_quantity:
-        Stamp(f'Adding {i + 1} account', 'i')
-        BOT.send_message(user_id, f'▫️ Добавляю {i + 1}-й аккаунт')
+        Stamp(f'Adding/buying {i + 1} account', 'i')
+        BOT.send_message(user_id, f'▫️ Добавляю/покупаю {i + 1}-й аккаунт')
         try:
-            await ProcessSingleAccount(user_id, country_code, srv)
+            await ProcessSingleAccount(user_id, country_code, srv, is_buy)
             i += 1
             if i < req_quantity:
-                ShowButtons(user_id, YES_NO_BTNS, f'❔ Покупаем аккаунт №{i + 1}?')
+                ShowButtons(user_id, YES_NO_BTNS, f'❔ Добавляем/покупаем аккаунт №{i + 1}?')
                 answer = await getUserInput(user_id)
                 if answer == YES_NO_BTNS[1]:
                     break
@@ -236,20 +236,24 @@ def remainingTime(start):
     return int(max(ONLINESIM_CANCEL_BUFFER - elapsed, ONLINESIM_COMPULSORY_BUFFER))
 
 
-async def ProcessSingleAccount(user_id: int, country_code: int, srv):
+async def ProcessSingleAccount(user_id: int, country_code: int, srv, is_buy: bool):
     start = time()
-    num, tzid = BuyAccount(user_id, country_code)
-    if await AccountExists(user_id, source.ACCOUNTS[0], num):
-        raise CancelAndNext(tzid, remainingTime(start))
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid, remainingTime(start)))
-    code = GetCodeFromSms(user_id, num, tzid)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
-    email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
-    code = GetEmailCode(token)
-    await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
-    num = num[1:]
+    if is_buy:
+        num, tzid = BuyAccount(user_id, country_code)
+        if await AccountExists(user_id, source.ACCOUNTS[0], num):
+            raise CancelAndNext(tzid, remainingTime(start))
+        await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{num}`?', YES_NO_BTNS[1], CancelAndNext(tzid, remainingTime(start)))
+        code = GetCodeFromSms(user_id, num, tzid)
+        await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+        await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод пароля `{PASSWORD}`?', YES_NO_BTNS[1], GoNextOnly)
+        email, token = GetTemporaryEmail(MIN_LEN_EMAIL, PASSWORD)
+        await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод email `{email}`?', YES_NO_BTNS[1], GoNextOnly)
+        code = GetEmailCode(token)
+        await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
+    else:
+        BOT.send_message(user_id, '🖊 Введите номер в формате `79151234567`')
+        num = await getUserInput(user_id)
+    num = num.replace('+', '')
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
     row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID)) + 2
