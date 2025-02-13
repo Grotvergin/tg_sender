@@ -70,7 +70,6 @@ def MessageAccept(message: Message) -> None:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')
         BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == WELCOME_BTNS[5]:
-        ShowButtons(message, CANCEL_BTN, 'ℹ️ Добавляем существующий номер...')
         source.BUYING_INFO = {'user_id': message.from_user.id, 'req_quantity': 1, 'country_code': 0, 'is_buy': False}
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')

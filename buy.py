@@ -251,8 +251,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv, is_buy: boo
         code = GetEmailCode(token)
         await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     else:
-        BOT.send_message(user_id, '🖊 Введите номер в формате `79151234567`')
-        num = await getUserInput(user_id)
+        num = await askToProceed(user_id, CANCEL_BTN, '🖊 Введите номер в формате `79151234567`', CANCEL_BTN[0], FinishProcess)
     num = num.replace('+', '')
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
