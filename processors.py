@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from file import SaveRequestsToFile
 from info_senders import PrintRequest
 from secret import MY_TG_ID, AR_TG_ID
+from monitor import update_last_check
 # ---
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -67,12 +68,13 @@ async def ProcessRequests() -> None:
     while True:
         try:
             Stamp('Pending requests', 'i')
-            if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
-                Stamp('Sending notification about proper work', 'i')
-                BOT.send_message(MY_TG_ID, '🔄 OK')
-                BOT.send_message(AR_TG_ID, '🔄 OK')
-                source.LAST_NOTIF_PROCESSOR = datetime.now()
             for req in source.REQS_QUEUE:
+                if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
+                    Stamp('Sending notification about proper work', 'i')
+                    BOT.send_message(MY_TG_ID, '🔄 OK')
+                    BOT.send_message(AR_TG_ID, '🔄 OK')
+                    update_last_check()
+                    source.LAST_NOTIF_PROCESSOR = datetime.now()
                 finish = datetime.strptime(req['finish'], TIME_FORMAT)
                 start = datetime.strptime(req['start'], TIME_FORMAT)
                 now = datetime.now()
