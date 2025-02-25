@@ -1,4 +1,4 @@
-from secret import TOKEN, MY_TG_ID, PROXY_KEY
+from secret import TOKEN, MY_TG_ID, PROXY_KEY, TOKEN_TEST
 # ---
 from random import seed
 from ssl import SSLEOFError
@@ -55,6 +55,7 @@ AUTO_VIEWS_DICT = {}
 AUTO_REPS_DICT = {}
 AUTO_REAC_DICT = {}
 BUYING_INFO = {}
+AUTHORIZED_USERS = set()
 FAKER = Faker()
 init()
 seed()
@@ -77,6 +78,7 @@ USER_ANSWER_TIMEOUT = 300
 ONLINESIM_CANCEL_BUFFER = 120
 ONLINESIM_COMPULSORY_BUFFER = 3
 CHECK_INTERVAL = 30
+MAX_SILENCE_TIME = 3
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 LINK_FORMAT = r'https://t\.me/'
 URL_SIM = 'https://onlinesim.io/api/'
@@ -94,4 +96,4 @@ FILE_AUTO_REAC = 'auto_reac.json'
 FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 LAST_CHECK_FILE = "last_bot_check.json"
-MAX_SILENCE_TIME = 3
+AUTHORIZED_USERS_FILE = "authorized_users.json"
