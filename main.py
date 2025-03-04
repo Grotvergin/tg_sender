@@ -13,7 +13,7 @@ from event_handler import RefreshEventHandler
 from buy import AddAccounts, CheckRefreshBuy
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
-from info_senders import ListAccountNumbers
+from info_senders import SendAccountNumbers
 from os.path import exists
 # ---
 from asyncio import get_event_loop, gather, create_task, run
@@ -101,7 +101,7 @@ def MessageAccept(message: Message) -> None:
         Stamp(f'Setting ADMIN_CHAT_ID = {user_id}', 'w')
         source.ADMIN_CHAT_ID = user_id
     elif message.text == WELCOME_BTNS[3]:
-        BOT.send_message(user_id, f'👁 Доступно {len(source.ACCOUNTS)} аккаунтов:\n{ListAccountNumbers()}')
+        SendAccountNumbers(user_id)
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text == WELCOME_BTNS[4]:
         ShowButtons(message, CANCEL_BTN, '❔ Введите количество аккаунтов:')

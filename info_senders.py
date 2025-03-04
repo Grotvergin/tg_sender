@@ -78,8 +78,25 @@ def PrintAutomaticRequest(chan: str, data: dict) -> str:
             f"<b>Разброс</b>: {data[chan]['spread']}%\n")
 
 
-def ListAccountNumbers() -> str:
-    res = ''
-    for i, acc in enumerate(source.ACCOUNTS):
-        res += f'{i + 1} | {split(acc.session.filename)[-1][:-8]}\n'
-    return res
+def SendAccountNumbers(user_id):
+    """
+    Отправляет пользователю список доступных аккаунтов порциями по 100 штук.
+    """
+    total_accounts = len(source.ACCOUNTS)
+    BOT.send_message(user_id, f'👁 Доступно {total_accounts} аккаунтов:')
+
+    messages = []
+    chunk = []
+
+    for i, acc in enumerate(source.ACCOUNTS, start=1):
+        chunk.append(f'{i} | {split(acc.session.filename)[-1][:-8]}')
+
+        if len(chunk) == 100:
+            messages.append("\n".join(chunk))
+            chunk = []
+
+    if chunk:
+        messages.append("\n".join(chunk))
+
+    for msg in messages:
+        BOT.send_message(user_id, msg)
