@@ -2,11 +2,12 @@ import source
 from file import SaveRequestsToFile
 from adders import PerformSubscription
 from secret import MY_TG_ID
-from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE,
+from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP,
                     LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS)
 from common import Stamp, AsyncSleep
+from asyncio import sleep as async_sleep
 # ---
-from re import compile
+from re import compile, match
 from random import randint, sample, uniform
 from datetime import datetime, timedelta
 # ---
@@ -77,9 +78,7 @@ async def handleReactions(channel_data, link, annual_amount, diff_reac_num):
         )
 
 
-async def EventHandler(event: NewMessage.Event):
-    Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-
+async def processEvent(event_channel_name, message_text, message_id):
     dicts_list = [
         {'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры'},
         {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты'},
@@ -90,11 +89,11 @@ async def EventHandler(event: NewMessage.Event):
         dict_name, order_type = item['dict'], item['order_type']
 
         for channel_name, value in dict_name.items():
-            if event.chat.username == channel_name:
+            if event_channel_name == channel_name:
                 annual_amount = value['annual']
                 diff_reac_num = randint(4, 7)
                 Stamp(f'Annual amount before decision = {annual_amount}', 'i')
-                if NeedToDecrease(event.message.text, channel_name):
+                if NeedToDecrease(message_text, channel_name):
                     if order_type in ('Репосты', 'Реакции'):
                         annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
                         Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
@@ -106,7 +105,7 @@ async def EventHandler(event: NewMessage.Event):
                     int((1 + (float(value['spread']) / 100)) * annual_amount)
                 )
                 rand_amount = max(1, min(rand_amount, len(source.ACCOUNTS)))
-                link = f'{channel_name}/{event.message.id}'
+                link = f'{channel_name}/{message_id}'
                 if order_type == 'Реакции':
                     await handleReactions(value, link, rand_amount, diff_reac_num)
                 else:
@@ -117,6 +116,43 @@ async def EventHandler(event: NewMessage.Event):
                         planned=rand_amount,
                         time_limit=value['time_limit']
                     )
+
+
+async def EventHandler(event: NewMessage.Event):
+    Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
+    await processEvent(event.c.username, event.message.text, event.message.id)
+
+
+async def CheckManualHandler() -> None:
+    while True:
+        if source.MANUAL_CHANNEL_LINK:
+            Stamp('MANUAL_CHANNEL_LINK is set, adding semi-auto request', 'i')
+            await ManualEventHandler(source.MANUAL_CHANNEL_LINK, source.MANUAL_CHANNEL_USER)
+            source.MANUAL_CHANNEL_LINK = None
+            source.MANUAL_CHANNEL_USER = None
+        await async_sleep(SHORT_SLEEP)
+
+
+def ManualEventAcceptLink(message):
+    source.MANUAL_CHANNEL_USER = message.from_user.id
+    source.MANUAL_CHANNEL_LINK = message.text
+
+
+async def ManualEventHandler(link, user_id):
+    Stamp(f'Trying to add manual-auto request for link {link}', 'i')
+    is_match = match(r'https://t.me/([^/]+)/(\d+)', link)
+    channel_name = is_match.group(1)
+    message_id = is_match.group(2)
+    if not is_match:
+        BOT.send_message(user_id, '🚫 Ссылка не распознана, формат: https://t.me/channel_name/123')
+        return
+    BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
+    channel = await source.ACCOUNTS[0].get_entity(channel_name)
+    message = await source.ACCOUNTS[0].get_messages(channel, ids=int(message_id))
+    if not message.text:
+        return
+    await processEvent(channel_name, message.text, message_id)
+    BOT.send_message(user_id, '💅 Заявки созданы в соответствии с автоматическими')
 
 
 def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):

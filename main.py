@@ -9,7 +9,7 @@ from secret import SECRET_CODE
 from json import dump, load
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
-from event_handler import RefreshEventHandler
+from event_handler import RefreshEventHandler, ManualEventHandler, CheckManualHandler, ManualEventAcceptLink
 from buy import AddAccounts, CheckRefreshBuy
 from single_data_accept import SingleChoice
 from auto_data_accept import AutomaticChoice
@@ -49,7 +49,8 @@ async def Main() -> None:
         await gather(create_task(CheckRefreshBuy()),
                      create_task(ProcessRequests()),
                      create_task(CheckRefreshAuth()),
-                     create_task(RefreshEventHandler()))
+                     create_task(RefreshEventHandler()),
+                     create_task(CheckManualHandler()))
     finally:
         loop.close()
 
@@ -108,6 +109,9 @@ def MessageAccept(message: Message) -> None:
         BOT.register_next_step_handler(message, AddAccounts)
     elif message.text == WELCOME_BTNS[5]:
         source.BUYING_INFO = {'user_id': message.from_user.id, 'req_quantity': 1, 'country_code': 0, 'is_buy': False}
+    elif message.text == WELCOME_BTNS[6]:
+        BOT.send_message(user_id, '➡️ Введите ссылку на пост в формате https://t.me/channel_name/123')
+        BOT.register_next_step_handler(message, ManualEventAcceptLink)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE[0]:

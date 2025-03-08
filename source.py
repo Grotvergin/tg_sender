@@ -16,7 +16,8 @@ WELCOME_BTNS = ('Разовые 1️⃣',
                 'Авторизация 🔐',
                 'Активные 🦾',
                 'Покупка 💰',
-                'Добавление ➕')
+                'Добавление ➕',
+                'Ручной ввод 🔰')
 CANCEL_BTN = ('Меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀',
                'Репосты 📢',
@@ -43,7 +44,7 @@ ALL_REACTIONS = [
 ]
 YES_NO_BTNS = ('Да ✅', 'Нет ❌', STOP_PROCESS)
 SKIP_CODE = ('Пропуск ⏭️',)
-BOT = TeleBot(TOKEN)
+BOT = TeleBot(TOKEN_TEST)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
 LAST_NOTIF_PROCESSOR = datetime.now()
 USER_RESPONSES = {}
@@ -61,6 +62,8 @@ init()
 seed()
 ADMIN_CHAT_ID = MY_TG_ID
 CODE = None
+MANUAL_CHANNEL_LINK = None
+MANUAL_CHANNEL_USER = None
 MIN_LEN_EMAIL = 15
 LONG_SLEEP = 15
 SHORT_SLEEP = 1
