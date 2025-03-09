@@ -120,7 +120,7 @@ async def processEvent(event_channel_name, message_text, message_id):
 
 async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-    await processEvent(event.c.username, event.message.text, event.message.id)
+    await processEvent(event.chat.username, event.message.text, event.message.id)
 
 
 async def CheckManualHandler() -> None:
