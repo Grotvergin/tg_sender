@@ -64,17 +64,22 @@ async def ProcessOrder(req: dict, to_add: int):
     req['current'] = req.get('current', 0) + cnt_success
 
 
+def sendNotificationAboutWork():
+    if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
+        Stamp('Sending notification about proper work', 'i')
+        BOT.send_message(MY_TG_ID, '🔄 OK')
+        BOT.send_message(AR_TG_ID, '🔄 OK')
+        update_last_check()
+        source.LAST_NOTIF_PROCESSOR = datetime.now()
+
+
 async def ProcessRequests() -> None:
     while True:
         try:
             Stamp('Pending requests', 'i')
+            sendNotificationAboutWork()
             for req in source.REQS_QUEUE:
-                if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
-                    Stamp('Sending notification about proper work', 'i')
-                    BOT.send_message(MY_TG_ID, '🔄 OK')
-                    BOT.send_message(AR_TG_ID, '🔄 OK')
-                    update_last_check()
-                    source.LAST_NOTIF_PROCESSOR = datetime.now()
+                sendNotificationAboutWork()
                 finish = datetime.strptime(req['finish'], TIME_FORMAT)
                 start = datetime.strptime(req['start'], TIME_FORMAT)
                 now = datetime.now()
