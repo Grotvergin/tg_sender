@@ -144,24 +144,35 @@ async def CheckManualHandler() -> None:
 
 def ManualEventAcceptLink(message):
     source.MANUAL_CHANNEL_USER = message.from_user.id
-    source.MANUAL_CHANNEL_LINK = message.text
+    source.MANUAL_CHANNEL_LINK = [link.strip() for link in message.text.splitlines() if link.strip()]
 
 
-async def ManualEventHandler(link, user_id):
-    Stamp(f'Trying to add manual-auto request for link {link}', 'i')
-    is_match = match(r'https://t.me/([^/]+)/(\d+)', link)
-    channel_name = is_match.group(1)
-    message_id = is_match.group(2)
-    if not is_match:
-        BOT.send_message(user_id, '🚫 Ссылка не распознана, формат: https://t.me/channel_name/123')
-        return
-    BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
-    channel = await source.ACCOUNTS[0].get_entity(channel_name)
-    message = await source.ACCOUNTS[0].get_messages(channel, ids=int(message_id))
-    if not message.text:
-        return
-    await processEvent(channel_name, message.text, message_id)
-    BOT.send_message(user_id, '💅 Заявки созданы в соответствии с автоматическими')
+async def ManualEventHandler(links, user_id):
+    for link in links:
+        Stamp(f'Trying to add manual-auto request for link {link}', 'i')
+        is_match = match(r'https://t.me/([^/]+)/(\d+)', link)
+        if not is_match:
+            BOT.send_message(user_id, f'🚫 Ссылка не распознана: {link}\nФормат: https://t.me/channel_name/123')
+            continue
+
+        channel_name = is_match.group(1)
+        message_id = int(is_match.group(2))
+        BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
+
+        try:
+            channel = await source.ACCOUNTS[0].get_entity(channel_name)
+            message = await source.ACCOUNTS[0].get_messages(channel, ids=message_id)
+        except Exception as e:
+            BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
+            continue
+
+        if not message or not message.text:
+            BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
+            continue
+
+        await processEvent(channel_name, message.text, message_id)
+
+    BOT.send_message(user_id, '💅 Обработка всех ссылок завершена.')
 
 
 def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
