@@ -33,11 +33,20 @@ async def RefreshEventHandler():
             BOT.send_message(MY_TG_ID, '🥺 Нет необходимости запускать EventHandler')
         else:
             Stamp(f'Setting up event handler', 'i')
+                        # Удаление дубликатов, без потери регистра
+            channels = list(dict.fromkeys(channels))
+            print(f"CHANNELS={channels}")
+
             already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[0])
-            list_for_subscription = [chan for chan in channels if chan not in already_subscribed]
+            print(f"ALREADY = {already_subscribed}")
+
+            normalized_already = set(chan.lower() for chan in already_subscribed)
+            list_for_subscription = [chan for chan in channels if chan.lower() not in normalized_already]
+            print(f'LIST FOR SUB: {list_for_subscription}')
             for chan in list_for_subscription:
                 await PerformSubscription(chan, 1, 'public', 0)
             channel_ids = await GetChannelIDsByUsernames(source.ACCOUNTS[0], channels)
+
             source.ACCOUNTS[0].remove_event_handler(EventHandler)
             source.ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
             Stamp("Set up", 's')
@@ -235,7 +244,7 @@ async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
         offset_date=None,
         offset_id=0,
         offset_peer=InputPeerEmpty(),
-        limit=1000,
+        limit=LIMIT_DIALOGS,
         hash=0
     ))
     channels = []
