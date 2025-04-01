@@ -143,3 +143,39 @@ def AcceptPost(message: Message, order_type: str, emoji: str = None) -> None:
             source.CUR_REQ['emoji'] = emoji
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество (доступно {len(source.ACCOUNTS)} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
+
+
+def doRebrand(message):
+    try:
+        user_id = message.from_user.id
+        parts = message.text.strip().split()
+        if len(parts) != 2:
+            BOT.send_message(user_id, '❌ Формат должен быть: old new. Попробуйте снова.')
+            BOT.register_next_step_handler(message, doRebrand)
+            return
+
+        old_name, new_name = parts
+        replaced = False
+
+        dicts_list = [
+            {'dict': source.AUTO_VIEWS_DICT, 'order_type': 'Просмотры', 'file': source.FILE_AUTO_VIEWS, 'desc': 'automatic views'},
+            {'dict': source.AUTO_REPS_DICT, 'order_type': 'Репосты', 'file': source.FILE_AUTO_REPS, 'desc': 'automatic reposts'},
+            {'dict': source.AUTO_REAC_DICT, 'order_type': 'Реакции', 'file': source.FILE_AUTO_REAC, 'desc': 'automatic reactions'},
+        ]
+
+        for d in dicts_list:
+            data_dict = d['dict']
+            if old_name in data_dict:
+                data_dict[new_name] = data_dict.pop(old_name)
+                SaveRequestsToFile(data_dict, d['desc'], d['file'])
+                replaced = True
+                BOT.send_message(user_id, f"🔁 {d['order_type']}: переименовано {old_name} → {new_name}")
+
+        if not replaced:
+            BOT.send_message(user_id, f"❗ Канал {old_name} не найден ни в одном из автоматических словарей.")
+        else:
+            BOT.send_message(user_id, "✅ Переименование завершено.")
+
+    except Exception as e:
+        Stamp(f'Ошибка в doRebrand: {e}', 'e')
+        BOT.send_message(message.from_user.id, '⚠️ Произошла ошибка при переименовании. Попробуйте ещё раз.')

@@ -11,7 +11,7 @@ from re import compile, match
 from random import randint, sample, uniform
 from datetime import datetime, timedelta
 # ---
-from telethon.tl.functions.messages import GetDialogsRequest, GetAvailableReactionsRequest
+from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.functions.channels import GetFullChannelRequest
 from telethon.tl.types import InputPeerEmpty, Channel
 from telethon.sync import TelegramClient

@@ -9,9 +9,9 @@ from secret import SECRET_CODE
 from json import dump, load
 from auth import CheckRefreshAuth
 from processors import ProcessRequests
-from event_handler import RefreshEventHandler, ManualEventHandler, CheckManualHandler, ManualEventAcceptLink
+from event_handler import RefreshEventHandler, CheckManualHandler, ManualEventAcceptLink
 from buy import AddAccounts, CheckRefreshBuy
-from single_data_accept import SingleChoice
+from single_data_accept import SingleChoice, doRebrand
 from auto_data_accept import AutomaticChoice
 from info_senders import SendAccountNumbers
 from os.path import exists
@@ -112,6 +112,9 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[6]:
         BOT.send_message(user_id, '➡️ Введите ссылку на пост в формате https://t.me/channel_name/123')
         BOT.register_next_step_handler(message, ManualEventAcceptLink)
+    elif message.text == WELCOME_BTNS[7]:
+        BOT.send_message(user_id, '📐 Введите старое и новое название в формате old new')
+        BOT.register_next_step_handler(message, doRebrand)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE[0]:
