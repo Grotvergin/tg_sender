@@ -47,15 +47,12 @@ async def Main() -> None:
 
     loop = get_event_loop()
     try:
-        # 🔐 Сначала авторизуем аккаунты
-        await CheckRefreshAuth()
-
-        # 🚀 Потом запускаем всё остальное
         await gather(
             create_task(CheckRefreshBuy()),
             create_task(ProcessRequests()),
-            create_task(RefreshEventHandler()),
-            create_task(CheckManualHandler())
+            create_task(CheckRefreshAuth()),  # ✅ Запускается сразу
+            create_task(CheckManualHandler()),
+            create_task(RefreshEventHandler())  # ✅ Но внутри ждёт появления аккаунтов
         )
     finally:
         loop.close()
