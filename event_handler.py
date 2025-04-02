@@ -19,14 +19,12 @@ from telethon.events import NewMessage
 
 
 async def RefreshEventHandler():
-    # 🕒 Ждём, пока аккаунтов будет больше, чем каналов
     while True:
         channels = list(dict.fromkeys(
             list(source.AUTO_VIEWS_DICT.keys()) +
             list(source.AUTO_REPS_DICT.keys()) +
             list(source.AUTO_REAC_DICT.keys())
         ))
-        print(channels)
 
         if len(source.ACCOUNTS) > len(channels):
             Stamp(f"Enough accounts ({len(source.ACCOUNTS)}) for {len(channels)} channels", 's')
