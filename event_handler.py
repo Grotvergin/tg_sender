@@ -26,6 +26,7 @@ async def RefreshEventHandler():
             list(source.AUTO_REPS_DICT.keys()) +
             list(source.AUTO_REAC_DICT.keys())
         ))
+        print(channels)
 
         if len(source.ACCOUNTS) > len(channels):
             Stamp(f"✅ Достаточно аккаунтов ({len(source.ACCOUNTS)}) для {len(channels)} каналов", 's')
@@ -212,8 +213,9 @@ def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
 
 
 async def GetReactionsList(channel_link):
-    channel = await source.ACCOUNTS[0].get_entity(channel_link)
-    full_chat = await source.ACCOUNTS[0](GetFullChannelRequest(channel))
+    index = randint(1, len(source.ACCOUNTS) - 1)  # от 1 до N-
+    channel = await source.ACCOUNTS[index].get_entity(channel_link)
+    full_chat = await source.ACCOUNTS[index](GetFullChannelRequest(channel))
     result = full_chat.full_chat.available_reactions
 
     if not result:
