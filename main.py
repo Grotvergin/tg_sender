@@ -44,13 +44,19 @@ async def Main() -> None:
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', FILE_AUTO_REAC)
     source.AUTHORIZED_USERS = load_authorized_users()
+
     loop = get_event_loop()
     try:
-        await gather(create_task(CheckRefreshBuy()),
-                     create_task(ProcessRequests()),
-                     create_task(CheckRefreshAuth()),
-                     create_task(RefreshEventHandler()),
-                     create_task(CheckManualHandler()))
+        # 🔐 Сначала авторизуем аккаунты
+        await CheckRefreshAuth()
+
+        # 🚀 Потом запускаем всё остальное
+        await gather(
+            create_task(CheckRefreshBuy()),
+            create_task(ProcessRequests()),
+            create_task(RefreshEventHandler()),
+            create_task(CheckManualHandler())
+        )
     finally:
         loop.close()
 

@@ -20,11 +20,13 @@ from telethon.events import NewMessage
 
 async def RefreshEventHandler():
     while True:
-        channels = (
-                list(source.AUTO_VIEWS_DICT.keys()) +
-                list(source.AUTO_REPS_DICT.keys()) +
-                list(source.AUTO_REAC_DICT.keys())
-        )
+        # Собираем уникальные каналы из всех авто-словарей
+        channels = list(dict.fromkeys(
+            list(source.AUTO_VIEWS_DICT.keys()) +
+            list(source.AUTO_REPS_DICT.keys()) +
+            list(source.AUTO_REAC_DICT.keys())
+        ))
+
         if not source.ACCOUNTS:
             Stamp("No accounts available to set up event handler", 'w')
             BOT.send_message(MY_TG_ID, '💀 Нет аккаунтов для запуска EventHandler')
@@ -32,25 +34,33 @@ async def RefreshEventHandler():
             Stamp("No need to set up event handler (no channels)", 'i')
             BOT.send_message(MY_TG_ID, '🥺 Нет необходимости запускать EventHandler')
         else:
-            Stamp(f'Setting up event handler', 'i')
-                        # Удаление дубликатов, без потери регистра
-            channels = list(dict.fromkeys(channels))
-            print(f"CHANNELS={channels}")
+            Stamp(f'Setting up event handler for {len(channels)} channels using {len(source.ACCOUNTS)} accounts', 'i')
 
-            already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[0])
-            print(f"ALREADY = {already_subscribed}")
+            for i, channel in enumerate(channels):
+                account = source.ACCOUNTS[i]  # Назначаем один аккаунт на канал
 
-            normalized_already = set(chan.lower() for chan in already_subscribed)
-            list_for_subscription = [chan for chan in channels if chan.lower() not in normalized_already]
-            print(f'LIST FOR SUB: {list_for_subscription}')
-            for chan in list_for_subscription:
-                await PerformSubscription(chan, 1, 'public', 0)
-            channel_ids = await GetChannelIDsByUsernames(source.ACCOUNTS[0], channels)
+                # Проверяем подписку
+                already_subscribed = await GetSubscribedChannels(account)
+                if channel.lower() not in (name.lower() for name in already_subscribed):
+                    await PerformSubscription(channel, 1, 'public', 0)
 
-            source.ACCOUNTS[0].remove_event_handler(EventHandler)
-            source.ACCOUNTS[0].add_event_handler(EventHandler, NewMessage(chats=channel_ids))
-            Stamp("Set up", 's')
-        await AsyncSleep(LONG_SLEEP * 2, 0.5)
+                # Получаем ID канала
+                channel_ids = await GetChannelIDsByUsernames(account, [channel])
+                if not channel_ids:
+                    Stamp(f"Channel ID not found for {channel}", 'w')
+                    continue
+
+                # Снимаем предыдущие обработчики, если есть
+                account.remove_event_handler(EventHandler)
+
+                # Создаём частичный обработчик с замыканием
+                async def partial_handler(event, acc_index=i):
+                    await processEvent(event.chat.username, event.message.text, event.message.id)
+
+                account.add_event_handler(partial_handler, NewMessage(chats=channel_ids))
+                Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
+
+        await AsyncSleep(LONG_SLEEP * 10, 0.5)
 
 
 async def createRequest(order_type, initiator, link, planned, time_limit, emoji=None):
