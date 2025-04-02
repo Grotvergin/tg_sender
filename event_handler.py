@@ -159,18 +159,18 @@ async def ManualEventHandler(links, user_id):
         message_id = int(is_match.group(2))
         BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
 
-        try:
-            channel = await source.ACCOUNTS[0].get_entity(channel_name)
-            message = await source.ACCOUNTS[0].get_messages(channel, ids=message_id)
-        except Exception as e:
-            BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
-            continue
+        #try:
+            #channel = await source.ACCOUNTS[0].get_entity(channel_name)
+            #message = await source.ACCOUNTS[0].get_messages(channel, ids=message_id)
+        #except Exception as e:
+            #BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
+            #continue
 
-        if not message or not message.text:
-            BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
-            continue
+        #if not message or not message.text:
+         #   BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
+          #  continue
 
-        await processEvent(channel_name, message.text, message_id)
+        await processEvent(channel_name, "", message_id)
 
     BOT.send_message(user_id, '💅 Обработка всех ссылок завершена.')
 
