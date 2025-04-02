@@ -44,6 +44,7 @@ ALL_REACTIONS = [
     '🆒', '💘', '🙉', '🦄', '😘', '💊', '🙊', '😎', '👾', '🤷‍', '🤷', '😡'
 ]
 YES_NO_BTNS = ('Да ✅', 'Нет ❌', STOP_PROCESS)
+HANDLERS = {}
 SKIP_CODE = ('Пропуск ⏭️',)
 BOT = TeleBot(TOKEN)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)

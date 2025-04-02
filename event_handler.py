@@ -3,7 +3,7 @@ from file import SaveRequestsToFile
 from adders import PerformSubscription
 from secret import MY_TG_ID
 from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP,
-                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS)
+                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS, HANDLERS)
 from common import Stamp, AsyncSleep
 from asyncio import sleep as async_sleep
 # ---
@@ -29,10 +29,10 @@ async def RefreshEventHandler():
         print(channels)
 
         if len(source.ACCOUNTS) > len(channels):
-            Stamp(f"✅ Достаточно аккаунтов ({len(source.ACCOUNTS)}) для {len(channels)} каналов", 's')
+            Stamp(f"Enough accounts ({len(source.ACCOUNTS)}) for {len(channels)} channels", 's')
             break
         else:
-            Stamp(f"⏳ Ожидание: аккаунтов {len(source.ACCOUNTS)} < каналов {len(channels)}", 'w')
+            Stamp(f"Waiting: accounts {len(source.ACCOUNTS)} < channels {len(channels)}", 'w')
             await async_sleep(5)
 
     while True:
@@ -50,25 +50,29 @@ async def RefreshEventHandler():
 
             already_subscribed = await GetSubscribedChannels(account)
             if channel.lower() not in (name.lower() for name in already_subscribed):
-                await PerformSubscription(channel, 1, 'public', 0)
+                await PerformSubscription(channel, 1, 'public', i)
 
             channel_ids = await GetChannelIDsByUsernames(account, [channel])
+
             if not channel_ids:
                 Stamp(f"Channel ID not found for {channel}", 'w')
                 continue
 
-            account.remove_event_handler(EventHandler)
+            if i in source.HANDLERS:
+                account.remove_event_handler(source.HANDLERS[i])
 
+            # Создаём новый обработчик
             def create_handler():
                 async def handler(event):
                     await processEvent(event.chat.username, event.message.text, event.message.id)
                 return handler
 
-            account.add_event_handler(create_handler(), NewMessage(chats=channel_ids))
+            handler_instance = create_handler()
+            account.add_event_handler(handler_instance, NewMessage(chats=channel_ids))
+            source.HANDLERS[i] = handler_instance
             Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
 
-        await AsyncSleep(LONG_SLEEP * 2, 0.5)
-
+        await AsyncSleep(LONG_SLEEP * 10, 0.5)
 
 
 async def createRequest(order_type, initiator, link, planned, time_limit, emoji=None):
@@ -177,16 +181,21 @@ async def ManualEventHandler(links, user_id):
         message_id = int(is_match.group(2))
         BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
 
-        #try:
-            #channel = await source.ACCOUNTS[0].get_entity(channel_name)
-            #message = await source.ACCOUNTS[0].get_messages(channel, ids=message_id)
-        #except Exception as e:
-            #BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
-            #continue
+        try:
+            index = randint(1, len(source.ACCOUNTS) - 1)
+            print(index)
+            already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
+            if channel_name.lower() not in (name.lower() for name in already_subscribed):
+                await PerformSubscription(channel_name, 1, 'public', index)
+            channel = await source.ACCOUNTS[index].get_entity(channel_name)
+            message = await source.ACCOUNTS[index].get_messages(channel, ids=message_id)
+        except Exception as e:
+            BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
+            continue
 
-        #if not message or not message.text:
-         #   BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
-          #  continue
+        if not message or not message.text:
+           BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
+           continue
 
         await processEvent(channel_name, "", message_id)
 
@@ -213,10 +222,14 @@ def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
 
 
 async def GetReactionsList(channel_link):
-    index = randint(1, len(source.ACCOUNTS) - 1)  # от 1 до N-
+    index = randint(1, len(source.ACCOUNTS) - 1)
+    already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
+    if channel_link.lower() not in (name.lower() for name in already_subscribed):
+        await PerformSubscription(channel_link, 1, 'public', index)
     channel = await source.ACCOUNTS[index].get_entity(channel_link)
     full_chat = await source.ACCOUNTS[index](GetFullChannelRequest(channel))
     result = full_chat.full_chat.available_reactions
+    print(index)
 
     if not result:
         return []
@@ -225,6 +238,8 @@ async def GetReactionsList(channel_link):
         reac_list = [reaction.emoticon for reaction in result.reactions if hasattr(reaction, 'emoticon')]
     else:
         reac_list = ALL_REACTIONS
+
+    print(reac_list)
 
     return reac_list
 
