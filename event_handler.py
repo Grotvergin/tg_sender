@@ -46,7 +46,13 @@ async def RefreshEventHandler():
         for i, channel in enumerate(channels):
             account = source.ACCOUNTS[i]
 
-            already_subscribed = await GetSubscribedChannels(account)
+            try:
+                already_subscribed = await GetSubscribedChannels(account)
+            except Exception as e:
+                BOT.send_message(MY_TG_ID, f"❌ Ошибка при получении подписок аккаунта #{i}: {e}")
+                Stamp(f'Caught error for GetSubscribedChannels for channel #{i}: {e}', 'e')
+                continue
+
             if channel.lower() not in (name.lower() for name in already_subscribed):
                 await PerformSubscription(channel, 1, 'public', i)
 
@@ -70,7 +76,7 @@ async def RefreshEventHandler():
             source.HANDLERS[i] = handler_instance
             Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
 
-        await AsyncSleep(LONG_SLEEP * 25, 0.5)
+        await AsyncSleep(LONG_SLEEP * 50, 0.5)
 
 
 async def createRequest(order_type, initiator, link, planned, time_limit, emoji=None):
