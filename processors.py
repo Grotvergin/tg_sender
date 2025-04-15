@@ -1,12 +1,14 @@
 import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
-from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE
+from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE, SHORT_SLEEP
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile
 from info_senders import PrintRequest
 from secret import MY_TG_ID, AR_TG_ID
 from monitor import update_last_check
+from event_handler import GetSubscribedChannels
+from asyncio import sleep as async_sleep
 # ---
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -111,3 +113,50 @@ async def ProcessRequests() -> None:
             Stamp(f'Uncaught exception in processor happened: {e}', 'w')
             BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
         await AsyncSleep(LONG_SLEEP, 0.5)
+
+
+async def loopCheckSubscriptions() -> None:
+    while True:
+        if source.CHECK_CHANNEL_LINK:
+            Stamp('CHECK_CHANNEL_LINK is set, checking a channel', 'i')
+            await checkSubscriptions(source.CHECK_CHANNEL_USER, source.CHECK_CHANNEL_LINK)
+            source.CHECK_CHANNEL_USER = None
+            source.CHECK_CHANNEL_LINK = None
+        await async_sleep(SHORT_SLEEP)
+
+
+def acceptCheckSubscriptions(message):
+    source.CHECK_CHANNEL_USER = message.from_user.id
+    source.CHECK_CHANNEL_LINK = message.text.strip()
+
+
+async def checkSubscriptions(user_id, link):
+    if link.startswith('@'):
+        link = link[1:]
+    elif 't.me/' in link:
+        link = link.split('t.me/')[-1].strip('/')
+    else:
+        BOT.send_message(user_id, "❌ Неверная ссылка. Используйте формат @name или https://t.me/name")
+        return
+
+    total_accounts = len(source.ACCOUNTS)
+    already_subscribed = 0
+
+    for acc in source.ACCOUNTS:
+        try:
+            subscribed_channels = await GetSubscribedChannels(acc)
+            print(subscribed_channels)
+            print(link)
+            if link.lower() in (ch.lower() for ch in subscribed_channels):
+                already_subscribed += 1
+        except Exception as e:
+            Stamp(f"Error checking subscriptions for account: {e}", 'w')
+            continue
+
+    available_accounts = total_accounts - already_subscribed
+
+    BOT.send_message(
+        user_id,
+        f'🆙 Уже подписаны: {already_subscribed}\n🟢 Доступно для подписки: {available_accounts}'
+    )
+
