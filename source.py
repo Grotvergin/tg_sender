@@ -18,7 +18,8 @@ WELCOME_BTNS = ('Разовые 1️⃣',
                 'Покупка 💰',
                 'Добавление ➕',
                 'Ручной ввод 🔰',
-                'Ребрендинг 🧼')
+                'Ребрендинг 🧼',
+                'Проверка подписок ⛑')
 CANCEL_BTN = ('Меню ↩️',)
 AUTO_CHOICE = ('Просмотры 👀',
                'Репосты 📢',
@@ -66,6 +67,8 @@ ADMIN_CHAT_ID = MY_TG_ID
 CODE = None
 MANUAL_CHANNEL_LINK = None
 MANUAL_CHANNEL_USER = None
+CHECK_CHANNEL_USER = None
+CHECK_CHANNEL_LINK = None
 MIN_LEN_EMAIL = 15
 LONG_SLEEP = 15
 SHORT_SLEEP = 1

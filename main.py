@@ -8,7 +8,7 @@ from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
 from secret import SECRET_CODE
 from json import dump, load
 from auth import CheckRefreshAuth
-from processors import ProcessRequests
+from processors import ProcessRequests, acceptCheckSubscriptions, loopCheckSubscriptions
 from event_handler import RefreshEventHandler, CheckManualHandler, ManualEventAcceptLink
 from buy import AddAccounts, CheckRefreshBuy
 from single_data_accept import SingleChoice, doRebrand
@@ -50,9 +50,10 @@ async def Main() -> None:
         await gather(
             create_task(CheckRefreshBuy()),
             create_task(ProcessRequests()),
-            create_task(CheckRefreshAuth()),  # ✅ Запускается сразу
+            create_task(CheckRefreshAuth()),
             create_task(CheckManualHandler()),
-            create_task(RefreshEventHandler())  # ✅ Но внутри ждёт появления аккаунтов
+            create_task(RefreshEventHandler()),
+            create_task(loopCheckSubscriptions())
         )
     finally:
         loop.close()
@@ -118,6 +119,9 @@ def MessageAccept(message: Message) -> None:
     elif message.text == WELCOME_BTNS[7]:
         BOT.send_message(user_id, '📐 Введите старое и новое название в формате old new')
         BOT.register_next_step_handler(message, doRebrand)
+    elif message.text == WELCOME_BTNS[8]:
+        ShowButtons(message, CANCEL_BTN, '❔ Введите ссылку на канал (https://t.me/name_or_hash или @name):')
+        BOT.register_next_step_handler(message, acceptCheckSubscriptions)
     elif message.text == CANCEL_BTN[0]:
         ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
     elif message.text.isdigit() and len(message.text) == 5 or message.text == SKIP_CODE[0]:
