@@ -252,7 +252,7 @@ async def ProcessSingleAccount(user_id: int, country_code: int, srv, is_buy: boo
         await askToProceed(user_id, YES_NO_BTNS, f'🖊 Ввод `{code}`?', YES_NO_BTNS[1], GoNextOnly)
     else:
         num = await askToProceed(user_id, CANCEL_BTN, '🖊 Введите номер в формате `79151234567`', CANCEL_BTN[0], FinishProcess)
-    num = num.replace('+', '')
+    num = num.replace('+', '').replace(' ', '')
     socks_proxy, proxy_id = getProxyByComment(user_id, '')
     setProxyComment(user_id, proxy_id, 'busy')
     row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID)) + 2
