@@ -5,7 +5,7 @@ from asyncio import sleep as async_sleep, run
 from os.path import join
 from os import getcwd
 from file import LoadRequestsFromFile
-from secret import MY_TG_ID, SHEET_NAME, SHEET_ID, AR_TG_ID
+from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID
 from source import (MONITOR_INTERVAL, POSTS_TO_CHECK,
                     BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE)
 from datetime import datetime, timezone
@@ -36,7 +36,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str):
 
     # Загружаем одного аккаунта для анализа
     srv = BuildService()
-    data = GetSector('A2', f'H2', srv, SHEET_NAME, SHEET_ID)
+    data = GetSector('A2', f'H2', srv, ANOMALY_SHEET_NAME, SHEET_ID)
     api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data[0])
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
@@ -118,7 +118,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str):
     except Exception as e:
         Stamp(f"Ошибка при обработке канала {channel_username}: {e}", 'e')
 
-    await async_sleep(LONG_SLEEP * 4)
+    await async_sleep(LONG_SLEEP)
 
 
 if __name__ == '__main__':
