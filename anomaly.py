@@ -117,7 +117,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
     except Exception as e:
         Stamp(f"Ошибка при обработке канала {channel_username}: {e}", 'e')
 
-    await async_sleep(LONG_SLEEP)
+    await async_sleep(LONG_SLEEP * 4)
 
 
 if __name__ == '__main__':
