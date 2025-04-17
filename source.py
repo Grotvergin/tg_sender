@@ -11,6 +11,9 @@ from colorama import init
 from faker import Faker
 from googleapiclient.errors import HttpError
 
+MONITOR_INTERVAL = 30 * 60
+POSTS_TO_CHECK = 10
+NO_REQUIREMENTS_MESSAGE = 'нет заявки'
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
                 'Авторизация 🔐',
@@ -69,6 +72,8 @@ MANUAL_CHANNEL_LINK = None
 MANUAL_CHANNEL_USER = None
 CHECK_CHANNEL_USER = None
 CHECK_CHANNEL_LINK = None
+CHECKED_AVAILABLE_COUNT = None
+TIMEOUT_CHECK_AVAILABLE = 180
 MIN_LEN_EMAIL = 15
 LONG_SLEEP = 15
 SHORT_SLEEP = 1

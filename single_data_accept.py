@@ -1,6 +1,6 @@
 import source
 from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS, NUMBER_LAST_FIN,
-                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT, FILE_ACTIVE)
+                    LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT, FILE_ACTIVE, TIMEOUT_CHECK_AVAILABLE)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
 from file import LoadRequestsFromFile, SaveRequestsToFile
@@ -9,6 +9,7 @@ from deletion import DeleteSingleRequest
 from re import match
 from random import randint
 from datetime import datetime, timedelta
+from time import sleep
 # ---
 from telebot.types import Message
 from emoji import EMOJI_DATA
@@ -109,8 +110,18 @@ def ChannelSub(message: Message) -> None:
         else:
             source.CUR_REQ['channel_type'] = 'public'
         source.CUR_REQ['link'] = cut_link
+        source.CHECK_CHANNEL_LINK = message.text.strip()
+        BOT.send_message(message.from_user.id, f'🕹 Проверяю доступное количество подписок, это займет некоторое время, вплоть до {TIMEOUT_CHECK_AVAILABLE} секунд')
+        for _ in range(TIMEOUT_CHECK_AVAILABLE):
+            if source.CHECKED_AVAILABLE_COUNT is not None:
+                available = source.CHECKED_AVAILABLE_COUNT
+                source.CHECKED_AVAILABLE_COUNT = None
+                break
+            sleep(1)
+        else:
+            available = 0
         ShowButtons(message, CANCEL_BTN, f'❔ Введите желаемое количество подписок'
-                                         f'(доступно {len(source.ACCOUNTS)} аккаунтов):')
+                                         f' (реально доступно {available} аккаунтов):')
         BOT.register_next_step_handler(message, NumberInsertingProcedure)
 
 

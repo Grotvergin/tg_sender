@@ -119,7 +119,19 @@ async def loopCheckSubscriptions() -> None:
     while True:
         if source.CHECK_CHANNEL_LINK:
             Stamp('CHECK_CHANNEL_LINK is set, checking a channel', 'i')
-            await checkSubscriptions(source.CHECK_CHANNEL_USER, source.CHECK_CHANNEL_LINK)
+            link = source.CHECK_CHANNEL_LINK
+            if link.startswith('@'):
+                link = link[1:]
+            elif 't.me/' in link:
+                link = link.split('t.me/')[-1].strip('/')
+            else:
+                BOT.send_message(source.CHECK_CHANNEL_USER, "❌ Неверная ссылка. Используйте формат @name или https://t.me/name")
+                source.CHECK_CHANNEL_USER = None
+                source.CHECK_CHANNEL_LINK = None
+                continue
+            available_accounts = await checkSubscriptions(link)
+            if source.CHECK_CHANNEL_USER:
+                BOT.send_message(source.CHECK_CHANNEL_USER, f'⚒️ Доступно для подписки {available_accounts} аккаунтов')
             source.CHECK_CHANNEL_USER = None
             source.CHECK_CHANNEL_LINK = None
         await async_sleep(SHORT_SLEEP)
@@ -130,23 +142,13 @@ def acceptCheckSubscriptions(message):
     source.CHECK_CHANNEL_LINK = message.text.strip()
 
 
-async def checkSubscriptions(user_id, link):
-    if link.startswith('@'):
-        link = link[1:]
-    elif 't.me/' in link:
-        link = link.split('t.me/')[-1].strip('/')
-    else:
-        BOT.send_message(user_id, "❌ Неверная ссылка. Используйте формат @name или https://t.me/name")
-        return
-
+async def checkSubscriptions(link):
     total_accounts = len(source.ACCOUNTS)
     already_subscribed = 0
 
     for acc in source.ACCOUNTS:
         try:
             subscribed_channels = await GetSubscribedChannels(acc)
-            print(subscribed_channels)
-            print(link)
             if link.lower() in (ch.lower() for ch in subscribed_channels):
                 already_subscribed += 1
         except Exception as e:
@@ -154,9 +156,5 @@ async def checkSubscriptions(user_id, link):
             continue
 
     available_accounts = total_accounts - already_subscribed
-
-    BOT.send_message(
-        user_id,
-        f'🆙 Уже подписаны: {already_subscribed}\n🟢 Доступно для подписки: {available_accounts}'
-    )
-
+    source.CHECKED_AVAILABLE_COUNT = available_accounts
+    return available_accounts
