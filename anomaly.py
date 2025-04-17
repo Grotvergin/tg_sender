@@ -5,7 +5,7 @@ from asyncio import sleep as async_sleep, run
 from os.path import join
 from os import getcwd
 from file import LoadRequestsFromFile, SaveRequestsToFile
-from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID
+from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF)
 from datetime import datetime, timezone, timedelta
@@ -15,6 +15,8 @@ from random import randint
 async def MonitorPostAnomalies():
     srv = BuildService()
     data = GetSector('A2', f'H2', srv, ANOMALY_SHEET_NAME, SHEET_ID)
+    row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
+    source.ACCOUNTS_LEN = row
     api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data[0])
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
@@ -75,7 +77,7 @@ def create_emergency_request(order_type, channel_username, message_id, initiator
         "planned": int(round(lack_amount * UPPER_COEF)),
         "start": now.strftime("%Y-%m-%d %H:%M"),
         "finish": finish.strftime("%Y-%m-%d %H:%M"),
-        "cur_acc_index": randint(0, len(source.ACCOUNTS) - 1)
+        "cur_acc_index": randint(0, len(source.ACCOUNTS_LEN) - 1)
     }
 
     try:
