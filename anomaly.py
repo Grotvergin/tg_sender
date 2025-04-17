@@ -77,7 +77,7 @@ def create_emergency_request(order_type, channel_username, message_id, initiator
         "planned": int(round(lack_amount * UPPER_COEF)),
         "start": now.strftime("%Y-%m-%d %H:%M"),
         "finish": finish.strftime("%Y-%m-%d %H:%M"),
-        "cur_acc_index": randint(0, len(source.ACCOUNTS_LEN) - 1)
+        "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
     }
 
     try:
