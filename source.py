@@ -11,6 +11,9 @@ from colorama import init
 from faker import Faker
 from googleapiclient.errors import HttpError
 
+MONITOR_INTERVAL = 30 * 60
+POSTS_TO_CHECK = 10
+NO_REQUIREMENTS_MESSAGE = 'нет заявки'
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
                 'Авторизация 🔐',
