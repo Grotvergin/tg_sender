@@ -1,9 +1,10 @@
 import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
-from source import BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE, SHORT_SLEEP
+from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE,
+                    SHORT_SLEEP, EMERGENCY_FILE)
 from datetime import datetime, timedelta
-from file import SaveRequestsToFile
+from file import SaveRequestsToFile, LoadRequestsFromFile
 from info_senders import PrintRequest
 from secret import MY_TG_ID, AR_TG_ID
 from monitor import update_last_check
@@ -79,6 +80,12 @@ async def ProcessRequests() -> None:
     while True:
         try:
             Stamp('Pending requests', 'i')
+            emergency = LoadRequestsFromFile("emergency", EMERGENCY_FILE)
+            if emergency:
+                Stamp(f"Loaded {len(emergency)} emergency requests", 'i')
+                source.REQS_QUEUE.extend(emergency)
+                SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+                SaveRequestsToFile([], "emergency", EMERGENCY_FILE)
             sendNotificationAboutWork()
             for req in source.REQS_QUEUE:
                 sendNotificationAboutWork()

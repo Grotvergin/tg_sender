@@ -11,8 +11,7 @@ from colorama import init
 from faker import Faker
 from googleapiclient.errors import HttpError
 
-MONITOR_INTERVAL = 30 * 60
-POSTS_TO_CHECK = 10
+
 NO_REQUIREMENTS_MESSAGE = 'нет заявки'
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
@@ -73,6 +72,8 @@ MANUAL_CHANNEL_USER = None
 CHECK_CHANNEL_USER = None
 CHECK_CHANNEL_LINK = None
 CHECKED_AVAILABLE_COUNT = None
+MONITOR_INTERVAL_MINS = 60
+POSTS_TO_CHECK = 10
 TIMEOUT_CHECK_AVAILABLE = 180
 MIN_LEN_EMAIL = 15
 LONG_SLEEP = 15
@@ -92,6 +93,7 @@ ONLINESIM_CANCEL_BUFFER = 120
 ONLINESIM_COMPULSORY_BUFFER = 3
 CHECK_INTERVAL = 30
 MAX_SILENCE_TIME = 3
+UPPER_COEF = 1.1
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 LINK_FORMAT = r'https://t\.me/'
 URL_SIM = 'https://onlinesim.io/api/'
@@ -110,3 +112,4 @@ FILE_ACTIVE = 'active.json'
 IMG_PATH = 'random_image.jpg'
 LAST_CHECK_FILE = "last_bot_check.json"
 AUTHORIZED_USERS_FILE = "authorized_users.json"
+EMERGENCY_FILE = 'emerge.json'
