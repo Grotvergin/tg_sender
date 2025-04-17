@@ -12,6 +12,13 @@ from datetime import datetime, timezone
 
 
 async def MonitorPostAnomalies():
+    srv = BuildService()
+    data = GetSector('A2', f'H2', srv, ANOMALY_SHEET_NAME, SHEET_ID)
+    api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data[0])
+    session = join(getcwd(), 'sessions', f'{num}')
+    client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
+    await client.start(phone=num, password=password_tg)
+
     while True:
         source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
         source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', source.FILE_AUTO_REPS)
@@ -24,23 +31,15 @@ async def MonitorPostAnomalies():
 
         for channel in channels:
             try:
-                await CheckChannelPostsForAnomalies(channel)
+                await CheckChannelPostsForAnomalies(channel, client)
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
 
         await async_sleep(MONITOR_INTERVAL)
 
 
-async def CheckChannelPostsForAnomalies(channel_username: str):
+async def CheckChannelPostsForAnomalies(channel_username: str, client):
     Stamp(f"Проверка канала @{channel_username}", 'i')
-
-    # Загружаем одного аккаунта для анализа
-    srv = BuildService()
-    data = GetSector('A2', f'H2', srv, ANOMALY_SHEET_NAME, SHEET_ID)
-    api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data[0])
-    session = join(getcwd(), 'sessions', f'{num}')
-    client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
-    await client.start(phone=num, password=password_tg)
 
     try:
         entity = await client.get_entity(channel_username)
