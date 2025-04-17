@@ -1,17 +1,18 @@
-from telethon import TelegramClient
 import source
 from common import Stamp, ParseAccountRow, BuildService, GetSector
-from asyncio import sleep as async_sleep, run
-from os.path import join
-from os import getcwd
-
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF, TIME_FORMAT)
+# ---
+from asyncio import sleep as async_sleep, run
+from os.path import join
+from os import getcwd
 from datetime import datetime, timezone, timedelta
 from random import randint
+# ---
+from telethon import TelegramClient
 
 
 async def MonitorPostAnomalies():
@@ -23,6 +24,7 @@ async def MonitorPostAnomalies():
     session = join(getcwd(), 'sessions', f'{num}')
     client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
     await client.start(phone=num, password=password_tg)
+    source.ACCOUNTS.append(client)
 
     while True:
         source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
