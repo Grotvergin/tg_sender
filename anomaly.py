@@ -59,12 +59,14 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
             if channel_username in source.AUTO_VIEWS_DICT:
                 req = source.AUTO_VIEWS_DICT[channel_username]
                 target_views = req.get('annual', 0)
+                spread = req.get('spread', 0)
                 time_limit_sec = req.get('time_limit', 0) * 60
                 if age_seconds >= time_limit_sec:
                     current_views = message.views or 0
-                    views_info = f"{current_views}/{target_views}"
-                    if current_views < target_views:
-                        anomalies.append(f"Просмотры ниже нормы: {views_info}")
+                    min_views = int((1 - spread / 100) * target_views)
+                    views_info = f"{current_views}/{target_views} (граница: {min_views})"
+                    if current_views < min_views:
+                        anomalies.append(f"Просмотры ниже минимального порога: {views_info}")
                 else:
                     views_info = f"Пост слишком свежий (< {time_limit_sec//60} мин)"
             log_lines.append(f"Просмотры: {views_info}")
@@ -74,12 +76,14 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
             if channel_username in source.AUTO_REPS_DICT:
                 req = source.AUTO_REPS_DICT[channel_username]
                 target_reposts = req.get('annual', 0)
+                spread = req.get('spread', 0)
                 time_limit_sec = req.get('time_limit', 0) * 60
                 if age_seconds >= time_limit_sec:
                     current_reposts = message.forwards or 0
-                    reposts_info = f"{current_reposts}/{target_reposts}"
-                    if current_reposts < target_reposts:
-                        anomalies.append(f"Репосты ниже нормы: {reposts_info}")
+                    min_reposts = int((1 - spread / 100) * target_reposts)
+                    reposts_info = f"{current_reposts}/{target_reposts} (граница: {min_reposts})"
+                    if current_reposts < min_reposts:
+                        anomalies.append(f"Репосты ниже минимального порога: {reposts_info}")
                 else:
                     reposts_info = f"Пост слишком свежий (< {time_limit_sec//60} мин)"
             log_lines.append(f"Репосты: {reposts_info}")
@@ -89,12 +93,14 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
             if channel_username in source.AUTO_REAC_DICT:
                 req = source.AUTO_REAC_DICT[channel_username]
                 target_reactions = req.get('annual', 0)
+                spread = req.get('spread', 0)
                 time_limit_sec = req.get('time_limit', 0) * 60
                 if age_seconds >= time_limit_sec:
                     current_reactions = sum(r.count for r in message.reactions.results) if message.reactions else 0
-                    reactions_info = f"{current_reactions}/{target_reactions}"
-                    if current_reactions < target_reactions:
-                        anomalies.append(f"Реакции ниже нормы: {reactions_info}")
+                    min_reactions = int((1 - spread / 100) * target_reactions)
+                    reactions_info = f"{current_reactions}/{target_reactions} (граница: {min_reactions})"
+                    if current_reactions < min_reactions:
+                        anomalies.append(f"Реакции ниже минимального порога: {reactions_info}")
                 else:
                     reactions_info = f"Пост слишком свежий (< {time_limit_sec//60} мин)"
             log_lines.append(f"Реакции: {reactions_info}")
@@ -118,6 +124,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
         Stamp(f"Ошибка при обработке канала {channel_username}: {e}", 'e')
 
     await async_sleep(LONG_SLEEP * 4)
+
 
 
 if __name__ == '__main__':
