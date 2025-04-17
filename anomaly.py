@@ -106,13 +106,24 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
             log_lines.append(f"Реакции: {reactions_info}")
 
             if anomalies:
-                Stamp("ОБНАРУЖЕНЫ АНОМАЛИИ", 'w')
+                Stamp("Обнаружны аномалии", 'w')
                 for line in log_lines:
                     Stamp(line, 'i')
                 for anomaly in anomalies:
                     Stamp(f"Аномалия: {anomaly}", 'w')
 
-                msg = f"Аномалия на канале @{channel_username}\n" + '\n'.join(log_lines)
+                msg_lines = [f"Пост: https://t.me/{channel_username}/{message.id}"]
+
+                # Включаем в сообщение только строки, связанные с конкретными аномалиями
+                for anomaly in anomalies:
+                    if "Просмотры" in anomaly:
+                        msg_lines.append(f"Просмотры: {views_info}")
+                    if "Репосты" in anomaly:
+                        msg_lines.append(f"Репосты: {reposts_info}")
+                    if "Реакции" in anomaly:
+                        msg_lines.append(f"Реакции: {reactions_info}")
+
+                msg = '\n'.join(msg_lines)
                 BOT.send_message(MY_TG_ID, msg)
                 BOT.send_message(AR_TG_ID, msg)
             else:
