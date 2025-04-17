@@ -97,7 +97,7 @@ async def createRequest(order_type, initiator, link, planned, time_limit, emoji=
 
 
 async def handleReactions(channel_data, link, annual_amount, diff_reac_num):
-    reac_list = await GetReactionsList(link.split('/')[0])
+    reac_list = await GetReactionsList(link.split('/')[0], randint(1, len(source.ACCOUNTS) - 1))
     if not reac_list:
         Stamp(f'No reactions for {link} available', 'w')
         return
@@ -225,15 +225,13 @@ def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
     return reaction_distribution
 
 
-async def GetReactionsList(channel_link):
-    index = randint(1, len(source.ACCOUNTS) - 1)
+async def GetReactionsList(channel_link, index):
     already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
     if channel_link.lower() not in (name.lower() for name in already_subscribed):
         await PerformSubscription(channel_link, 1, 'public', index)
     channel = await source.ACCOUNTS[index].get_entity(channel_link)
     full_chat = await source.ACCOUNTS[index](GetFullChannelRequest(channel))
     result = full_chat.full_chat.available_reactions
-    print(index)
 
     if not result:
         return []
@@ -242,8 +240,6 @@ async def GetReactionsList(channel_link):
         reac_list = [reaction.emoticon for reaction in result.reactions if hasattr(reaction, 'emoticon')]
     else:
         reac_list = ALL_REACTIONS
-
-    print(reac_list)
 
     return reac_list
 

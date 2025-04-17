@@ -4,10 +4,12 @@ from common import Stamp, ParseAccountRow, BuildService, GetSector
 from asyncio import sleep as async_sleep, run
 from os.path import join
 from os import getcwd
+
+from event_handler import GetReactionsList, DistributeReactionsIntoEmojis
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
-                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF)
+                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF, TIME_FORMAT)
 from datetime import datetime, timezone, timedelta
 from random import randint
 
@@ -41,7 +43,7 @@ async def MonitorPostAnomalies():
         await async_sleep(MONITOR_INTERVAL_MINS * 60)
 
 
-def analyze_metric(name: str, req_dict: dict, channel_username: str, message, current_value: int) -> tuple[str, str | None]:
+async def analyze_metric(name: str, req_dict: dict, channel_username: str, message, current_value: int) -> tuple[str, str | None]:
     """
     Возвращает: (строка для логов, строка для аномалии или None)
     """
@@ -62,32 +64,51 @@ def analyze_metric(name: str, req_dict: dict, channel_username: str, message, cu
 
     if current_value < min_required:
         lack = min_required - current_value
-        create_emergency_request(name, channel_username, message.id, MY_TG_ID, lack)
+        await create_emergency_request(name, channel_username, message.id, MY_TG_ID, lack)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
 
 
-def create_emergency_request(order_type, channel_username, message_id, initiator_id, lack_amount):
+async def create_emergency_request(order_type, channel_username, message_id, initiator_id, lack_amount):
     now = datetime.now()
     finish = now + timedelta(minutes=MONITOR_INTERVAL_MINS)
-    req = {
-        "order_type": order_type,
-        "initiator": f"Emergency – {initiator_id}",
-        "link": f"{channel_username}/{message_id}",
-        "planned": int(round(lack_amount * UPPER_COEF)),
-        "start": now.strftime("%Y-%m-%d %H:%M"),
-        "finish": finish.strftime("%Y-%m-%d %H:%M"),
-        "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
-    }
 
     try:
         existing = LoadRequestsFromFile("emergency", EMERGENCY_FILE)
     except Exception:
         existing = []
 
-    existing.append(req)
+    if order_type == 'Реакции':
+        reac_list = await GetReactionsList(channel_username, 0)
+        if not reac_list:
+            Stamp(f'No reactions for {channel_username} available', 'w')
+            return
+        reaction_distribution = DistributeReactionsIntoEmojis(randint(1, 3), lack_amount, reac_list)
+        for emoji, count in reaction_distribution.items():
+            req = {
+                'order_type': order_type,
+                'initiator': f"Emergency – {initiator_id}",
+                'link': f"{channel_username}/{message_id}",
+                'start': now.strftime(TIME_FORMAT),
+                'finish': finish.strftime(TIME_FORMAT),
+                'planned': int(round(lack_amount * UPPER_COEF)),
+                'cur_acc_index': randint(0, source.ACCOUNTS_LEN - 1),
+                'emoji': emoji
+            }
+            existing.append(req)
+    else:
+        req = {
+            "order_type": order_type,
+            "initiator": f"Emergency – {initiator_id}",
+            "link": f"{channel_username}/{message_id}",
+            "planned": int(round(lack_amount * UPPER_COEF)),
+            "start": now.strftime("%Y-%m-%d %H:%M"),
+            "finish": finish.strftime("%Y-%m-%d %H:%M"),
+            "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
+        }
+
+        existing.append(req)
     SaveRequestsToFile(existing, "emergency", EMERGENCY_FILE)
-    Stamp(f"Создана разовая заявка: {req}", 'w')
 
 
 async def CheckChannelPostsForAnomalies(channel_username: str, client):
@@ -108,7 +129,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
 
             # --- Просмотры ---
             current_views = message.views or 0
-            views_info, views_anomaly = analyze_metric("Просмотры", source.AUTO_VIEWS_DICT, channel_username, message, current_views)
+            views_info, views_anomaly = await analyze_metric("Просмотры", source.AUTO_VIEWS_DICT, channel_username, message, current_views)
             log_lines.append(f"Просмотры: {views_info}")
             if views_anomaly:
                 anomalies.append(views_anomaly)
@@ -116,7 +137,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
 
             # --- Репосты ---
             current_reposts = message.forwards or 0
-            reps_info, reps_anomaly = analyze_metric("Репосты", source.AUTO_REPS_DICT, channel_username, message, current_reposts)
+            reps_info, reps_anomaly = await analyze_metric("Репосты", source.AUTO_REPS_DICT, channel_username, message, current_reposts)
             log_lines.append(f"Репосты: {reps_info}")
             if reps_anomaly:
                 anomalies.append(reps_anomaly)
@@ -124,7 +145,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
 
             # --- Реакции ---
             current_reactions = sum(r.count for r in message.reactions.results) if message.reactions else 0
-            reac_info, reac_anomaly = analyze_metric("Реакции", source.AUTO_REAC_DICT, channel_username, message, current_reactions)
+            reac_info, reac_anomaly = await analyze_metric("Реакции", source.AUTO_REAC_DICT, channel_username, message, current_reactions)
             log_lines.append(f"Реакции: {reac_info}")
             if reac_anomaly:
                 anomalies.append(reac_anomaly)
