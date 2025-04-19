@@ -4,7 +4,8 @@ from event_handler import GetReactionsList, DistributeReactionsIntoEmojis
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
-                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF, TIME_FORMAT)
+                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF,
+                    TIME_FORMAT, ACCOUNTS)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join
@@ -17,14 +18,22 @@ from telethon import TelegramClient
 
 async def MonitorPostAnomalies():
     srv = BuildService()
-    data = GetSector('A2', f'H2', srv, ANOMALY_SHEET_NAME, SHEET_ID)
-    row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
-    source.ACCOUNTS_LEN = row
-    api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data[0])
-    session = join(getcwd(), 'sessions', f'{num}')
-    client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
-    await client.start(phone=num, password=password_tg)
-    source.ACCOUNTS.append(client)
+    row = len(GetSector('C2', 'C500', srv, ANOMALY_SHEET_NAME, SHEET_ID)) + 1
+    data = GetSector('A2', f'H{row}', srv, ANOMALY_SHEET_NAME, SHEET_ID)
+    accounts_len = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
+    source.ACCOUNTS_LEN = accounts_len
+
+    for index, account in enumerate(data):
+        try:
+            api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data)
+        except IndexError:
+            Stamp(f'Invalid account data: {account}', 'e')
+            continue
+        session = join(getcwd(), 'sessions', f'{num}')
+        client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
+        await client.start(phone=num, password=password_tg)
+        source.ACCOUNTS.append(client)
+        Stamp(f'Account {num} authorized', 's')
 
     while True:
         source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
@@ -38,7 +47,7 @@ async def MonitorPostAnomalies():
 
         for channel in channels:
             try:
-                await CheckChannelPostsForAnomalies(channel, client)
+                await CheckChannelPostsForAnomalies(channel, ACCOUNTS[randint(0, len(source.ACCOUNTS) - 1)])
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
 
