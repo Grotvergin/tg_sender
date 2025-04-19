@@ -154,7 +154,7 @@ async def AuthorizeAccounts():
 
     for index, account in enumerate(data):
         try:
-            api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data)
+            api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
         except IndexError:
             Stamp(f'Invalid account data: {account}', 'e')
             continue
