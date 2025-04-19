@@ -16,45 +16,6 @@ from random import randint
 from telethon import TelegramClient
 
 
-async def MonitorPostAnomalies():
-    srv = BuildService()
-    row = len(GetSector('C2', 'C500', srv, ANOMALY_SHEET_NAME, SHEET_ID)) + 1
-    data = GetSector('A2', f'H{row}', srv, ANOMALY_SHEET_NAME, SHEET_ID)
-    accounts_len = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
-    source.ACCOUNTS_LEN = accounts_len
-
-    for index, account in enumerate(data):
-        try:
-            api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data)
-        except IndexError:
-            Stamp(f'Invalid account data: {account}', 'e')
-            continue
-        session = join(getcwd(), 'sessions', f'{num}')
-        client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
-        await client.start(phone=num, password=password_tg)
-        source.ACCOUNTS.append(client)
-        Stamp(f'Account {num} authorized', 's')
-
-    while True:
-        source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
-        source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', source.FILE_AUTO_REPS)
-        source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', source.FILE_AUTO_REAC)
-        channels = list(set(
-            list(source.AUTO_VIEWS_DICT.keys()) +
-            list(source.AUTO_REPS_DICT.keys()) +
-            list(source.AUTO_REAC_DICT.keys())
-        ))
-
-        for channel in channels:
-            try:
-                print(len(source.ACCOUNTS))
-                await CheckChannelPostsForAnomalies(channel, ACCOUNTS[randint(0, len(source.ACCOUNTS) - 1)])
-            except Exception as e:
-                Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
-
-        await async_sleep(MONITOR_INTERVAL_MINS * 60)
-
-
 async def analyze_metric(name: str, req_dict: dict, channel_username: str, message, current_value: int) -> tuple[str, str | None]:
     """
     Возвращает: (строка для логов, строка для аномалии или None)
@@ -184,5 +145,57 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
     await async_sleep(LONG_SLEEP * 2)
 
 
+async def AuthorizeAccounts():
+    srv = BuildService()
+    row = len(GetSector('C2', 'C500', srv, ANOMALY_SHEET_NAME, SHEET_ID)) + 1
+    data = GetSector('A2', f'H{row}', srv, ANOMALY_SHEET_NAME, SHEET_ID)
+    accounts_len = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
+    source.ACCOUNTS_LEN = accounts_len
+
+    for index, account in enumerate(data):
+        try:
+            api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(data)
+        except IndexError:
+            Stamp(f'Invalid account data: {account}', 'e')
+            continue
+        session = join(getcwd(), 'sessions', f'{num}')
+        client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
+        await client.start(phone=num, password=password_tg)
+        source.ACCOUNTS.append(client)
+        Stamp(f'Account {num} authorized', 's')
+
+
+async def MonitorPostAnomalies():
+    if not source.ACCOUNTS:
+        Stamp("No accounts authorized, exiting anomaly monitor.", 'e')
+        return
+
+    while True:
+        source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
+        source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', source.FILE_AUTO_REPS)
+        source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', source.FILE_AUTO_REAC)
+        channels = list(set(
+            list(source.AUTO_VIEWS_DICT.keys()) +
+            list(source.AUTO_REPS_DICT.keys()) +
+            list(source.AUTO_REAC_DICT.keys())
+        ))
+
+        for channel in channels:
+            try:
+                if not source.ACCOUNTS:
+                    Stamp(f"No accounts available to check anomalies for {channel}", 'w')
+                    continue
+                await CheckChannelPostsForAnomalies(channel, source.ACCOUNTS[randint(0, len(source.ACCOUNTS) - 1)])
+            except Exception as e:
+                Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
+
+        await async_sleep(MONITOR_INTERVAL_MINS * 60)
+
+
+async def main():
+    await AuthorizeAccounts()
+    await MonitorPostAnomalies()
+
+
 if __name__ == '__main__':
-    run(MonitorPostAnomalies())
+    run(main())
