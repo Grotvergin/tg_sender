@@ -47,6 +47,7 @@ async def MonitorPostAnomalies():
 
         for channel in channels:
             try:
+                print(len(source.ACCOUNTS))
                 await CheckChannelPostsForAnomalies(channel, ACCOUNTS[randint(0, len(source.ACCOUNTS) - 1)])
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
