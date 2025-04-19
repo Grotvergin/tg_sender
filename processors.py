@@ -57,6 +57,11 @@ async def ProcessOrder(req: dict, to_add: int):
             BOT.send_message(req['initiator'].split(' ')[-1], f"⚠️ Запрошенная реакция {req['emoji']} недоступна для заявки {req['link']}, заявка снимается...")
             await CancelRequest(req, f"Запрошенная реакция {req['emoji']} недоступна для заявки")
             return
+        except KeyError as e:
+            Stamp(f'No emoji key for {req['link']}: {e}', 'e')
+            BOT.send_message(req['initiator'].split(' ')[-1], f'💊 Не указана реакция для заявки {req['link']}, заявка снимается...')
+            await CancelRequest(req, f"Не указана реакция для заявки {req['link']}")
+            return
     else:
         Stamp('Unknown order type', 'e')
         return
