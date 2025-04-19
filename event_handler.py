@@ -76,7 +76,7 @@ async def RefreshEventHandler():
             source.HANDLERS[i] = handler_instance
             Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
 
-        await AsyncSleep(LONG_SLEEP * 50, 0.5)
+        await AsyncSleep(LONG_SLEEP * 100, 0.5)
 
 
 async def createRequest(order_type, initiator, link, planned, time_limit, emoji=None):
