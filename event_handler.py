@@ -3,7 +3,8 @@ from file import SaveRequestsToFile
 from adders import PerformSubscription
 from secret import MY_TG_ID
 from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP,
-                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS, HANDLERS)
+                    LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS, MIN_DIFF_REAC_NORMAL,
+                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 from common import Stamp, AsyncSleep
 from asyncio import sleep as async_sleep
 # ---
@@ -97,11 +98,11 @@ async def createRequest(order_type, initiator, link, planned, time_limit, emoji=
 
 
 async def handleReactions(channel_data, link, annual_amount, diff_reac_num):
-    reac_list = await GetReactionsList(link.split('/')[0], randint(1, len(source.ACCOUNTS) - 1))
+    reac_list, reac_limit = await GetReactionsList(link.split('/')[0], randint(1, len(source.ACCOUNTS) - 1))
     if not reac_list:
         Stamp(f'No reactions for {link} available', 'w')
         return
-    reaction_distribution = DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list)
+    reaction_distribution = DistributeReactionsIntoEmojis(min(diff_reac_num, reac_limit), annual_amount, reac_list)
     for emoji, count in reaction_distribution.items():
         await createRequest(
             order_type='Реакции',
@@ -126,14 +127,14 @@ async def processEvent(event_channel_name, message_text, message_id):
         for channel_name, value in dict_name.items():
             if event_channel_name == channel_name:
                 annual_amount = value['annual']
-                diff_reac_num = randint(4, 7)
+                diff_reac_num = randint(MIN_DIFF_REAC_NORMAL, MAX_DIFF_REAC_NORMAL)
                 Stamp(f'Annual amount before decision = {annual_amount}', 'i')
                 if NeedToDecrease(message_text, channel_name):
                     if order_type in ('Репосты', 'Реакции'):
                         annual_amount = int(float(annual_amount) / LINK_DECREASE_RATIO)
                         Stamp(f'DECREASING! Now annual = {annual_amount}', 'w')
                     if order_type == 'Реакции':
-                        diff_reac_num = randint(2, 4)
+                        diff_reac_num = randint(MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
                 Stamp(f'Annual amount after decision = {annual_amount}', 'i')
                 rand_amount = randint(
                     int((1 - (float(value['spread']) / 100)) * annual_amount),
@@ -201,7 +202,7 @@ async def ManualEventHandler(links, user_id):
            BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
            continue
 
-        await processEvent(channel_name, "", message_id)
+        await processEvent(channel_name, message.text, message_id)
 
     BOT.send_message(user_id, '💅 Обработка всех ссылок завершена.')
 
@@ -232,7 +233,7 @@ async def GetReactionsList(channel_link, index):
     channel = await source.ACCOUNTS[index].get_entity(channel_link)
     full_chat = await source.ACCOUNTS[index](GetFullChannelRequest(channel))
     result = full_chat.full_chat.available_reactions
-
+    uniq_reac_max = full_chat.full_chat.reactions_limit
     if not result:
         return []
 
@@ -241,7 +242,7 @@ async def GetReactionsList(channel_link, index):
     else:
         reac_list = ALL_REACTIONS
 
-    return reac_list
+    return reac_list, uniq_reac_max
 
 
 def NeedToDecrease(message_text: str, channel_name: str) -> bool:

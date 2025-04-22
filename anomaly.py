@@ -1,11 +1,12 @@
 import source
 from common import Stamp, ParseAccountRow, BuildService, GetSector
-from event_handler import GetReactionsList, DistributeReactionsIntoEmojis
+from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
-                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, UPPER_COEF,
-                    TIME_FORMAT, ACCOUNTS)
+                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
+                    LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL,
+                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join
@@ -16,33 +17,43 @@ from random import randint
 from telethon import TelegramClient
 
 
-async def analyze_metric(name: str, req_dict: dict, channel_username: str, message, current_value: int) -> tuple[str, str | None]:
+async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, current_value: int) -> tuple[str, str | None]:
     """
     Возвращает: (строка для логов, строка для аномалии или None)
     """
-    if channel_username not in req_dict:
+    if channel_name not in req_dict:
         return NO_REQUIREMENTS_MESSAGE, None
 
-    req = req_dict[channel_username]
+    req = req_dict[channel_name]
     target = req.get('annual', 0)
     spread = req.get('spread', 0)
     time_limit_sec = req.get('time_limit', 0) * 60
     age_seconds = (datetime.now(timezone.utc) - message.date).total_seconds()
+    diff_reac_num = randint(MIN_DIFF_REAC_NORMAL, MAX_DIFF_REAC_NORMAL)
 
     if age_seconds < time_limit_sec:
         return f"Пост слишком свежий (< {time_limit_sec // 60} мин)", None
 
+    if NeedToDecrease(message.text, channel_name):
+        if name in ('Репосты', 'Реакции'):
+            target = int(float(target) / LINK_DECREASE_RATIO)
+            Stamp(f'DECREASING! Now annual = {target}', 'w')
+        if name == 'Реакции':
+            diff_reac_num = randint(MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
+
     min_required = int((1 - spread / 100) * target)
+    max_required = int((1 + spread / 100) * target)
+    rand_amount = randint(min_required, max_required)
     info = f"{current_value}/{target} (граница: {min_required})"
 
     if current_value < min_required:
-        lack = min_required - current_value
-        await create_emergency_request(name, channel_username, message.id, MY_TG_ID, lack)
+        lack = rand_amount - current_value
+        await create_emergency_request(name, channel_name, message.id, MY_TG_ID, lack, diff_reac_num)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
 
 
-async def create_emergency_request(order_type, channel_username, message_id, initiator_id, lack_amount):
+async def create_emergency_request(order_type, channel_username, message_id, initiator_id, lack_amount, diff_reac_num=None):
     now = datetime.now()
     finish = now + timedelta(minutes=MONITOR_INTERVAL_MINS)
 
@@ -52,11 +63,11 @@ async def create_emergency_request(order_type, channel_username, message_id, ini
         existing = []
 
     if order_type == 'Реакции':
-        reac_list = await GetReactionsList(channel_username, 0)
+        reac_list, reac_limit = await GetReactionsList(channel_username, randint(0, len(source.ACCOUNTS) - 1))
         if not reac_list:
             Stamp(f'No reactions for {channel_username} available', 'w')
             return
-        reaction_distribution = DistributeReactionsIntoEmojis(randint(1, 3), lack_amount, reac_list)
+        reaction_distribution = DistributeReactionsIntoEmojis(min(diff_reac_num, reac_limit), lack_amount, reac_list)
         for emoji, count in reaction_distribution.items():
             req = {
                 'order_type': order_type,
@@ -64,7 +75,7 @@ async def create_emergency_request(order_type, channel_username, message_id, ini
                 'link': f"{channel_username}/{message_id}",
                 'start': now.strftime(TIME_FORMAT),
                 'finish': finish.strftime(TIME_FORMAT),
-                'planned': int(round(lack_amount * UPPER_COEF)),
+                'planned': count,
                 'cur_acc_index': randint(0, source.ACCOUNTS_LEN - 1),
                 'emoji': emoji
             }
@@ -74,12 +85,11 @@ async def create_emergency_request(order_type, channel_username, message_id, ini
             "order_type": order_type,
             "initiator": f"Emergency – {initiator_id}",
             "link": f"{channel_username}/{message_id}",
-            "planned": int(round(lack_amount * UPPER_COEF)),
-            "start": now.strftime("%Y-%m-%d %H:%M"),
-            "finish": finish.strftime("%Y-%m-%d %H:%M"),
+            "planned": lack_amount,
+            "start": now.strftime(TIME_FORMAT),
+            "finish": finish.strftime(TIME_FORMAT),
             "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
         }
-
         existing.append(req)
     SaveRequestsToFile(existing, "emergency", EMERGENCY_FILE)
 
@@ -90,7 +100,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
     try:
         entity = await client.get_entity(channel_username)
         async for message in client.iter_messages(entity, limit=POSTS_TO_CHECK):
-            if not message.date:
+            if not message.date or not message or not message.text:
                 continue
 
             log_lines = []
@@ -126,7 +136,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
 
             # --- Обработка результата ---
             if anomalies:
-                Stamp("Обнаружны аномалии", 'w')
+                Stamp("Обнаружены аномалии", 'w')
                 for line in log_lines:
                     Stamp(line, 'i')
                 for anomaly in anomalies:
