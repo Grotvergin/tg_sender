@@ -5,7 +5,7 @@ from file import LoadRequestsFromFile, SaveRequestsToFile
 from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
-                    LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL,
+                    LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL, TIME_FRACTION,
                     MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 # ---
 from asyncio import sleep as async_sleep, run
@@ -30,9 +30,10 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
     time_limit_sec = req.get('time_limit', 0) * 60
     age_seconds = (datetime.now(timezone.utc) - message.date).total_seconds()
     diff_reac_num = randint(MIN_DIFF_REAC_NORMAL, MAX_DIFF_REAC_NORMAL)
+    dynamic_time_limit = round(time_limit_sec * TIME_FRACTION)
 
-    if age_seconds < time_limit_sec:
-        return f"Пост слишком свежий (< {time_limit_sec // 60} мин)", None
+    if age_seconds < dynamic_time_limit:
+        return f"Пост слишком свежий (< {dynamic_time_limit // 60} мин)", None
 
     if NeedToDecrease(message.text, channel_name):
         if name in ('Репосты', 'Реакции'):
@@ -41,13 +42,14 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
         if name == 'Реакции':
             diff_reac_num = randint(MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 
-    min_required = int((1 - spread / 100) * target)
-    max_required = int((1 + spread / 100) * target)
-    rand_amount = randint(min_required, max_required)
-    info = f"{current_value}/{target} (граница: {min_required})"
+    dynamic_target = round(target * TIME_FRACTION)
+    dynamic_min_required = int((1 - spread / 100) * dynamic_target)
+    dynamic_max_required = int((1 + spread / 100) * dynamic_target)
+    dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
+    info = f"{current_value}/{dynamic_target} (граница: {dynamic_min_required} при коэффициенте {TIME_FRACTION})"
 
-    if current_value < min_required:
-        lack = rand_amount - current_value
+    if current_value < dynamic_min_required:
+        lack = round((dynamic_rand_amount - current_value) / TIME_FRACTION)
         await create_emergency_request(name, channel_name, message.id, MY_TG_ID, lack, diff_reac_num)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
