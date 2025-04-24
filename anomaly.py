@@ -35,6 +35,8 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
     if age_seconds < dynamic_time_limit:
         return f"Пост слишком свежий (< {dynamic_time_limit // 60} мин)", None
 
+    cur_time_coef = min(1, age_seconds / time_limit_sec)
+
     if NeedToDecrease(message.text, channel_name):
         if name in ('Репосты', 'Реакции'):
             target = int(float(target) / LINK_DECREASE_RATIO)
@@ -42,14 +44,14 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
         if name == 'Реакции':
             diff_reac_num = randint(MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 
-    dynamic_target = round(target * TIME_FRACTION)
+    dynamic_target = round(target * cur_time_coef)
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    info = f"{current_value}/{dynamic_target} (граница: {dynamic_min_required} при коэффициенте {TIME_FRACTION})"
+    info = f"{current_value}/{dynamic_target} (граница: {dynamic_min_required} при коэффициенте {cur_time_coef}})"
 
     if current_value < dynamic_min_required:
-        lack = round((dynamic_rand_amount - current_value) / TIME_FRACTION)
+        lack = round((dynamic_rand_amount - current_value) / cur_time_coef)
         await create_emergency_request(name, channel_name, message.id, MY_TG_ID, lack, diff_reac_num)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
