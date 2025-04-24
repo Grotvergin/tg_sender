@@ -2,7 +2,7 @@ import source
 from file import SaveRequestsToFile
 from adders import PerformSubscription
 from secret import MY_TG_ID
-from source import (LONG_SLEEP, TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP,
+from source import (TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP, REFRESH_HANDLER_TIMEOUT_MIN,
                     LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS, MIN_DIFF_REAC_NORMAL,
                     MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 from common import Stamp, AsyncSleep
@@ -35,7 +35,6 @@ async def RefreshEventHandler():
             await async_sleep(5)
 
     while True:
-        # После удовлетворения условия — нормальная логика
         channels = list(dict.fromkeys(
             list(source.AUTO_VIEWS_DICT.keys()) +
             list(source.AUTO_REPS_DICT.keys()) +
@@ -44,40 +43,51 @@ async def RefreshEventHandler():
 
         Stamp(f'Setting up event handler for {len(channels)} channels using {len(source.ACCOUNTS)} accounts', 'i')
 
-        for i, channel in enumerate(channels):
-            account = source.ACCOUNTS[i]
+        used_accounts = set()
 
-            try:
-                already_subscribed = await GetSubscribedChannels(account)
-            except Exception as e:
-                BOT.send_message(MY_TG_ID, f"❌ Ошибка при получении подписок аккаунта #{i}: {e}")
-                Stamp(f'Caught error for GetSubscribedChannels for channel #{i}: {e}', 'e')
-                continue
+        for channel in channels:
+            success = False
+            for i, account in enumerate(source.ACCOUNTS):
+                if i in used_accounts:
+                    continue
 
-            if channel.lower() not in (name.lower() for name in already_subscribed):
-                await PerformSubscription(channel, 1, 'public', i)
+                try:
+                    already_subscribed = await GetSubscribedChannels(account)
+                    if channel.lower() not in (name.lower() for name in already_subscribed):
+                        await PerformSubscription(channel, 1, 'public', i)
 
-            channel_ids = await GetChannelIDsByUsernames(account, [channel])
+                    channel_ids = await GetChannelIDsByUsernames(account, [channel])
+                    if not channel_ids:
+                        Stamp(f"Channel ID not found for {channel}", 'w')
+                        continue
 
-            if not channel_ids:
-                Stamp(f"Channel ID not found for {channel}", 'w')
-                continue
+                    if i in source.HANDLERS:
+                        account.remove_event_handler(source.HANDLERS[i])
 
-            if i in source.HANDLERS:
-                account.remove_event_handler(source.HANDLERS[i])
+                    # Создаём обработчик
+                    def create_handler():
+                        async def handler(event):
+                            await processEvent(event.chat.username, event.message.text, event.message.id)
+                        return handler
 
-            # Создаём новый обработчик
-            def create_handler():
-                async def handler(event):
-                    await processEvent(event.chat.username, event.message.text, event.message.id)
-                return handler
+                    handler_instance = create_handler()
+                    account.add_event_handler(handler_instance, NewMessage(chats=channel_ids))
+                    source.HANDLERS[i] = handler_instance
+                    Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
 
-            handler_instance = create_handler()
-            account.add_event_handler(handler_instance, NewMessage(chats=channel_ids))
-            source.HANDLERS[i] = handler_instance
-            Stamp(f"✅ Set up handler for channel {channel} on account #{i}", 's')
+                    used_accounts.add(i)
+                    success = True
+                    break
 
-        await AsyncSleep(LONG_SLEEP * 100, 0.5)
+                except Exception as e:
+                    BOT.send_message(MY_TG_ID, f"⚠️ Ошибка с аккаунтом #{i} при обработке канала {channel}: {e}")
+                    Stamp(f'Caught error for account #{i}, retrying with next account', 'e')
+
+            if not success:
+                BOT.send_message(MY_TG_ID, f"❌ Не удалось установить обработчик для канала {channel} ни с одним аккаунтом")
+                Stamp(f"Failed to set up handler for channel {channel} with all accounts", 'e')
+
+        await AsyncSleep(REFRESH_HANDLER_TIMEOUT_MIN * 60)
 
 
 async def createRequest(order_type, initiator, link, planned, time_limit, emoji=None):
@@ -188,7 +198,6 @@ async def ManualEventHandler(links, user_id):
 
         try:
             index = randint(1, len(source.ACCOUNTS) - 1)
-            print(index)
             already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
             if channel_name.lower() not in (name.lower() for name in already_subscribed):
                 await PerformSubscription(channel_name, 1, 'public', index)
