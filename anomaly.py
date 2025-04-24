@@ -48,7 +48,7 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    info = f"{current_value}/{dynamic_target} (граница: {dynamic_min_required} при коэффициенте {cur_time_coef}})"
+    info = f"{current_value}/{dynamic_target} (граница: {dynamic_min_required} при коэффициенте {cur_time_coef})"
 
     if current_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - current_value) / cur_time_coef)
