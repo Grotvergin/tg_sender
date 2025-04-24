@@ -2,7 +2,7 @@ import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
 from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE,
-                    SHORT_SLEEP, EMERGENCY_FILE)
+                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile
 from info_senders import PrintRequest
@@ -75,6 +75,7 @@ async def ProcessOrder(req: dict, to_add: int):
 def sendNotificationAboutWork():
     if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
         Stamp('Sending notification about proper work', 'i')
+        msg = f'🔄 OK\n📊 Заявок: {len(REQS_QUEUE)}'
         BOT.send_message(MY_TG_ID, '🔄 OK')
         BOT.send_message(AR_TG_ID, '🔄 OK')
         update_last_check()
