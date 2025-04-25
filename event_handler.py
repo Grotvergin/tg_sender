@@ -34,6 +34,8 @@ async def RefreshEventHandler():
             Stamp(f"Waiting: accounts {len(source.ACCOUNTS)} < channels {len(channels)}", 'w')
             await async_sleep(5)
 
+    blocked_accounts = set()
+
     while True:
         channels = list(dict.fromkeys(
             list(source.AUTO_VIEWS_DICT.keys()) +
@@ -48,7 +50,7 @@ async def RefreshEventHandler():
         for channel in channels:
             success = False
             for i, account in enumerate(source.ACCOUNTS):
-                if i in used_accounts:
+                if i in used_accounts or i in blocked_accounts:
                     continue
 
                 try:
@@ -64,7 +66,6 @@ async def RefreshEventHandler():
                     if i in source.HANDLERS:
                         account.remove_event_handler(source.HANDLERS[i])
 
-                    # Создаём обработчик
                     def create_handler():
                         async def handler(event):
                             await processEvent(event.chat.username, event.message.text, event.message.id)
@@ -82,6 +83,7 @@ async def RefreshEventHandler():
                 except Exception as e:
                     BOT.send_message(MY_TG_ID, f"⚠️ Ошибка с аккаунтом #{i} при обработке канала {channel}: {e}")
                     Stamp(f'Caught error for account #{i}, retrying with next account', 'e')
+                    blocked_accounts.add(i)
 
             if not success:
                 BOT.send_message(MY_TG_ID, f"❌ Не удалось установить обработчик для канала {channel} ни с одним аккаунтом")
