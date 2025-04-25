@@ -75,7 +75,7 @@ async def ProcessOrder(req: dict, to_add: int):
 def sendNotificationAboutWork():
     if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
         Stamp('Sending notification about proper work', 'i')
-        msg = f'🔄 OK\n📊 Заявок: {len(REQS_QUEUE)}'
+        msg = f'🔄 OK\n📊 Заявок: {len(source.REQS_QUEUE)}'
         BOT.send_message(MY_TG_ID, msg)
         BOT.send_message(AR_TG_ID, msg)
         update_last_check()
