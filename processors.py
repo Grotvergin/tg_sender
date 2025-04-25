@@ -2,7 +2,7 @@ import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
 from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE,
-                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE)
+                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE, YES_NO_BTNS)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile
 from info_senders import PrintRequest
@@ -10,6 +10,7 @@ from secret import MY_TG_ID, AR_TG_ID
 from monitor import update_last_check
 from event_handler import GetSubscribedChannels
 from asyncio import sleep as async_sleep
+from collections import Counter
 # ---
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -72,12 +73,47 @@ async def ProcessOrder(req: dict, to_add: int):
     req['current'] = req.get('current', 0) + cnt_success
 
 
-def sendNotificationAboutWork():
+def sendNotificationAboutWork(req_index):
     if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
-        Stamp('Sending notification about proper work', 'i')
-        msg = f'🔄 OK\n📊 Заявок: {len(source.REQS_QUEUE)}'
+        type_counts = Counter(req.get("order_type", "Неизвестно") for req in source.REQS_QUEUE)
+
+        if type_counts:
+            type_summary = "\n".join([f"• {k}: {v}" for k, v in type_counts.items()])
+        else:
+            type_summary = "• Заявок нет"
+
+        all_auto_channels = set(source.AUTO_VIEWS_DICT.keys()) | set(source.AUTO_REPS_DICT.keys()) | set(source.AUTO_REAC_DICT.keys())
+        total_unique_auto = len(all_auto_channels)
+
+        auto_count = 0
+        emergency_count = 0
+        unknown_count = 0
+
+        for req in source.REQS_QUEUE:
+            initiator = req.get("initiator", "")
+            if initiator.startswith("Emergency"):
+                emergency_count += 1
+            elif initiator.startswith("Автоматическая"):
+                auto_count += 1
+            else:
+                unknown_count += 1
+
+        msg = (
+            f'📊 Разовых заявок: {len(source.REQS_QUEUE)}\n'
+            f'📍 Текущий индекс заявки: {req_index}\n\n'
+            f'📦 По типам:\n{type_summary}\n\n'
+            f'👀 Автоматических заявок: {auto_count}\n'
+            f'⚠️ Аномальных заявок: {emergency_count}\n'
+            f'❓ Неизвестных заявок: {unknown_count}\n\n'
+            f'👀 Автоматических на просмотры: {len(source.AUTO_VIEWS_DICT)}\n'
+            f'📢 Автоматических на репосты: {len(source.AUTO_REPS_DICT)}\n'
+            f'❤️ Автоматических на реакции: {len(source.AUTO_REAC_DICT)}\n'
+            f'🌐 Всего уникальных каналов: {total_unique_auto}'
+        )
+
         BOT.send_message(MY_TG_ID, msg)
         BOT.send_message(AR_TG_ID, msg)
+
         update_last_check()
         source.LAST_NOTIF_PROCESSOR = datetime.now()
 
@@ -92,9 +128,9 @@ async def ProcessRequests() -> None:
                 source.REQS_QUEUE.extend(emergency)
                 SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                 SaveRequestsToFile([], "emergency", EMERGENCY_FILE)
-            sendNotificationAboutWork()
-            for req in source.REQS_QUEUE:
-                sendNotificationAboutWork()
+            sendNotificationAboutWork(YES_NO_BTNS[1])
+            for i, req in enumerate(source.REQS_QUEUE):
+                sendNotificationAboutWork(i)
                 finish = datetime.strptime(req['finish'], TIME_FORMAT)
                 start = datetime.strptime(req['start'], TIME_FORMAT)
                 now = datetime.now()
