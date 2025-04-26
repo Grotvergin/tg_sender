@@ -1,11 +1,11 @@
 import source
 from source import (MAX_WAIT_CODE, SHORT_SLEEP, BOT,
-                    WELCOME_BTNS, SKIP_CODE)
+                    WELCOME_BTNS, SKIP_CODE, PERMANENT_LOCK_BUFFER)
 from common import (Stamp, SkippedCodeInsertion, GetSector,
                     ShowButtons, BuildService, ParseAccountRow)
 from secret import SHEET_ID, SHEET_NAME
 # ---
-from asyncio import sleep as async_sleep
+from asyncio import sleep as async_sleep, Lock
 from os import getcwd
 from os.path import join
 from time import time, sleep
@@ -59,6 +59,7 @@ async def AuthorizeAccounts() -> None:
         BOT.send_message(source.ADMIN_CHAT_ID, '🔸Начата процедура авторизации...\n')
         srv = BuildService()
         row = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID)) + 1
+        source.LOCKS = {i: Lock() for i in range(row * 2 + PERMANENT_LOCK_BUFFER)}
         data = GetSector('A2', f'H{row}', srv, SHEET_NAME, SHEET_ID)
         this_run_auth = [client.session.filename for client in source.ACCOUNTS]
         for index, account in enumerate(data):

@@ -2,14 +2,14 @@ import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
 from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE,
-                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE, YES_NO_BTNS)
+                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE, YES_NO_BTNS, LOCKS)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile
 from info_senders import PrintRequest
 from secret import MY_TG_ID, AR_TG_ID
 from monitor import update_last_check
 from event_handler import GetSubscribedChannels
-from asyncio import sleep as async_sleep
+from asyncio import sleep as async_sleep, gather
 from collections import Counter
 # ---
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
@@ -118,6 +118,41 @@ def sendNotificationAboutWork(req_index):
         source.LAST_NOTIF_PROCESSOR = datetime.now()
 
 
+async def ProcessRequest(req: dict, i: int):
+    async with source.SEMAPHORE:
+        try:
+            finish = datetime.strptime(req['finish'], TIME_FORMAT)
+            start = datetime.strptime(req['start'], TIME_FORMAT)
+            now = datetime.now()
+            if now < finish:
+                duration = (finish - start).total_seconds()
+                interval = duration / req['planned']
+                elapsed = (now - start).total_seconds()
+                expected = int(elapsed / interval)
+                current = req.get('current', 0)
+                to_add = expected - current
+                if to_add > 0:
+                    await ProcessOrder(req, to_add)
+            else:
+                if now < finish + timedelta(minutes=MAX_MINS_REQ) and req.get('current', 0) < req['planned']:
+                    to_add = req['planned'] - req.get('current', 0)
+                    await ProcessOrder(req, to_add)
+                else:
+                    if req.get('current', 0) < req['planned']:
+                        message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
+                    else:
+                        message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
+                    source.REQS_QUEUE.remove(req)
+                    SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+                    source.FINISHED_REQS.append(req)
+                    SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
+                    user_id = req['initiator'].split(' ')[-1]
+                    BOT.send_message(user_id, message, parse_mode='HTML')
+        except Exception as e:
+            Stamp(f'Error processing request #{i}: {e}', 'w')
+            BOT.send_message(MY_TG_ID, f'🔴 Ошибка в обработке заявки #{i}')
+
+
 async def ProcessRequests() -> None:
     while True:
         try:
@@ -129,38 +164,17 @@ async def ProcessRequests() -> None:
                 SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                 SaveRequestsToFile([], "emergency", EMERGENCY_FILE)
             sendNotificationAboutWork(YES_NO_BTNS[1])
+
+            tasks = []
             for i, req in enumerate(source.REQS_QUEUE):
-                sendNotificationAboutWork(i)
-                finish = datetime.strptime(req['finish'], TIME_FORMAT)
-                start = datetime.strptime(req['start'], TIME_FORMAT)
-                now = datetime.now()
-                if now < finish:
-                    duration = (finish - start).total_seconds()
-                    interval = duration / req['planned']
-                    elapsed = (now - start).total_seconds()
-                    expected = int(elapsed / interval)
-                    current = req.get('current', 0)
-                    to_add = expected - current
-                    if to_add > 0:
-                        await ProcessOrder(req, to_add)
-                else:
-                    if now < finish + timedelta(minutes=MAX_MINS_REQ) and req.get('current', 0) < req['planned']:
-                        to_add = req['planned'] - req.get('current', 0)
-                        await ProcessOrder(req, to_add)
-                    else:
-                        if req.get('current', 0) < req['planned']:
-                            message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
-                        else:
-                            message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
-                        source.REQS_QUEUE.remove(req)
-                        SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
-                        source.FINISHED_REQS.append(req)
-                        SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
-                        user_id = req['initiator'].split(' ')[-1]
-                        BOT.send_message(user_id, message, parse_mode='HTML')
+                tasks.append(ProcessRequest(req, i))
+
+            await gather(*tasks)
+
         except Exception as e:
             Stamp(f'Uncaught exception in processor happened: {e}', 'w')
             BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
+
         await AsyncSleep(LONG_SLEEP, 0.5)
 
 

@@ -4,6 +4,7 @@ from random import seed
 from ssl import SSLEOFError
 from socket import gaierror
 from datetime import datetime
+from asyncio import Semaphore
 # ---
 from httplib2.error import ServerNotFoundError
 from telebot import TeleBot
@@ -12,7 +13,6 @@ from faker import Faker
 from googleapiclient.errors import HttpError
 
 
-NO_REQUIREMENTS_MESSAGE = 'нет заявки'
 WELCOME_BTNS = ('Разовые 1️⃣',
                 'Автоматические ⏳',
                 'Авторизация 🔐',
@@ -49,30 +49,8 @@ ALL_REACTIONS = [
 YES_NO_BTNS = ('Да ✅', 'Нет ❌', STOP_PROCESS)
 HANDLERS = {}
 SKIP_CODE = ('Пропуск ⏭️',)
-BOT = TeleBot(TOKEN)
-CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
-LAST_NOTIF_PROCESSOR = datetime.now()
-USER_RESPONSES = {}
-REQS_QUEUE = []
-ACCOUNTS = []
-FINISHED_REQS = []
-CUR_REQ = {}
-AUTO_VIEWS_DICT = {}
-AUTO_REPS_DICT = {}
-AUTO_REAC_DICT = {}
-BUYING_INFO = {}
-AUTHORIZED_USERS = set()
-FAKER = Faker()
-init()
-seed()
-ADMIN_CHAT_ID = MY_TG_ID
-CODE = None
-MANUAL_CHANNEL_LINK = None
-MANUAL_CHANNEL_USER = None
-CHECK_CHANNEL_USER = None
-CHECK_CHANNEL_LINK = None
-CHECKED_AVAILABLE_COUNT = None
-CODE_REQUEST_READY = False
+MAX_CONCURRENT_REQS = 10
+PERMANENT_LOCK_BUFFER = 100
 REFRESH_HANDLER_TIMEOUT_MIN = 60
 TIME_FRACTION = 0.15
 ACCOUNTS_LEN = 0
@@ -120,3 +98,30 @@ IMG_PATH = 'random_image.jpg'
 LAST_CHECK_FILE = "last_bot_check.json"
 AUTHORIZED_USERS_FILE = "authorized_users.json"
 EMERGENCY_FILE = 'emerge.json'
+NO_REQUIREMENTS_MESSAGE = 'нет заявки'
+BOT = TeleBot(TOKEN)
+CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
+LAST_NOTIF_PROCESSOR = datetime.now()
+USER_RESPONSES = {}
+REQS_QUEUE = []
+ACCOUNTS = []
+SEMAPHORE = Semaphore(MAX_CONCURRENT_REQS)
+LOCKS = {}
+FINISHED_REQS = []
+CUR_REQ = {}
+AUTO_VIEWS_DICT = {}
+AUTO_REPS_DICT = {}
+AUTO_REAC_DICT = {}
+BUYING_INFO = {}
+AUTHORIZED_USERS = set()
+FAKER = Faker()
+init()
+seed()
+ADMIN_CHAT_ID = MY_TG_ID
+CODE = None
+MANUAL_CHANNEL_LINK = None
+MANUAL_CHANNEL_USER = None
+CHECK_CHANNEL_USER = None
+CHECK_CHANNEL_LINK = None
+CHECKED_AVAILABLE_COUNT = None
+CODE_REQUEST_READY = False
