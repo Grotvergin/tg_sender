@@ -49,6 +49,10 @@ def AuthCallback(number: str, user_id: int, max_wait_time: int) -> int:
     return int(code)
 
 
+def skipCodeCallback():
+    raise SkippedCodeInsertion
+
+
 async def AuthorizeAccounts() -> None:
     Stamp('Authorization procedure started', 'b')
     try:
@@ -72,7 +76,10 @@ async def AuthorizeAccounts() -> None:
                 Stamp(f'Processing account {num}', 'i')
                 client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
                 try:
-                    await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num, source.ADMIN_CHAT_ID, MAX_WAIT_CODE))
+                    if source.CODE_REQUEST_READY:
+                        await client.start(phone=num, password=password_tg, code_callback=lambda: AuthCallback(num, source.ADMIN_CHAT_ID, MAX_WAIT_CODE))
+                    else:
+                        await client.start(phone=num, password=password_tg, code_callback=lambda: skipCodeCallback())
                     source.ACCOUNTS.append(client)
                     Stamp(f'Account {num} authorized', 's')
                     BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
@@ -104,6 +111,7 @@ async def AuthorizeAccounts() -> None:
                     Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
                     BOT.send_message(source.ADMIN_CHAT_ID, f'❌ Ошибка при старте клиента для {num}: {str(e)}')
                     continue
+        source.CODE_REQUEST_READY = False
         BOT.send_message(source.ADMIN_CHAT_ID, f'🔹Процедура завершена, авторизовано {len(source.ACCOUNTS)} аккаунтов\n')
         ShowButtons(source.ADMIN_CHAT_ID, WELCOME_BTNS, '❔ Выберите действие:')
     except Exception as e:

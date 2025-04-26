@@ -104,6 +104,7 @@ def MessageAccept(message: Message) -> None:
         BOT.register_next_step_handler(message, AutomaticChoice)
     elif message.text == WELCOME_BTNS[2]:
         Stamp(f'Setting ADMIN_CHAT_ID = {user_id}', 'w')
+        source.CODE_REQUEST_READY = True
         source.ADMIN_CHAT_ID = user_id
     elif message.text == WELCOME_BTNS[3]:
         SendAccountNumbers(user_id)
