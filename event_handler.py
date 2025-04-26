@@ -187,6 +187,7 @@ def ManualEventAcceptLink(message):
 
 
 async def ManualEventHandler(links, user_id):
+    max_retries = 5
     for link in links:
         Stamp(f'Trying to add manual-auto request for link {link}', 'i')
         is_match = match(r'https://t.me/([^/]+)/(\d+)', link)
@@ -198,22 +199,32 @@ async def ManualEventHandler(links, user_id):
         message_id = int(is_match.group(2))
         BOT.send_message(user_id, f'👀 Распознано имя канала {channel_name}, пост № {message_id}')
 
-        try:
-            index = randint(1, len(source.ACCOUNTS) - 1)
-            already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
-            if channel_name.lower() not in (name.lower() for name in already_subscribed):
-                await PerformSubscription(channel_name, 1, 'public', index)
-            channel = await source.ACCOUNTS[index].get_entity(channel_name)
-            message = await source.ACCOUNTS[index].get_messages(channel, ids=message_id)
-        except Exception as e:
-            BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение: {link}\nОшибка: {e}')
+        success = False
+        for attempt in range(max_retries):
+            try:
+                index = randint(0, len(source.ACCOUNTS) - 1)
+                already_subscribed = await GetSubscribedChannels(source.ACCOUNTS[index])
+                if channel_name.lower() not in (name.lower() for name in already_subscribed):
+                    await PerformSubscription(channel_name, 1, 'public', index)
+
+                channel = await source.ACCOUNTS[index].get_entity(channel_name)
+                message = await source.ACCOUNTS[index].get_messages(channel, ids=message_id)
+
+                if not message or not message.text:
+                    raise ValueError(f'Пост пустой или не существует: {link}')
+
+                await processEvent(channel_name, message.text, message_id)
+                success = True
+                break
+            except Exception as e:
+                Stamp(f'Attempt {attempt + 1} failed: {e}', 'w')
+                if attempt < max_retries - 1:
+                    BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение с попытки {attempt + 1}. Попробую снова...')
+                else:
+                    BOT.send_message(user_id, f'⚠️ Не удалось получить сообщение после {max_retries} попыток: {link}')
+
+        if not success:
             continue
-
-        if not message or not message.text:
-           BOT.send_message(user_id, f'⚠️ Пост пустой или не существует: {link}')
-           continue
-
-        await processEvent(channel_name, message.text, message_id)
 
     BOT.send_message(user_id, '💅 Обработка всех ссылок завершена.')
 
