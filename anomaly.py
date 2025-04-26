@@ -199,7 +199,9 @@ async def MonitorPostAnomalies():
                 if not source.ACCOUNTS:
                     Stamp(f"No accounts available to check anomalies for {channel}", 'w')
                     continue
-                await CheckChannelPostsForAnomalies(channel, source.ACCOUNTS[randint(0, len(source.ACCOUNTS) - 1)])
+                index = randint(0, len(source.ACCOUNTS) - 1)
+                print(index)
+                await CheckChannelPostsForAnomalies(channel, source.ACCOUNTS[index])
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
 
