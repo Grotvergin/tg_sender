@@ -1,6 +1,6 @@
 import source
 from common import ShowButtons, Stamp
-from file import LoadRequestsFromFile
+from file import LoadRequestsFromFile, loadDailyStats
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
                     FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES, SKIP_CODE,
@@ -44,6 +44,7 @@ async def Main() -> None:
     source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', FILE_AUTO_REPS)
     source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', FILE_AUTO_REAC)
     source.AUTHORIZED_USERS = load_authorized_users()
+    source.LAST_STATS_RESET, source.DAILY_STATS = loadDailyStats()
 
     loop = get_event_loop()
     try:

@@ -5,6 +5,7 @@ from ssl import SSLEOFError
 from socket import gaierror
 from datetime import datetime
 from asyncio import Semaphore
+from collections import defaultdict
 # ---
 from httplib2.error import ServerNotFoundError
 from telebot import TeleBot
@@ -98,6 +99,7 @@ IMG_PATH = 'random_image.jpg'
 LAST_CHECK_FILE = "last_bot_check.json"
 AUTHORIZED_USERS_FILE = "authorized_users.json"
 EMERGENCY_FILE = 'emerge.json'
+DAILY_STATS_FILE = 'daily.json'
 NO_REQUIREMENTS_MESSAGE = 'нет заявки'
 BOT = TeleBot(TOKEN)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
@@ -115,6 +117,8 @@ AUTO_REAC_DICT = {}
 BUYING_INFO = {}
 AUTHORIZED_USERS = set()
 FAKER = Faker()
+DAILY_STATS = defaultdict(int)
+LAST_STATS_RESET = datetime.now().date()
 init()
 seed()
 ADMIN_CHAT_ID = MY_TG_ID

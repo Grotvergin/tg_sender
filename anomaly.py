@@ -1,7 +1,7 @@
 import source
 from common import Stamp, ParseAccountRow, BuildService, GetSector
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
-from file import LoadRequestsFromFile, SaveRequestsToFile
+from file import LoadRequestsFromFile, SaveRequestsToFile, updateDailyStats
 from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
@@ -84,6 +84,7 @@ async def create_emergency_request(order_type, channel_username, message_id, ini
                 'emoji': emoji
             }
             existing.append(req)
+            updateDailyStats('anomaly')
     else:
         req = {
             "order_type": order_type,
@@ -95,6 +96,7 @@ async def create_emergency_request(order_type, channel_username, message_id, ini
             "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
         }
         existing.append(req)
+        updateDailyStats('anomaly')
     SaveRequestsToFile(existing, "emergency", EMERGENCY_FILE)
 
 
@@ -145,7 +147,6 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
                     Stamp(line, 'i')
                 for anomaly in anomalies:
                     Stamp(f"Аномалия: {anomaly}", 'w')
-                msg = '\n'.join(msg_lines)
             else:
                 for line in log_lines:
                     Stamp(line, 's')

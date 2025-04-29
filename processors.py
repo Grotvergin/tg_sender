@@ -4,7 +4,7 @@ from common import Stamp, AsyncSleep
 from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA,
                     FILE_ACTIVE, SHORT_SLEEP, EMERGENCY_FILE)
 from datetime import datetime, timedelta
-from file import SaveRequestsToFile, LoadRequestsFromFile
+from file import SaveRequestsToFile, LoadRequestsFromFile, updateDailyStats
 from info_senders import PrintRequest
 from secret import MY_TG_ID, AR_TG_ID
 from monitor import update_last_check
@@ -76,15 +76,7 @@ async def ProcessOrder(req: dict, to_add: int):
 def sendNotificationAboutWork():
     if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
         type_counts = Counter(req.get("order_type", "Неизвестно") for req in source.REQS_QUEUE)
-
-        if type_counts:
-            type_summary = "\n".join([f"• {k}: {v}" for k, v in type_counts.items()])
-        else:
-            type_summary = "• Заявок нет"
-
-        all_auto_channels = set(source.AUTO_VIEWS_DICT.keys()) | set(source.AUTO_REPS_DICT.keys()) | set(source.AUTO_REAC_DICT.keys())
-        total_unique_auto = len(all_auto_channels)
-
+        total_unique_auto = len(set(source.AUTO_VIEWS_DICT.keys()) | set(source.AUTO_REPS_DICT.keys()) | set(source.AUTO_REAC_DICT.keys()))
         auto_count = 0
         emergency_count = 0
         unknown_count = 0
@@ -99,19 +91,31 @@ def sendNotificationAboutWork():
                 unknown_count += 1
 
         msg = (
-            f'📊 Разовых заявок: {len(source.REQS_QUEUE)}\n'
-            f'📦 По типам:\n{type_summary}\n\n'
-            f'👀 Автоматических заявок: {auto_count}\n'
-            f'⚠️ Аномальных заявок: {emergency_count}\n'
-            f'❓ Неизвестных заявок: {unknown_count}\n\n'
-            f'👀 Автоматических на просмотры: {len(source.AUTO_VIEWS_DICT)}\n'
-            f'📢 Автоматических на репосты: {len(source.AUTO_REPS_DICT)}\n'
-            f'❤️ Автоматических на реакции: {len(source.AUTO_REAC_DICT)}\n'
-            f'🌐 Всего уникальных каналов: {total_unique_auto}'
+            f'1️⃣ <b>В очереди ({len(source.REQS_QUEUE)})</b>\n'
+            f'💡 Автоматических: {auto_count}\n'
+            f'⚠️ Аномальных: {emergency_count}\n'
+            f'❕ Исключительных: {unknown_count}\n'
+            f'👀 Просмотры: {type_counts['Просмотры']}\n'
+            f'📢 Репосты: {type_counts['Репосты']}\n'
+            f'❤️ Реакции: {type_counts['Реакции']}\n\n'
+
+            f'⌛️ <b>Автоматические ({total_unique_auto} уникальных)</b>\n'
+            f'👀 Просмотры: {len(source.AUTO_VIEWS_DICT)}\n'
+            f'📢 Репосты: {len(source.AUTO_REPS_DICT)}\n'
+            f'❤️ Реакции: {len(source.AUTO_REAC_DICT)}\n\n'
+            
+            f'📅 <b>За текущие сутки ({source.DAILY_STATS["auto"] +
+                                    source.DAILY_STATS["anomaly"] +
+                                    source.DAILY_STATS["extra"]})</b>\n'
+            f'💡 Автоматических: {source.DAILY_STATS["auto"]}\n'
+            f'⚠️ Аномальных: {source.DAILY_STATS["anomaly"]}\n'
+            f'❕ Исключительных: {source.DAILY_STATS["extra"]}\n'
+            f'✅ Выполнено: {source.DAILY_STATS["finished"]}\n'
+            f'🛑 Снято: {source.DAILY_STATS["expired"]}'
         )
 
-        BOT.send_message(MY_TG_ID, msg)
-        BOT.send_message(AR_TG_ID, msg)
+        BOT.send_message(MY_TG_ID, msg, parse_mode='HTML')
+        BOT.send_message(AR_TG_ID, msg, parse_mode='HTML')
 
         update_last_check()
         source.LAST_NOTIF_PROCESSOR = datetime.now()
@@ -139,8 +143,10 @@ async def ProcessRequest(req: dict, i: int):
                 else:
                     if req.get('current', 0) < req['planned']:
                         message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
+                        updateDailyStats('expired')
                     else:
                         message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
+                        updateDailyStats('finished')
                     source.REQS_QUEUE.remove(req)
                     SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                     source.FINISHED_REQS.append(req)
