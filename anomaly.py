@@ -2,9 +2,9 @@ import source
 from common import Stamp, ParseAccountRow, BuildService, GetSector
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
 from file import LoadRequestsFromFile, SaveRequestsToFile
-from secret import MY_TG_ID, ANOMALY_SHEET_NAME, SHEET_ID, AR_TG_ID, SHEET_NAME
+from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
-                    BOT, LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
+                    LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
                     LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL, TIME_FRACTION,
                     MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 # ---
@@ -52,7 +52,7 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
 
     if current_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - current_value) / cur_time_coef)
-        await create_emergency_request(name, channel_name, message.id, MY_TG_ID, lack, diff_reac_num)
+        await create_emergency_request(name, channel_name, message.id, MANAGER_TG_ID, lack, diff_reac_num)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
 
@@ -146,8 +146,6 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
                 for anomaly in anomalies:
                     Stamp(f"Аномалия: {anomaly}", 'w')
                 msg = '\n'.join(msg_lines)
-                BOT.send_message(MY_TG_ID, msg)
-                BOT.send_message(AR_TG_ID, msg)
             else:
                 for line in log_lines:
                     Stamp(line, 's')

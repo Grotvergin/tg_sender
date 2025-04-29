@@ -1,8 +1,8 @@
 import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
-from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA, FILE_ACTIVE,
-                    SHORT_SLEEP, EMERGENCY_FILE, REQS_QUEUE, YES_NO_BTNS, LOCKS)
+from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA,
+                    FILE_ACTIVE, SHORT_SLEEP, EMERGENCY_FILE)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile
 from info_senders import PrintRequest
@@ -73,7 +73,7 @@ async def ProcessOrder(req: dict, to_add: int):
     req['current'] = req.get('current', 0) + cnt_success
 
 
-def sendNotificationAboutWork(req_index):
+def sendNotificationAboutWork():
     if datetime.now() - source.LAST_NOTIF_PROCESSOR > timedelta(minutes=NOTIF_TIME_DELTA):
         type_counts = Counter(req.get("order_type", "Неизвестно") for req in source.REQS_QUEUE)
 
@@ -100,7 +100,6 @@ def sendNotificationAboutWork(req_index):
 
         msg = (
             f'📊 Разовых заявок: {len(source.REQS_QUEUE)}\n'
-            f'📍 Текущий индекс заявки: {req_index}\n\n'
             f'📦 По типам:\n{type_summary}\n\n'
             f'👀 Автоматических заявок: {auto_count}\n'
             f'⚠️ Аномальных заявок: {emergency_count}\n'
@@ -163,7 +162,7 @@ async def ProcessRequests() -> None:
                 source.REQS_QUEUE.extend(emergency)
                 SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                 SaveRequestsToFile([], "emergency", EMERGENCY_FILE)
-            sendNotificationAboutWork(YES_NO_BTNS[1])
+            sendNotificationAboutWork()
 
             tasks = []
             for i, req in enumerate(source.REQS_QUEUE):
