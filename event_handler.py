@@ -1,5 +1,5 @@
 import source
-from file import SaveRequestsToFile, updateDailyStats
+from file import SaveRequestsToFile
 from adders import PerformSubscription
 from secret import MY_TG_ID
 from source import (TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP, REFRESH_HANDLER_TIMEOUT_MIN,
@@ -168,7 +168,6 @@ async def processEvent(event_channel_name, message_text, message_id):
 
 async def EventHandler(event: NewMessage.Event):
     Stamp(f'Trying to add automatic request for channel {event.chat.username}', 'i')
-    updateDailyStats('auto')
     await processEvent(event.chat.username, event.message.text, event.message.id)
 
 

@@ -3,7 +3,7 @@ from source import (SINGLE_BTNS, CANCEL_BTN, WELCOME_BTNS, NUMBER_LAST_FIN,
                     LINK_FORMAT, TIME_FORMAT, MAX_MINS, FILE_FINISHED, BOT, FILE_ACTIVE, TIMEOUT_CHECK_AVAILABLE)
 from common import ShowButtons, Stamp
 from info_senders import SendRequests
-from file import LoadRequestsFromFile, SaveRequestsToFile, updateDailyStats
+from file import LoadRequestsFromFile, SaveRequestsToFile
 from deletion import DeleteSingleRequest
 # ---
 from re import match
@@ -61,7 +61,6 @@ def RequestPeriod(message: Message) -> None:
                 source.REQS_QUEUE.append(source.CUR_REQ)
                 SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                 BOT.send_message(message.from_user.id, "🆗 Заявка принята. Начинаю выполнение заявки...")
-                updateDailyStats('extra')
                 ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
             else:
                 ShowButtons(message, CANCEL_BTN, "❌ Введено некорректное число. Попробуйте ещё раз:")

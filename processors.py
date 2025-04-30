@@ -98,20 +98,15 @@ def sendNotificationAboutWork():
             f'👀 Просмотры: {type_counts['Просмотры']}\n'
             f'📢 Репосты: {type_counts['Репосты']}\n'
             f'❤️ Реакции: {type_counts['Реакции']}\n\n'
+            
+            f'📅 <b>За текущие сутки</b>\n'
+            f'✅ Выполнено: {source.DAILY_STATS["finished"]}\n'
+            f'🛑 Снято: {source.DAILY_STATS["expired"]}\n\n'
 
             f'⌛️ <b>Автоматические ({total_unique_auto} уникальных)</b>\n'
             f'👀 Просмотры: {len(source.AUTO_VIEWS_DICT)}\n'
             f'📢 Репосты: {len(source.AUTO_REPS_DICT)}\n'
-            f'❤️ Реакции: {len(source.AUTO_REAC_DICT)}\n\n'
-            
-            f'📅 <b>За текущие сутки ({source.DAILY_STATS["auto"] +
-                                    source.DAILY_STATS["anomaly"] +
-                                    source.DAILY_STATS["extra"]})</b>\n'
-            f'💡 Автоматических: {source.DAILY_STATS["auto"]}\n'
-            f'⚠️ Аномальных: {source.DAILY_STATS["anomaly"]}\n'
-            f'❕ Исключительных: {source.DAILY_STATS["extra"]}\n'
-            f'✅ Выполнено: {source.DAILY_STATS["finished"]}\n'
-            f'🛑 Снято: {source.DAILY_STATS["expired"]}'
+            f'❤️ Реакции: {len(source.AUTO_REAC_DICT)}'
         )
 
         BOT.send_message(MY_TG_ID, msg, parse_mode='HTML')
