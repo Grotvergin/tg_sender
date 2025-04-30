@@ -7,5 +7,6 @@ sessions
 test.py
 *.json
 *.log
-logs
+logs*
 *.xlsx
+help_scripts
