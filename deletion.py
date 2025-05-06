@@ -28,7 +28,7 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
 
 def DeleteAutomaticRequest(message: Message, path: str, emoji: str = None) -> None:
     PATH_TO_DATA_MAP = {
-        FILE_AUTO_VIEWS: (source.AUTO_VIEWS_DICT, 'automatic subscriptions'),
+        FILE_AUTO_VIEWS: (source.AUTO_VIEWS_DICT, 'automatic views'),
         FILE_AUTO_REPS: (source.AUTO_REPS_DICT, 'automatic reposts'),
         FILE_AUTO_REAC: (source.AUTO_REAC_DICT, 'automatic reactions'),
     }
