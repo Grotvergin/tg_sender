@@ -51,7 +51,7 @@ def monitor_bot(last_check_file, pid_file, script_name, screen_name, max_timedel
             BOT.send_message(MY_TG_ID, msg)
             BOT.send_message(AR_TG_ID, msg)
             find_and_kill_main(pid_file)
-            system(f"screen -S {screen_name} -X stuff $'./{script_name}\\n'")
+            system(f"screen -S {screen_name} -X stuff './{script_name}\\n'")
 
 
 if __name__ == "__main__":
