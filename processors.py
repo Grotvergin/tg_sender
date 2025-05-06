@@ -2,7 +2,7 @@ import source
 from adders import PerformSubscription, IncreasePostViews, RepostMessage, AddReactions
 from common import Stamp, AsyncSleep
 from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA,
-                    FILE_ACTIVE, SHORT_SLEEP, EMERGENCY_FILE, LAST_CHECK_FILE)
+                    FILE_ACTIVE, SHORT_SLEEP, EMERGENCY_FILE, LAST_MAIN_CHECK_FILE)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile, updateDailyStats
 from info_senders import PrintRequest
@@ -112,7 +112,7 @@ def sendNotificationAboutWork():
         BOT.send_message(MY_TG_ID, msg, parse_mode='HTML')
         BOT.send_message(AR_TG_ID, msg, parse_mode='HTML')
 
-        update_last_check(LAST_CHECK_FILE)
+        update_last_check(LAST_MAIN_CHECK_FILE)
         source.LAST_NOTIF_PROCESSOR = datetime.now()
 
 
