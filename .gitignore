@@ -10,3 +10,4 @@ test.py
 logs*
 *.xlsx
 help_scripts
+*.pid

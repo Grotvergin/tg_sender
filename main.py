@@ -1,10 +1,11 @@
 import source
 from common import ShowButtons, Stamp
 from file import LoadRequestsFromFile, loadDailyStats
+from monitor import update_last_check
 from source import (BOT, WELCOME_BTNS, SINGLE_BTNS, AUTO_CHOICE,
                     CANCEL_BTN, FILE_FINISHED, FILE_ACTIVE,
                     FILE_AUTO_VIEWS, FILE_AUTO_REPS, USER_RESPONSES, SKIP_CODE,
-                    FILE_AUTO_REAC, AUTHORIZED_USERS_FILE)
+                    FILE_AUTO_REAC, AUTHORIZED_USERS_FILE, LAST_MAIN_CHECK_FILE)
 from secret import SECRET_CODE
 from json import dump, load
 from auth import CheckRefreshAuth
@@ -38,6 +39,7 @@ def save_authorized_users(users: set) -> None:
 
 
 async def Main() -> None:
+    update_last_check(LAST_MAIN_CHECK_FILE)
     source.REQS_QUEUE = LoadRequestsFromFile('active', FILE_ACTIVE)
     source.FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)
     source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', FILE_AUTO_VIEWS)

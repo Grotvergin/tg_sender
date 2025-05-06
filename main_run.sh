@@ -12,4 +12,4 @@ done
 
 # Сохраняем PID и запускаем в screen с логом
 echo $$ > main.pid
-python3 main.py | tee main_logs/$i.log
+python main.py | tee main_logs/$i.log

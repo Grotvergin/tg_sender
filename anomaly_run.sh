@@ -12,4 +12,4 @@ done
 
 # Сохраняем PID и запускаем в screen с логом
 echo $$ > anomaly.pid
-python3 anomaly.py | tee anomaly_logs/$i.log
+python anomaly.py | tee anomaly_logs/$i.log
