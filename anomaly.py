@@ -2,6 +2,7 @@ import source
 from common import Stamp, ParseAccountRow, BuildService, GetSector
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
 from file import LoadRequestsFromFile, SaveRequestsToFile
+from monitor import update_last_check
 from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
@@ -182,6 +183,7 @@ async def MonitorPostAnomalies():
         return
 
     while True:
+        update_last_check(source.LAST_ANOMALY_CHECK_FILE)
         source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
         source.AUTO_REPS_DICT = LoadRequestsFromFile('automatic reposts', source.FILE_AUTO_REPS)
         source.AUTO_REAC_DICT = LoadRequestsFromFile('automatic reactions', source.FILE_AUTO_REAC)
@@ -197,7 +199,6 @@ async def MonitorPostAnomalies():
                     Stamp(f"No accounts available to check anomalies for {channel}", 'w')
                     continue
                 index = randint(0, len(source.ACCOUNTS) - 1)
-                print(index)
                 await CheckChannelPostsForAnomalies(channel, source.ACCOUNTS[index])
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
