@@ -42,16 +42,16 @@ def find_and_kill_main(pid_file):
     return False
 
 
-def monitor_bot(last_check_file, pid_file, script_name, screen_name, max_timedelta):
+def monitor_bot(last_check_file, pid_file, script_name, max_timedelta):
     while True:
         sleep(CHECK_INTERVAL)
         last_check = get_last_check(last_check_file)
         if last_check and datetime.now() - last_check > timedelta(minutes=max_timedelta):
-            msg = f'🟥🟥🟥🟥🟥 ERROR IN {screen_name.upper()}, RESTARTING 🟥🟥🟥🟥🟥'
+            msg = f'🟥🟥🟥🟥🟥 ERROR IN {pid_file.upper()}, RESTARTING 🟥🟥🟥🟥🟥'
             BOT.send_message(MY_TG_ID, msg)
             BOT.send_message(AR_TG_ID, msg)
             find_and_kill_main(pid_file)
-            system(f"screen -S {screen_name} -X stuff './{script_name}\\n'")
+            system(f"nohup ./{script_name} > /dev/null 2>&1 &")
 
 
 if __name__ == "__main__":
