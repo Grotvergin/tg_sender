@@ -1,58 +1,79 @@
-from source import (CHECK_INTERVAL, LAST_CHECK_FILE, BOT,
-                    NOTIF_TIME_DELTA, MAX_SILENCE_TIME)
+from source import (CHECK_INTERVAL, BOT, NOTIF_TIME_DELTA, MAX_SILENCE_TIME,
+                    MONITOR_TYPES, LAST_MAIN_CHECK_FILE, MAIN_PID_FILE, MAIN_SCRIPT_NAME,
+                    MAIN_SCREEN_NAME, LAST_ANOMALY_CHECK_FILE, ANOMALY_PID_FILE,
+                    ANOMALY_SCRIPT_NAME, ANOMALY_SCREEN_NAME, MONITOR_INTERVAL_MINS,
+                    MONITOR_SILENCE_TIME)
 from secret import MY_TG_ID, AR_TG_ID
 from common import Stamp
 # ---
 from time import sleep
 from json import dump, load, JSONDecodeError
 from datetime import datetime, timedelta
-from os import system
+from os import system, kill
+from signal import SIGTERM
+from argparse import ArgumentParser
 
 
-
-def update_last_check():
-    with open(LAST_CHECK_FILE, "w") as f:
+def update_last_check(file_name):
+    with open(file_name, "w") as f:
         dump({"last_check": datetime.now().isoformat()}, f)
 
 
-def get_last_check():
+def get_last_check(file_name):
     try:
-        with open(LAST_CHECK_FILE, "r") as f:
+        with open(file_name, "r") as f:
             data = load(f)
             return datetime.fromisoformat(data["last_check"])
     except (FileNotFoundError, JSONDecodeError):
         return
 
 
-def find_and_kill_main():
+def find_and_kill_main(pid_file):
     try:
-        with open(PID_FILE, "r") as f:
+        with open(pid_file, "r") as f:
             pid = int(f.read().strip())
-        os.kill(pid, signal.SIGTERM)
+        kill(pid, SIGTERM)
         return True
     except Exception as e:
-        Stamp(f'Error killing main by PID: {e}', 'e')
-        msg = '♦ UNABLE TO KILL PROCESS ♦'
+        Stamp(f'Error killing {pid_file} by PID: {e}', 'e')
+        msg = f'♦ UNABLE TO KILL PROCESS {pid_file}♦'
         BOT.send_message(MY_TG_ID, msg)
         BOT.send_message(AR_TG_ID, msg)
     return False
 
 
-def restart_main():
-    os.system("screen -S sender -X stuff $'./run_bot.sh\\n'")
-
-
-def monitor_bot():
+def monitor_bot(last_check_file, pid_file, script_name, screen_name, max_timedelta):
     while True:
         sleep(CHECK_INTERVAL)
-        last_check = get_last_check()
-        if last_check and datetime.now() - last_check > timedelta(minutes=NOTIF_TIME_DELTA + MAX_SILENCE_TIME):
-            msg = '🟥🟥🟥🟥🟥 ERROR, KILLING AND RESTARTING 🟥🟥🟥🟥🟥'
+        last_check = get_last_check(last_check_file)
+        if last_check and datetime.now() - last_check > timedelta(minutes=max_timedelta):
+            msg = f'🟥🟥🟥🟥🟥 ERROR IN {screen_name.upper()}, RESTARTING 🟥🟥🟥🟥🟥'
             BOT.send_message(MY_TG_ID, msg)
             BOT.send_message(AR_TG_ID, msg)
-            find_and_kill_main()
-            restart_main()
+            find_and_kill_main(pid_file)
+            system(f"screen -S {screen_name} -X stuff $'./{script_name}\\n'")
 
 
 if __name__ == "__main__":
-    monitor_bot()
+    parser = ArgumentParser(description="Monitor and restart bot process if silent too long.")
+    parser.add_argument("--type", required=True, help=f"Type of bot: {' or '.join(MONITOR_TYPES)}")
+    args = parser.parse_args()
+
+    if args.type == MONITOR_TYPES[0]:
+        monitor_bot(
+            last_check_file=LAST_MAIN_CHECK_FILE,
+            pid_file=MAIN_PID_FILE,
+            script_name=MAIN_SCRIPT_NAME,
+            screen_name=MAIN_SCREEN_NAME,
+            max_timedelta=NOTIF_TIME_DELTA + MAX_SILENCE_TIME
+        )
+    elif args.type == MONITOR_TYPES[1]:
+        monitor_bot(
+            last_check_file=LAST_ANOMALY_CHECK_FILE,
+            pid_file=ANOMALY_PID_FILE,
+            script_name=ANOMALY_SCRIPT_NAME,
+            screen_name=ANOMALY_SCREEN_NAME,
+            max_timedelta=MONITOR_INTERVAL_MINS + MONITOR_SILENCE_TIME
+        )
+    else:
+        Stamp(f'Type of bot must be in {' or '.join(MONITOR_TYPES)}', 'e')
