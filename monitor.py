@@ -36,7 +36,7 @@ def find_and_kill_main(pid_file):
         return True
     except Exception as e:
         Stamp(f'Error killing {pid_file} by PID: {e}', 'e')
-        msg = f'♦ UNABLE TO KILL PROCESS {pid_file}♦'
+        msg = f'♦ Unable to kill process {pid_file} ♦'
         BOT.send_message(MY_TG_ID, msg)
         BOT.send_message(AR_TG_ID, msg)
     return False
@@ -47,7 +47,7 @@ def monitor_bot(last_check_file, pid_file, script_name, max_timedelta):
         sleep(CHECK_INTERVAL)
         last_check = get_last_check(last_check_file)
         if last_check and datetime.now() - last_check > timedelta(minutes=max_timedelta):
-            msg = f'🟥🟥🟥🟥🟥 ERROR IN {pid_file.upper()}, RESTARTING 🟥🟥🟥🟥🟥'
+            msg = f'🟥🟥🟥🟥🟥 Error in {pid_file}, restarting 🟥🟥🟥🟥🟥'
             BOT.send_message(MY_TG_ID, msg)
             BOT.send_message(AR_TG_ID, msg)
             find_and_kill_main(pid_file)
@@ -64,7 +64,6 @@ if __name__ == "__main__":
             last_check_file=LAST_MAIN_CHECK_FILE,
             pid_file=MAIN_PID_FILE,
             script_name=MAIN_SCRIPT_NAME,
-            screen_name=MAIN_SCREEN_NAME,
             max_timedelta=NOTIF_TIME_DELTA + MAX_SILENCE_TIME
         )
     elif args.type == MONITOR_TYPES[1]:
@@ -72,7 +71,6 @@ if __name__ == "__main__":
             last_check_file=LAST_ANOMALY_CHECK_FILE,
             pid_file=ANOMALY_PID_FILE,
             script_name=ANOMALY_SCRIPT_NAME,
-            screen_name=ANOMALY_SCREEN_NAME,
             max_timedelta=MONITOR_INTERVAL_MINS + MONITOR_SILENCE_TIME
         )
     else:
