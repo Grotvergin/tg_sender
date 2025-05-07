@@ -154,7 +154,7 @@ async def CheckChannelPostsForAnomalies(channel_username: str, client):
     except Exception as e:
         Stamp(f"Ошибка при обработке канала {channel_username}: {e}", 'e')
 
-    await async_sleep(LONG_SLEEP * 2)
+    await async_sleep(SHORT_SLEEP * 5)
 
 
 async def AuthorizeAccounts():
@@ -182,6 +182,8 @@ async def MonitorPostAnomalies():
         Stamp("No accounts authorized, exiting anomaly monitor.", 'e')
         return
 
+    i = 0
+
     while True:
         update_last_check(source.LAST_ANOMALY_CHECK_FILE)
         source.AUTO_VIEWS_DICT = LoadRequestsFromFile('automatic views', source.FILE_AUTO_VIEWS)
@@ -194,16 +196,21 @@ async def MonitorPostAnomalies():
         ))
 
         for channel in channels:
+            update_last_check(source.LAST_ANOMALY_CHECK_FILE)
             try:
                 if not source.ACCOUNTS:
                     Stamp(f"No accounts available to check anomalies for {channel}", 'w')
                     continue
-                index = randint(0, len(source.ACCOUNTS) - 1)
-                await CheckChannelPostsForAnomalies(channel, source.ACCOUNTS[index])
+
+                account = source.ACCOUNTS[i]
+                i = (i + 1) % len(source.ACCOUNTS)
+
+                await CheckChannelPostsForAnomalies(channel, account)
+
             except Exception as e:
                 Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
 
-        await async_sleep(MONITOR_INTERVAL_MINS * 60)
+        await async_sleep(MONITOR_INTERVAL_MINS)
 
 
 async def main():
