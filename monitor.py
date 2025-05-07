@@ -1,7 +1,7 @@
 from source import (CHECK_INTERVAL, BOT, NOTIF_TIME_DELTA, MAX_SILENCE_TIME,
                     MONITOR_TYPES, LAST_MAIN_CHECK_FILE,
                     LAST_ANOMALY_CHECK_FILE, MONITOR_INTERVAL_MINS,
-                    MONITOR_SILENCE_TIME, MAIN_BOT_TYPE, ANOMALY_BOT_TYPE)
+                    MAIN_BOT_TYPE, ANOMALY_BOT_TYPE)
 from secret import MY_TG_ID, AR_TG_ID
 from common import Stamp
 # ---
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         monitor_bot(
             last_check_file=LAST_ANOMALY_CHECK_FILE,
             bot_type=ANOMALY_BOT_TYPE,
-            max_timedelta=MONITOR_INTERVAL_MINS + MONITOR_SILENCE_TIME
+            max_timedelta=MONITOR_INTERVAL_MINS + MAX_SILENCE_TIME
         )
     else:
         Stamp(f'Type of bot must be in {' or '.join(MONITOR_TYPES)}', 'e')
