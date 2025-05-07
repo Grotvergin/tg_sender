@@ -7,7 +7,8 @@ from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     LONG_SLEEP, NO_REQUIREMENTS_MESSAGE, TIME_FORMAT,
                     LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL, TIME_FRACTION,
-                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
+                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
+                    MAX_DIFF_REAC_DECREASED, SHORT_SLEEP)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join
