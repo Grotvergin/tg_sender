@@ -1,8 +1,7 @@
 from source import (CHECK_INTERVAL, BOT, NOTIF_TIME_DELTA, MAX_SILENCE_TIME,
-                    MONITOR_TYPES, LAST_MAIN_CHECK_FILE, MAIN_PID_FILE, MAIN_SCRIPT_NAME,
-                    LAST_ANOMALY_CHECK_FILE, ANOMALY_PID_FILE,
-                    ANOMALY_SCRIPT_NAME, MONITOR_INTERVAL_MINS,
-                    MONITOR_SILENCE_TIME)
+                    MONITOR_TYPES, LAST_MAIN_CHECK_FILE,
+                    LAST_ANOMALY_CHECK_FILE, MONITOR_INTERVAL_MINS,
+                    MONITOR_SILENCE_TIME, MAIN_BOT_TYPE, ANOMALY_BOT_TYPE)
 from secret import MY_TG_ID, AR_TG_ID
 from common import Stamp
 # ---
@@ -42,16 +41,16 @@ def find_and_kill_main(pid_file):
     return False
 
 
-def monitor_bot(last_check_file, pid_file, script_name, max_timedelta):
+def monitor_bot(last_check_file, bot_type, max_timedelta):
     while True:
         sleep(CHECK_INTERVAL)
         last_check = get_last_check(last_check_file)
         if last_check and datetime.now() - last_check > timedelta(minutes=max_timedelta):
-            msg = f'🟥🟥🟥🟥🟥 Error in {pid_file}, restarting 🟥🟥🟥🟥🟥'
+            msg = f'🟥🟥🟥🟥🟥 Error in {bot_type}, restarting 🟥🟥🟥🟥🟥'
             BOT.send_message(MY_TG_ID, msg)
             BOT.send_message(AR_TG_ID, msg)
-            find_and_kill_main(pid_file)
-            system(f"nohup ./{script_name} > /dev/null 2>&1 &")
+            find_and_kill_main(f'{bot_type}.pid')
+            system(f"bash run.sh {bot_type}")
 
 
 if __name__ == "__main__":
@@ -62,15 +61,13 @@ if __name__ == "__main__":
     if args.type == MONITOR_TYPES[0]:
         monitor_bot(
             last_check_file=LAST_MAIN_CHECK_FILE,
-            pid_file=MAIN_PID_FILE,
-            script_name=MAIN_SCRIPT_NAME,
+            bot_type=MAIN_BOT_TYPE,
             max_timedelta=NOTIF_TIME_DELTA + MAX_SILENCE_TIME
         )
     elif args.type == MONITOR_TYPES[1]:
         monitor_bot(
             last_check_file=LAST_ANOMALY_CHECK_FILE,
-            pid_file=ANOMALY_PID_FILE,
-            script_name=ANOMALY_SCRIPT_NAME,
+            bot_type=ANOMALY_BOT_TYPE,
             max_timedelta=MONITOR_INTERVAL_MINS + MONITOR_SILENCE_TIME
         )
     else:
