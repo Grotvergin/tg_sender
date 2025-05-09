@@ -22,6 +22,9 @@ while [[ -f "${LOG_DIR}/${i}.log" ]]; do
   ((i++))
 done
 
+# Увеличим лимит открытых файлов
+ulimit -n 65535
+
 # Запускаем и сохраняем PID
 nohup python "$SCRIPT" > "${LOG_DIR}/${i}.log" 2>&1 &
 echo $! > "$PID_FILE"
