@@ -25,7 +25,6 @@ from threading import Thread
 from telebot.types import Message
 
 
-
 def load_authorized_users() -> set:
     """Загружает список авторизованных пользователей из файла."""
     if exists(AUTHORIZED_USERS_FILE):
