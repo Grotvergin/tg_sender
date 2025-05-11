@@ -143,9 +143,7 @@ async def ProcessRequest(req: dict, i: int):
                         message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
                         updateDailyStats('finished')
                     source.REQS_QUEUE.remove(req)
-                    SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
                     source.FINISHED_REQS.append(req)
-                    SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
                     user_id = req['initiator'].split(' ')[-1]
                     BOT.send_message(user_id, message, parse_mode='HTML')
         except Exception as e:
@@ -170,6 +168,8 @@ async def ProcessRequests() -> None:
                 tasks.append(ProcessRequest(req, i))
 
             await gather(*tasks)
+            SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
+            SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
 
         except Exception as e:
             Stamp(f'Uncaught exception in processor happened: {e}', 'w')

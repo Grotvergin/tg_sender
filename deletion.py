@@ -14,7 +14,6 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
         if req['link'] == message.text:
             Stamp(f'Deleting request for {req["link"]}', 'i')
             del source.REQS_QUEUE[i]
-            SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
             cnt += 1
     if cnt == 0:
         Stamp('No deletions made', 'w')
@@ -22,6 +21,7 @@ def DeleteSingleRequest(message: Message, clbk: Callable) -> None:
     else:
         Stamp(f'{cnt} requests were deleted', 's')
         BOT.send_message(message.from_user.id, f'✅ Было удалено {cnt} разовых заявок')
+    SaveRequestsToFile(source.REQS_QUEUE, 'active', FILE_ACTIVE)
     ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
     BOT.register_next_step_handler(message, clbk)
 
