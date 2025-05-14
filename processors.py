@@ -80,6 +80,8 @@ def sendNotificationAboutWork():
         auto_count = 0
         emergency_count = 0
         unknown_count = 0
+        finished = source.DAILY_STATS["finished"]
+        expired = source.DAILY_STATS["expired"]
 
         for req in source.REQS_QUEUE:
             initiator = req.get("initiator", "")
@@ -99,11 +101,11 @@ def sendNotificationAboutWork():
             f'📢 Репосты: {type_counts['Репосты']}\n'
             f'❤️ Реакции: {type_counts['Реакции']}\n\n'
             
-            f'📅 <b>За текущие сутки</b>\n'
-            f'✅ Выполнено: {source.DAILY_STATS["finished"]}\n'
-            f'🛑 Снято: {source.DAILY_STATS["expired"]}\n\n'
+            f'📅 <b>За текущие сутки ({finished + expired})</b>\n'
+            f'✅ Выполнено: {finished}\n'
+            f'🛑 Снято: {expired}\n\n'
 
-            f'⌛️ <b>Автоматические ({total_unique_auto} уникальных)</b>\n'
+            f'⌛️ <b>Автоматические ({total_unique_auto})</b>\n'
             f'👀 Просмотры: {len(source.AUTO_VIEWS_DICT)}\n'
             f'📢 Репосты: {len(source.AUTO_REPS_DICT)}\n'
             f'❤️ Реакции: {len(source.AUTO_REAC_DICT)}'
