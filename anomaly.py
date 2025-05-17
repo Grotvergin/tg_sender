@@ -54,7 +54,7 @@ async def analyze_metric(name: str, req_dict: dict, channel_name: str, message, 
 
     if current_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - current_value) / cur_time_coef)
-        await create_emergency_request(name, channel_name, message.id, MANAGER_TG_ID, lack, diff_reac_num)
+        await create_emergency_request(name, channel_name, message.id, MANAGER_TG_ID, max(lack, 1), diff_reac_num)
         return info, f"{name} ниже минимального порога: {info}"
     return info, None
 
