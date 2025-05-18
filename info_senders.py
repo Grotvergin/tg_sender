@@ -22,16 +22,16 @@ def SendTariffInfo(data: dict) -> (str, list):
     return msg, countries
 
 
-def SendRequests(message: Message, reqs: list, amount: int = None, portion: int = REQS_PORTION) -> None:
+def SendRequests(message: Message, reqs: list, start_idx: int, end_idx: int) -> None:
     if reqs:
-        cut_reqs = reqs[-amount:] if amount else reqs
+        cut_reqs = reqs[start_idx:end_idx]
         BOT.send_message(message.from_user.id, f"🔍 Общее количество разовых заявок: {len(reqs)}, показываю: {len(cut_reqs)}")
-        for idx, i in enumerate(range(0, len(cut_reqs), portion)):
-            portion_requests = cut_reqs[i:i + portion]
+        for idx, i in enumerate(range(0, len(cut_reqs), REQS_PORTION)):
+            portion_requests = cut_reqs[i:i + REQS_PORTION]
             msg = ''
             for j, req in enumerate(portion_requests, start=1):
                 separator = '	—' * 5
-                msg += f"{separator} {idx * portion + j} {separator}\n"
+                msg += f"{separator} {start_idx + idx * REQS_PORTION + j} {separator}\n"
                 msg += PrintRequest(req) + '\n'
             BOT.send_message(message.from_user.id, msg, parse_mode='HTML')
             Sleep(SHORT_SLEEP)

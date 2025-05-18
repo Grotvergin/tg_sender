@@ -15,14 +15,35 @@ from telebot.types import Message
 from emoji import EMOJI_DATA
 
 
-def SingleChoice(message: Message) -> None:
-    if message.text == SINGLE_BTNS[0]:
-        SendRequests(message, source.REQS_QUEUE)
+def GetIndexes(message: Message) -> None:
+    user_id = message.from_user.id
+
+    if message.text == CANCEL_BTN[0]:
+        ShowButtons(message, WELCOME_BTNS, '❔ Выберите действие:')
+
+    try:
+        start_idx, end_idx = map(int, message.text.strip().split())
+
+        if start_idx < 1 or end_idx > len(source.REQS_QUEUE) or end_idx < start_idx:
+            BOT.send_message(user_id, f'❌ Ошибка: индексы вне допустимого диапазона (1, {len(source.REQS_QUEUE)})')
+            BOT.register_next_step_handler(message, GetIndexes)
+
+        SendRequests(message, source.REQS_QUEUE, start_idx - 1, end_idx)
         ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, SingleChoice)
+    except ValueError:
+        BOT.send_message(user_id, "❌ Ошибка: введите два целых числа через пробел, например, 15 25")
+        BOT.register_next_step_handler(message, GetIndexes)
+
+
+def SingleChoice(message: Message) -> None:
+    if message.text == SINGLE_BTNS[0]:
+        ShowButtons(message, CANCEL_BTN, f'❔ Выберите индексы начала и конца списка'
+                                         f' вывода через пробел от 1 до {len(source.REQS_QUEUE)}, например, 15 25:')
+        BOT.register_next_step_handler(message, GetIndexes)
     elif message.text == SINGLE_BTNS[1]:
         reqs = LoadRequestsFromFile('finished', FILE_FINISHED)
-        SendRequests(message, reqs, amount=NUMBER_LAST_FIN)
+        SendRequests(message, reqs, len(source.REQS_QUEUE) - NUMBER_LAST_FIN, len(source.REQS_QUEUE))
         ShowButtons(message, SINGLE_BTNS, '❔ Выберите действие:')
         BOT.register_next_step_handler(message, SingleChoice)
     elif message.text == SINGLE_BTNS[2]:
