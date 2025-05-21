@@ -16,7 +16,6 @@ from single_data_accept import SingleChoice, doRebrand
 from auto_data_accept import AutomaticChoice
 from info_senders import SendAccountNumbers
 from os.path import exists
-from resource import getrlimit, RLIMIT_NOFILE
 # ---
 from asyncio import get_event_loop, gather, create_task, run
 from traceback import format_exc
@@ -40,8 +39,6 @@ def save_authorized_users(users: set) -> None:
 
 
 async def Main() -> None:
-    soft, hard = getrlimit(RLIMIT_NOFILE)
-    Stamp(f"Ulimit (open files): soft={soft}, hard={hard}", 'i')
     update_last_check(LAST_MAIN_CHECK_FILE)
     source.REQS_QUEUE = LoadRequestsFromFile('active', FILE_ACTIVE)
     source.FINISHED_REQS = LoadRequestsFromFile('finished', FILE_FINISHED)

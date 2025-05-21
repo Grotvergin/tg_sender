@@ -4,7 +4,7 @@ from adders import PerformSubscription
 from secret import MY_TG_ID
 from source import (TIME_FORMAT, BOT, FILE_ACTIVE, SHORT_SLEEP, REFRESH_HANDLER_TIMEOUT_MIN,
                     LINK_DECREASE_RATIO, LIMIT_DIALOGS, ALL_REACTIONS, MIN_DIFF_REAC_NORMAL,
-                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
+                    MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED, DEFAULT_MAX_UNIQ_REAC)
 from common import Stamp, AsyncSleep
 from asyncio import sleep as async_sleep
 # ---
@@ -255,7 +255,7 @@ async def GetReactionsList(channel_link, index):
     channel = await source.ACCOUNTS[index].get_entity(channel_link)
     full_chat = await source.ACCOUNTS[index](GetFullChannelRequest(channel))
     result = full_chat.full_chat.available_reactions
-    uniq_reac_max = full_chat.full_chat.reactions_limit
+    uniq_reac_max = full_chat.full_chat.reactions_limit if full_chat.full_chat.reactions_limit else DEFAULT_MAX_UNIQ_REAC
     if not result:
         return []
 
