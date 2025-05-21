@@ -257,7 +257,7 @@ async def GetReactionsList(channel_link, index):
     result = full_chat.full_chat.available_reactions
     uniq_reac_max = full_chat.full_chat.reactions_limit if full_chat.full_chat.reactions_limit else DEFAULT_MAX_UNIQ_REAC
     if not result:
-        return []
+        return [], 0
 
     if hasattr(result, 'reactions'):
         reac_list = [reaction.emoticon for reaction in result.reactions if hasattr(reaction, 'emoticon')]
