@@ -150,12 +150,12 @@ async def handleViews(channel_name, message):
     if cur_value < threshold:
         percent_below = (threshold - cur_value) / threshold * 100
         text = (
-            f"🚨 Пост @{channel_name}/{message.id}\n"
-            f"Просмотров: {cur_value}\n"
-            f"Среднее: {avg_views:.1f}\n"
-            f"Нижняя граница: {threshold:.1f}\n"
-            f"Просмотров меньше на: {percent_below:.1f}%\n"
-            f"Возраст: {round(age_seconds / 3600, 1)} часов"
+            f"🚨 https://t.me/{channel_name}/{message.id}\n"
+            f"👁 Просмотров: {cur_value}\n"
+            f"〽️ Среднее: {avg_views:.1f}\n"
+            f"⬆️ Нижняя граница: {threshold:.1f}\n"
+            f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
+            f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
         )
         BOT.send_message(MY_TG_ID, text)
         BOT.send_message(AR_TG_ID, text)
