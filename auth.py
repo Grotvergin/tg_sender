@@ -83,7 +83,6 @@ async def AuthorizeAccounts() -> None:
                         await client.start(phone=num, password=password_tg, code_callback=lambda: skipCodeCallback())
                     source.ACCOUNTS.append(client)
                     Stamp(f'Account {num} authorized', 's')
-                    BOT.send_message(source.ADMIN_CHAT_ID, f'✅ Аккаунт {num} авторизован')
                 except PhoneCodeInvalidError:
                     BOT.send_message(source.ADMIN_CHAT_ID, f'❌ Неверный код для номера {num}.')
                     Stamp(f'Invalid code for {num}', 'e')

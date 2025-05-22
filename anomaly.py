@@ -157,8 +157,8 @@ async def handleViews(channel_name, message):
             f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
             f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
         )
-        BOT.send_message(MY_TG_ID, text)
-        BOT.send_message(AR_TG_ID, text)
+        # BOT.send_message(MY_TG_ID, text)
+        # BOT.send_message(AR_TG_ID, text)
         Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
 
 
