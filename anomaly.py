@@ -132,43 +132,6 @@ def saveAvgViews():
         dump(source.CACHE_VIEWS, f, ensure_ascii=False, indent=2)
         
         
-@rate_limit_bot_messages(cooldown_seconds=2.0, storage_file='sent.json')
-async def sendAnomalyNotification(channel_name: str, message_id: str, text: str):
-    await BOT.send_message(MY_TG_ID, text)
-    await BOT.send_message(AR_TG_ID, text)
-
-
-async def handleViews(channel_name, message):
-    if channel_name not in source.AUTO_VIEWS_DICT:
-        return
-
-    cur_value = message.views or 0
-    age_seconds = (datetime.now(timezone.utc) - message.date).total_seconds()
-
-    if age_seconds < START_ANOMALY_COUNT_HOURS * 3600:
-        return
-
-    cache_entry = source.CACHE_VIEWS.get(channel_name, {})
-    avg_views = cache_entry.get("avg_views")
-
-    if avg_views is None:
-        return
-
-    threshold = avg_views * THRESHOLD_AVG_ANOMALY_VIEWS
-    if cur_value < threshold:
-        percent_below = (threshold - cur_value) / threshold * 100
-        text = (
-            f"🚨 https://t.me/{channel_name}/{message.id}\n"
-            f"👁 Просмотров: {cur_value}\n"
-            f"〽️ Среднее: {avg_views:.1f}\n"
-            f"⬆️ Нижняя граница: {threshold:.1f}\n"
-            f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
-            f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
-        )
-        await sendAnomalyNotification(channel_name, message.id, text)
-        Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
-        
-        
 class MessageLimiter:
     def __init__(self, cooldown_seconds: float = 2.0, storage_file: str = 'sent.json'):
         self.cooldown_seconds = cooldown_seconds
@@ -234,6 +197,43 @@ def rate_limit_bot_messages(cooldown_seconds: float = 2.0, storage_file: str = '
         return wrapper
     
     return decorator
+        
+        
+@rate_limit_bot_messages(cooldown_seconds=2.0, storage_file='sent.json')
+async def sendAnomalyNotification(channel_name: str, message_id: str, text: str):
+    await BOT.send_message(MY_TG_ID, text)
+    await BOT.send_message(AR_TG_ID, text)
+
+
+async def handleViews(channel_name, message):
+    if channel_name not in source.AUTO_VIEWS_DICT:
+        return
+
+    cur_value = message.views or 0
+    age_seconds = (datetime.now(timezone.utc) - message.date).total_seconds()
+
+    if age_seconds < START_ANOMALY_COUNT_HOURS * 3600:
+        return
+
+    cache_entry = source.CACHE_VIEWS.get(channel_name, {})
+    avg_views = cache_entry.get("avg_views")
+
+    if avg_views is None:
+        return
+
+    threshold = avg_views * THRESHOLD_AVG_ANOMALY_VIEWS
+    if cur_value < threshold:
+        percent_below = (threshold - cur_value) / threshold * 100
+        text = (
+            f"🚨 https://t.me/{channel_name}/{message.id}\n"
+            f"👁 Просмотров: {cur_value}\n"
+            f"〽️ Среднее: {avg_views:.1f}\n"
+            f"⬆️ Нижняя граница: {threshold:.1f}\n"
+            f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
+            f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
+        )
+        await sendAnomalyNotification(channel_name, message.id, text)
+        Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
 
 
 def avgViewsNeedUpdate(channel_name):
