@@ -273,22 +273,22 @@ async def updateAvgViews(client, channel_name, entity):
 
 async def CheckChannelPostsForAnomalies(channel_username: str, client):
     Stamp(f"Checking channel @{channel_username}", 'i')
-    try:
-        entity = await client.get_entity(channel_username)
+   # try:
+    entity = await client.get_entity(channel_username)
 
-        if avgViewsNeedUpdate(channel_username):
-            await updateAvgViews(client, channel_username, entity)
+    if avgViewsNeedUpdate(channel_username):
+        await updateAvgViews(client, channel_username, entity)
 
-        async for message in client.iter_messages(entity, limit=POSTS_TO_CHECK):
-            if not message.date or not message or not message.text:
-                continue
+    async for message in client.iter_messages(entity, limit=POSTS_TO_CHECK):
+        if not message.date or not message or not message.text:
+            continue
 
-            await handleViews(channel_username, message)
-            await handleReposts(channel_username, message)
-            await handleReactions(channel_username, message)
+        await handleViews(channel_username, message)
+        await handleReposts(channel_username, message)
+        await handleReactions(channel_username, message)
 
-    except Exception as e:
-        Stamp(f"Error checking channel @{channel_username}: {e}", 'e')
+    #except Exception as e:
+     #   Stamp(f"Error checking channel @{channel_username}: {e}", 'e')
 
     await async_sleep(SHORT_SLEEP * 5)
 
