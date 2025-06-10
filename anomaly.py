@@ -9,7 +9,7 @@ from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     TIME_FRACTION, MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
                     MAX_DIFF_REAC_DECREASED, SHORT_SLEEP, CACHE_FILE,
                     MAX_AVG_POSTS_CHECK, POSTS_FOR_AVG, START_ANOMALY_COUNT_HOURS,
-                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, ANOMALY_BOT, SENT_VIEWS_FILE)
+                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, ANOMALY_BOT, SENT_VIEWS_FILE, LAST_ANOMALY_CHECK_FILE)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join, exists
@@ -289,6 +289,7 @@ async def MonitorPostAnomalies():
 
 
 async def main():
+    update_last_check(LAST_ANOMALY_CHECK_FILE)
     await AuthorizeAccounts()
     await MonitorPostAnomalies()
 
