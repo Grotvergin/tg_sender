@@ -17,6 +17,8 @@ from os import getcwd
 from datetime import datetime, timezone, timedelta
 from random import randint
 from json import load, dump
+from typing import Dict, Optional
+from functools import wraps
 # ---
 from telethon import TelegramClient
 
@@ -128,6 +130,80 @@ def loadAvgViews():
 def saveAvgViews():
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         dump(source.CACHE_VIEWS, f, ensure_ascii=False, indent=2)
+        
+        
+class MessageLimiter:
+    def __init__(self, cooldown_seconds: float = 2.0, storage_file: str = 'sent.json'):
+        self.cooldown_seconds = cooldown_seconds
+        self.storage_file = storage_file
+        self.last_send_time = datetime.min
+        self.sent_messages: Dict[str, datetime] = {}
+        
+        # Загрузка существующих данных
+        try:
+            with open(storage_file, 'r') as f:
+                data = load(f)
+                self.sent_messages = {
+                    k: datetime.fromisoformat(v) 
+                    for k, v in data.items()
+                }
+        except FileNotFoundError:
+            pass
+    
+    async def save_sent_messages(self):
+        """Сохраняет информацию о отправленных сообщениях"""
+        with open(self.storage_file, 'w') as f:
+            dump({
+                k: v.isoformat() 
+                for k, v in self.sent_messages.items()
+            }, f)
+
+    def is_message_new(self, channel_name: str, message_id: str) -> bool:
+        """Проверяет, является ли сообщение новым"""
+        key = f"{channel_name}/{message_id}"
+        if key in self.sent_messages:
+            return False
+        self.sent_messages[key] = datetime.now()
+        return True
+
+
+def rate_limit_bot_messages(cooldown_seconds: float = 2.0, storage_file: str = 'sent.json'):
+    limiter = MessageLimiter(cooldown_seconds, storage_file)
+    
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(channel_name: str, message_id: str, *args, **kwargs):
+            current_time = datetime.now()
+            
+            # Проверяем таймаут между сообщениями
+            time_diff = (current_time - limiter.last_send_time).total_seconds()
+            if time_diff < cooldown_seconds:
+                await async_sleep(cooldown_seconds - time_diff)
+            
+            # Проверяем, было ли такое сообщение ранее
+            if not limiter.is_message_new(channel_name, message_id):
+                return
+            
+            # Отправляем сообщение
+            result = await func(channel_name, message_id, *args, **kwargs)
+            
+            # Обновляем время последней отправки
+            limiter.last_send_time = datetime.now()
+            
+            # Сохраняем информацию об отправленном сообщении
+            await limiter.save_sent_messages()
+            
+            return result
+        
+        return wrapper
+    
+    return decorator
+        
+        
+@rate_limit_bot_messages(cooldown_seconds=2.0, storage_file='sent.json')
+async def sendAnomalyNotification(channel_name: str, message_id: str, text: str):
+    await ANOMALY_BOT.send_message(MY_TG_ID, text)
+    await ANOMALY_BOT.send_message(AR_TG_ID, text)
 
 
 async def handleViews(channel_name, message):
@@ -157,8 +233,7 @@ async def handleViews(channel_name, message):
             f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
             f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
         )
-        ANOMALY_BOT.send_message(MY_TG_ID, text)
-        ANOMALY_BOT.send_message(AR_TG_ID, text)
+        await sendAnomalyNotification(channel_name, message.id, text)
         Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
 
 
@@ -199,22 +274,18 @@ async def updateAvgViews(client, channel_name, entity):
 
 async def CheckChannelPostsForAnomalies(channel_username: str, client):
     Stamp(f"Checking channel @{channel_username}", 'i')
-    try:
-        entity = await client.get_entity(channel_username)
+    entity = await client.get_entity(channel_username)
 
-        if avgViewsNeedUpdate(channel_username):
-            await updateAvgViews(client, channel_username, entity)
+    if avgViewsNeedUpdate(channel_username):
+        await updateAvgViews(client, channel_username, entity)
 
-        async for message in client.iter_messages(entity, limit=POSTS_TO_CHECK):
-            if not message.date or not message or not message.text:
-                continue
+    async for message in client.iter_messages(entity, limit=POSTS_TO_CHECK):
+        if not message.date or not message or not message.text:
+            continue
 
-            await handleViews(channel_username, message)
-            await handleReposts(channel_username, message)
-            await handleReactions(channel_username, message)
-
-    except Exception as e:
-        Stamp(f"Error checking channel @{channel_username}: {e}", 'e')
+        await handleViews(channel_username, message)
+        await handleReposts(channel_username, message)
+        await handleReactions(channel_username, message)
 
     await async_sleep(SHORT_SLEEP * 5)
 

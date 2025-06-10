@@ -119,6 +119,7 @@ def sendNotificationAboutWork():
 
 
 async def ProcessRequest(req: dict, i: int):
+
     async with source.SEMAPHORE:
         try:
             finish = datetime.strptime(req['finish'], TIME_FORMAT)
@@ -139,18 +140,15 @@ async def ProcessRequest(req: dict, i: int):
                     await ProcessOrder(req, to_add)
                 else:
                     if req.get('current', 0) < req['planned']:
-                        message = f"⚠️ Заявка снята из-за истечения времени\n\n{PrintRequest(req)}"
                         updateDailyStats('expired')
                     else:
-                        message = f"✅ Заявка выполнена\n\n{PrintRequest(req)}"
                         updateDailyStats('finished')
                     source.REQS_QUEUE.remove(req)
                     source.FINISHED_REQS.append(req)
                     user_id = req['initiator'].split(' ')[-1]
-                    BOT.send_message(user_id, message, parse_mode='HTML')
         except Exception as e:
             Stamp(f'Error processing request #{i}: {e}', 'w')
-            BOT.send_message(MY_TG_ID, f'🔴 Ошибка в обработке заявки #{i}')
+            BOT.send_message(MY_TG_ID, f'🔴 Ошибка в обработке заявки #{i}: {e}')
 
 
 async def ProcessRequests() -> None:
@@ -175,7 +173,7 @@ async def ProcessRequests() -> None:
 
         except Exception as e:
             Stamp(f'Uncaught exception in processor happened: {e}', 'w')
-            BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests')
+            BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests: {e}')
 
         await AsyncSleep(LONG_SLEEP, 0.5)
 
