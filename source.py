@@ -1,4 +1,4 @@
-from secret import TOKEN, MY_TG_ID, PROXY_KEY, TOKEN_TEST
+from secret import TOKEN, MY_TG_ID, PROXY_KEY, TOKEN_TEST, TOKEN_ANOMALY
 # ---
 from random import seed
 from ssl import SSLEOFError
@@ -112,6 +112,7 @@ MAIN_BOT_TYPE = 'main'
 ANOMALY_BOT_TYPE = 'anomaly'
 MONITOR_TYPES = ('m', 'a')
 BOT = TeleBot(TOKEN)
+ANOMALY_BOT = TeleBot(TOKEN_ANOMALY)
 CONN_ERRORS = (TimeoutError, ServerNotFoundError, gaierror, HttpError, SSLEOFError)
 LAST_NOTIF_PROCESSOR = datetime.now()
 CACHE_VIEWS = {}

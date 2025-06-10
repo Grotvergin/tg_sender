@@ -9,7 +9,7 @@ from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     TIME_FRACTION, MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
                     MAX_DIFF_REAC_DECREASED, SHORT_SLEEP, CACHE_FILE,
                     MAX_AVG_POSTS_CHECK, POSTS_FOR_AVG, START_ANOMALY_COUNT_HOURS,
-                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, BOT)
+                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, BOT, ANOMALY_BOT)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join, exists
@@ -157,8 +157,8 @@ async def handleViews(channel_name, message):
             f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
             f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
         )
-        BOT.send_message(MY_TG_ID, text)
-        BOT.send_message(AR_TG_ID, text)
+        ANOMALY_BOT.send_message(MY_TG_ID, text)
+        ANOMALY_BOT.send_message(AR_TG_ID, text)
         Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
 
 
