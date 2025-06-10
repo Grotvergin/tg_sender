@@ -141,7 +141,7 @@ def checkNeedToSend(msg, key):
         ANOMALY_BOT.send_message(MY_TG_ID, msg)
         ANOMALY_BOT.send_message(AR_TG_ID, msg)
         data.append(key)
-        with open(SENT_VIEWS_FILE, 'r') as f:
+        with open(SENT_VIEWS_FILE, 'w') as f:
             dump(data, f)
         Sleep(2)
     else:
