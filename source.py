@@ -108,6 +108,7 @@ EMERGENCY_FILE = 'emerge.json'
 DAILY_STATS_FILE = 'daily.json'
 LAST_MAIN_CHECK_FILE = "last_main_check.json"
 LAST_ANOMALY_CHECK_FILE = "last_anomaly_check.json"
+SENT_VIEWS_FILE = 'sent.json'
 MAIN_BOT_TYPE = 'main'
 ANOMALY_BOT_TYPE = 'anomaly'
 MONITOR_TYPES = ('m', 'a')

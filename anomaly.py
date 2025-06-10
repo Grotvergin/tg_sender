@@ -1,5 +1,5 @@
 import source
-from common import Stamp, ParseAccountRow, BuildService, GetSector
+from common import Stamp, ParseAccountRow, BuildService, GetSector, Sleep
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from monitor import update_last_check
@@ -9,7 +9,7 @@ from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     TIME_FRACTION, MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
                     MAX_DIFF_REAC_DECREASED, SHORT_SLEEP, CACHE_FILE,
                     MAX_AVG_POSTS_CHECK, POSTS_FOR_AVG, START_ANOMALY_COUNT_HOURS,
-                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, BOT, ANOMALY_BOT)
+                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, ANOMALY_BOT, SENT_VIEWS_FILE)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join, exists
@@ -17,8 +17,6 @@ from os import getcwd
 from datetime import datetime, timezone, timedelta
 from random import randint
 from json import load, dump
-from typing import Dict, Optional
-from functools import wraps
 # ---
 from telethon import TelegramClient
 
@@ -130,80 +128,24 @@ def loadAvgViews():
 def saveAvgViews():
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         dump(source.CACHE_VIEWS, f, ensure_ascii=False, indent=2)
-        
-        
-class MessageLimiter:
-    def __init__(self, cooldown_seconds: float = 2.0, storage_file: str = 'sent.json'):
-        self.cooldown_seconds = cooldown_seconds
-        self.storage_file = storage_file
-        self.last_send_time = datetime.min
-        self.sent_messages: Dict[str, datetime] = {}
-        
-        # Загрузка существующих данных
-        try:
-            with open(storage_file, 'r') as f:
-                data = load(f)
-                self.sent_messages = {
-                    k: datetime.fromisoformat(v) 
-                    for k, v in data.items()
-                }
-        except FileNotFoundError:
-            pass
-    
-    async def save_sent_messages(self):
-        """Сохраняет информацию о отправленных сообщениях"""
-        with open(self.storage_file, 'w') as f:
-            dump({
-                k: v.isoformat() 
-                for k, v in self.sent_messages.items()
-            }, f)
-
-    def is_message_new(self, channel_name: str, message_id: str) -> bool:
-        """Проверяет, является ли сообщение новым"""
-        key = f"{channel_name}/{message_id}"
-        if key in self.sent_messages:
-            return False
-        self.sent_messages[key] = datetime.now()
-        return True
 
 
-def rate_limit_bot_messages(cooldown_seconds: float = 2.0, storage_file: str = 'sent.json'):
-    limiter = MessageLimiter(cooldown_seconds, storage_file)
-    
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(channel_name: str, message_id: str, *args, **kwargs):
-            current_time = datetime.now()
-            
-            # Проверяем таймаут между сообщениями
-            time_diff = (current_time - limiter.last_send_time).total_seconds()
-            if time_diff < cooldown_seconds:
-                await async_sleep(cooldown_seconds - time_diff)
-            
-            # Проверяем, было ли такое сообщение ранее
-            if not limiter.is_message_new(channel_name, message_id):
-                return
-            
-            # Отправляем сообщение
-            result = await func(channel_name, message_id, *args, **kwargs)
-            
-            # Обновляем время последней отправки
-            limiter.last_send_time = datetime.now()
-            
-            # Сохраняем информацию об отправленном сообщении
-            await limiter.save_sent_messages()
-            
-            return result
-        
-        return wrapper
-    
-    return decorator
-        
-        
-@rate_limit_bot_messages(cooldown_seconds=2.0, storage_file='sent.json')
-async def sendAnomalyNotification(channel_name: str, message_id: str, text: str):
-    await ANOMALY_BOT.send_message(MY_TG_ID, text)
-    await ANOMALY_BOT.send_message(AR_TG_ID, text)
+def checkNeedToSend(msg, key):
+    try:
+        with open(SENT_VIEWS_FILE, 'r') as f:
+            data = load(f)
+    except FileNotFoundError:
+        Stamp('File with sent messages not found', 'e')
+    if key not in data:
+        Stamp(f'Sending notification on views anomaly for {key}', 'i')
+        ANOMALY_BOT.send_message(MY_TG_ID, msg)
+        ANOMALY_BOT.send_message(AR_TG_ID, msg)
+        data.append(key)
+        with open(SENT_VIEWS_FILE, 'r') as f:
+            dump(data, f)
+        Sleep(2)
+    else:
+        Stamp(f'No need to send notification on views anomaly for {key}', 'i')
 
 
 async def handleViews(channel_name, message):
@@ -224,6 +166,7 @@ async def handleViews(channel_name, message):
 
     threshold = avg_views * THRESHOLD_AVG_ANOMALY_VIEWS
     if cur_value < threshold:
+        Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
         percent_below = (threshold - cur_value) / threshold * 100
         text = (
             f"🚨 https://t.me/{channel_name}/{message.id}\n"
@@ -233,8 +176,7 @@ async def handleViews(channel_name, message):
             f"🔺 Просмотров меньше на: {percent_below:.1f}%\n"
             f"🕔 Возраст: {round(age_seconds / 3600, 1)} часов"
         )
-        await sendAnomalyNotification(channel_name, message.id, text)
-        Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
+        checkNeedToSend(text, f"{channel_name}/{message.id}")
 
 
 def avgViewsNeedUpdate(channel_name):
