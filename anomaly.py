@@ -3,7 +3,7 @@ from common import Stamp, ParseAccountRow, BuildService, GetSector, Sleep
 from event_handler import GetReactionsList, DistributeReactionsIntoEmojis, NeedToDecrease
 from file import LoadRequestsFromFile, SaveRequestsToFile
 from monitor import update_last_check
-from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID, MY_TG_ID, AR_TG_ID
+from secret import ANOMALY_SHEET_NAME, SHEET_ID, SHEET_NAME, MANAGER_TG_ID, MY_TG_ID, AR_TG_ID, ADM_TG_ID
 from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     TIME_FORMAT, LINK_DECREASE_RATIO, MIN_DIFF_REAC_NORMAL,
                     TIME_FRACTION, MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
@@ -140,6 +140,7 @@ def checkNeedToSend(msg, key):
         Stamp(f'Sending notification on views anomaly for {key}', 'i')
         ANOMALY_BOT.send_message(MY_TG_ID, msg)
         ANOMALY_BOT.send_message(AR_TG_ID, msg)
+        ANOMALY_BOT.send_message(ADM_TG_ID, msg)
         data.append(key)
         with open(SENT_VIEWS_FILE, 'w') as f:
             dump(data, f)
