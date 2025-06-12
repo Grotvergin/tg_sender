@@ -64,7 +64,7 @@ async def handleReactions(channel_name, message):
                 'link': f"{channel_name}/{message.id}",
                 'start': now.strftime(TIME_FORMAT),
                 'finish': finish.strftime(TIME_FORMAT),
-                'planned': count,
+                'planned': max(count, 1),
                 'cur_acc_index': randint(0, source.ACCOUNTS_LEN - 1),
                 'emoji': emoji
             }
@@ -107,7 +107,7 @@ async def handleReposts(channel_name, message):
             "order_type": 'Репосты',
             "initiator": f"Emergency – {MANAGER_TG_ID}",
             "link": f"{channel_name}/{message.id}",
-            "planned": lack,
+            "planned": max(lack, 1),
             "start": now.strftime(TIME_FORMAT),
             "finish": finish.strftime(TIME_FORMAT),
             "cur_acc_index": randint(0, source.ACCOUNTS_LEN - 1)
