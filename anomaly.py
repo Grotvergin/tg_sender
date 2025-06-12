@@ -130,6 +130,11 @@ def saveAvgViews():
         dump(source.CACHE_VIEWS, f, ensure_ascii=False, indent=2)
 
 
+def sendMultipleMessages(bot, msg: str, chat_ids: list):
+    for chat_id in chat_ids:
+        bot.send_message(chat_id, msg)
+
+
 def checkNeedToSend(msg, key):
     try:
         with open(SENT_VIEWS_FILE, 'r') as f:
@@ -138,9 +143,7 @@ def checkNeedToSend(msg, key):
         Stamp('File with sent messages not found', 'e')
     if key not in data:
         Stamp(f'Sending notification on views anomaly for {key}', 'i')
-        ANOMALY_BOT.send_message(MY_TG_ID, msg)
-        ANOMALY_BOT.send_message(AR_TG_ID, msg)
-        ANOMALY_BOT.send_message(ADM_TG_ID, msg)
+        sendMultipleMessages(ANOMALY_BOT, msg, [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
         data.append(key)
         with open(SENT_VIEWS_FILE, 'w') as f:
             dump(data, f)
@@ -273,18 +276,22 @@ async def MonitorPostAnomalies():
 
         for channel in channels:
             update_last_check(source.LAST_ANOMALY_CHECK_FILE)
-            try:
-                if not source.ACCOUNTS:
-                    Stamp(f"No accounts available to check anomalies for {channel}", 'w')
-                    continue
 
+            tried = 0
+
+            while tried < len(source.ACCOUNTS):
                 account = source.ACCOUNTS[i]
                 i = (i + 1) % len(source.ACCOUNTS)
+                try:
+                    await CheckChannelPostsForAnomalies(channel, account)
+                    break
+                except Exception as e:
+                    Stamp(f"Error checking anomalies for {channel} with account {account}: {e}", 'w')
+                    tried += 1
 
-                await CheckChannelPostsForAnomalies(channel, account)
-
-            except Exception as e:
-                Stamp(f"Error checking anomalies for {channel}: {e}", 'w')
+            else:
+                sendMultipleMessages(ANOMALY_BOT, f'😵‍💫 Ни один аккаунт не смог проверить {channel}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
+                Stamp(f"All accounts failed to check anomalies for {channel}", 'e')
 
         await async_sleep(MONITOR_INTERVAL_MINS)
 
