@@ -8,6 +8,7 @@ from telethon.errors import (ReactionInvalidError, MessageIdInvalidError, Channe
                              PeerIdInvalidError, ChannelInvalidError, InviteHashInvalidError)
 from telethon.tl.types import ReactionEmoji
 from telethon.errors import InviteRequestSentError
+from telethon.errors.rpcerrorlist import FloodWaitError
 
 
 async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, emoji: str) -> int:
@@ -78,6 +79,8 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
                 cnt_success_subs += 1
             except (ChannelInvalidError, InviteHashInvalidError) as e:
                 raise e
+            except FloodWaitError as e:
+                Stamp(f'Flood {acc.session.filename.split('_')[-1]}, wait {e.seconds}', 'e')
             except Exception as e:
                 Stamp(f"Failed to subscribe {acc.session.filename.split('_')[-1]} to {link}: {e}", 'e')
     return cnt_success_subs

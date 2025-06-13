@@ -303,7 +303,6 @@ async def GetChannelIDsByUsernames(account, requested_usernames: list[str]) -> l
 
 
 async def GetSubscribedChannels(account: TelegramClient) -> list[str]:
-    Stamp('Getting all channels', 'i')
     result = await account(GetDialogsRequest(
         offset_date=None,
         offset_id=0,
