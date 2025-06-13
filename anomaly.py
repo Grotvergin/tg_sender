@@ -20,6 +20,7 @@ from json import load, dump
 from traceback import format_exc
 # ---
 from telethon import TelegramClient
+from telethon.errors.rpcerrorlist import FloodWaitError
 
 
 async def handleReactions(channel_name, message):
@@ -291,8 +292,11 @@ async def MonitorPostAnomalies():
                 try:
                     await CheckChannelPostsForAnomalies(channel, account)
                     break
+
+                except FloodWaitError as e:
+                    Stamp(f'Flood {account.session.filename.split('_')[-1]}, wait {e.seconds}', 'e')
                 except Exception as e:
-                    Stamp(f"Error {channel}, acc {account.session.filename.split('_')[-1]}: {e}, {format_exc()}", 'w')
+                    Stamp(f"Error {channel}, acc {account.session.filename.split('_')[-1]}: {e}, {format_exc()}", 'e')
                     tried += 1
 
             else:
