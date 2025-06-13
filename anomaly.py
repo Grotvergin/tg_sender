@@ -36,10 +36,10 @@ async def handleReactions(channel_name, message):
     dynamic_time_limit = round(time_limit_sec * TIME_FRACTION)
 
     if age_seconds < dynamic_time_limit:
-        Stamp(f'Post is too fresh (< {dynamic_time_limit // 60} minutes)', 'i')
+        Stamp(f'Fresh (< {dynamic_time_limit // 60} min)', 'i')
+        return
 
     if NeedToDecrease(message.text, channel_name):
-        Stamp(f'DECREASING! Now annual = {target}', 'w')
         target = int(float(target) / LINK_DECREASE_RATIO)
         diff_reac_num = randint(MIN_DIFF_REAC_DECREASED, MAX_DIFF_REAC_DECREASED)
 
@@ -48,7 +48,7 @@ async def handleReactions(channel_name, message):
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    Stamp(f'Reactions {cur_value}/{dynamic_target} (border: {dynamic_min_required} with coefficient {cur_time_coef})', 'i')
+    Stamp(f'Reactions {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef})', 'i')
 
     if cur_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - cur_value) / cur_time_coef)
@@ -86,10 +86,10 @@ async def handleReposts(channel_name, message):
     dynamic_time_limit = round(time_limit_sec * TIME_FRACTION)
 
     if age_seconds < dynamic_time_limit:
-        Stamp(f'Post is too fresh (< {dynamic_time_limit // 60} minutes)', 'i')
+        Stamp(f'Fresh (< {dynamic_time_limit // 60} min)', 'i')
+        return
 
     if NeedToDecrease(message.text, channel_name):
-        Stamp(f'DECREASING! Now annual = {target}', 'w')
         target = int(float(target) / LINK_DECREASE_RATIO)
 
     cur_time_coef = min(1, age_seconds / time_limit_sec)
@@ -97,7 +97,7 @@ async def handleReposts(channel_name, message):
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    Stamp(f'Reposts {cur_value}/{dynamic_target} (border: {dynamic_min_required} with coefficient {cur_time_coef})', 'i')
+    Stamp(f'Reposts {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef})', 'i')
 
     if cur_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - cur_value) / cur_time_coef)
@@ -118,7 +118,6 @@ async def handleReposts(channel_name, message):
 
 
 def loadAvgViews():
-    Stamp('Loading cached average views', 'i')
     if exists(CACHE_FILE):
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             source.CACHE_VIEWS = load(f)
@@ -143,14 +142,11 @@ def checkNeedToSend(msg, key):
     except FileNotFoundError:
         Stamp('File with sent messages not found', 'e')
     if key not in data:
-        Stamp(f'Sending notification on views anomaly for {key}', 'i')
         sendMultipleMessages(ANOMALY_BOT, msg, [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
         data.append(key)
         with open(SENT_VIEWS_FILE, 'w') as f:
             dump(data, f)
         Sleep(2)
-    else:
-        Stamp(f'No need to send notification on views anomaly for {key}', 'i')
 
 
 async def handleViews(channel_name, message):
@@ -171,7 +167,7 @@ async def handleViews(channel_name, message):
 
     threshold = avg_views * THRESHOLD_AVG_ANOMALY_VIEWS
     if cur_value < threshold:
-        Stamp(f"View anomaly detected (@{channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
+        Stamp(f"Views ({channel_name}/{message.id}): {cur_value} < {threshold:.1f}", 'w')
         percent_below = (threshold - cur_value) / threshold * 100
         text = (
             f"🚨 https://t.me/{channel_name}/{message.id}\n"
@@ -206,11 +202,11 @@ async def updateAvgViews(client, channel_name, entity):
         if len(views_list) >= POSTS_FOR_AVG:
             break
     if len(views_list) < POSTS_FOR_AVG:
-        Stamp(f"Not enough posts (>24h) to update avg views for @{channel_name} ({len(views_list)})", "i")
+        Stamp(f"Not enough posts (>{START_AVG_COUNT_HOURS}H) to update avg views @{channel_name} ({len(views_list)})", "i")
         avg_views = None
     else:
         avg_views = sum(views_list) / len(views_list)
-        Stamp(f"Updated avg views for @{channel_name}: {avg_views:.1f}", "i")
+        Stamp(f"Updated avg views @{channel_name}: {avg_views:.1f}", "i")
     source.CACHE_VIEWS[channel_name] = {
         "last_update": datetime.now(timezone.utc).isoformat(),
         "avg_views": avg_views
@@ -220,7 +216,7 @@ async def updateAvgViews(client, channel_name, entity):
 
 
 async def CheckChannelPostsForAnomalies(channel_username: str, client):
-    Stamp(f"Checking channel @{channel_username}", 'i')
+    Stamp(f"Checking @{channel_username}", 'i')
     entity = await client.get_entity(channel_username)
 
     if avgViewsNeedUpdate(channel_username):
@@ -244,6 +240,8 @@ async def AuthorizeAccounts():
     accounts_len = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
     source.ACCOUNTS_LEN = accounts_len
 
+    Stamp('Authorization procedure started', 'b')
+    sendMultipleMessages(ANOMALY_BOT, '🔸Начата процедура авторизации...', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
     for index, account in enumerate(data):
         try:
             api_id, api_hash, num, password_tg, ip, port, login, password_proxy = ParseAccountRow(account)
@@ -260,7 +258,7 @@ async def AuthorizeAccounts():
             Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
             sendMultipleMessages(ANOMALY_BOT, f'❌ Ошибка при старте клиента для {num}: {str(e)}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
             continue
-    Stamp(f'{len(source.ACCOUNTS)} accounts authorized', 'b')
+    Stamp(f'Finished, {len(source.ACCOUNTS)} accounts authorized', 'b')
     sendMultipleMessages(ANOMALY_BOT, f'🔹Процедура завершена, авторизовано {len(source.ACCOUNTS)} аккаунтов', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
 
 
@@ -294,12 +292,12 @@ async def MonitorPostAnomalies():
                     await CheckChannelPostsForAnomalies(channel, account)
                     break
                 except Exception as e:
-                    Stamp(f"Error checking anomalies for {channel} with account {account}: {e}", 'w')
+                    Stamp(f"Error {channel}, acc {account.session.filename.split('_')[-1]}: {e}, {format_exc()}", 'w')
                     tried += 1
 
             else:
                 sendMultipleMessages(ANOMALY_BOT, f'😵‍💫 Ни один аккаунт не смог проверить {channel}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
-                Stamp(f"All accounts failed to check anomalies for {channel}", 'e')
+                Stamp(f"All accounts failed anomalies @{channel}", 'e')
 
         await async_sleep(MONITOR_INTERVAL_MINS)
 

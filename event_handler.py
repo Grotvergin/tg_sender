@@ -273,13 +273,9 @@ def NeedToDecrease(message_text: str, channel_name: str) -> bool:
     message_text = message_text.lower()
     channel_name = channel_name.lower()
     if http_link.search(message_text) or dog_link.search(message_text):
-        Stamp('Found some link in post', 'i')
         if any(f'{url}{channel_name}' in message_text for url in [f'@', 'https://t.me/', 'http://t.me/']):
-            Stamp('Link points to the same channel', 'w')
             return False
-        Stamp('Link points to different channel', 'i')
         return True
-    Stamp('No link found', 'i')
     return False
 
 
