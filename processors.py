@@ -5,12 +5,13 @@ from source import (BOT, TIME_FORMAT, MAX_MINS_REQ, LONG_SLEEP, NOTIF_TIME_DELTA
                     FILE_ACTIVE, SHORT_SLEEP, EMERGENCY_FILE, LAST_MAIN_CHECK_FILE)
 from datetime import datetime, timedelta
 from file import SaveRequestsToFile, LoadRequestsFromFile, updateDailyStats
-from info_senders import PrintRequest
-from secret import MY_TG_ID, AR_TG_ID
+from traceback import format_exc
+from secret import MY_TG_ID, AR_TG_ID, ADM_TG_ID
 from monitor import update_last_check
 from event_handler import GetSubscribedChannels
 from asyncio import sleep as async_sleep, gather
 from collections import Counter
+from anomaly import sendMultipleMessages
 # ---
 from telethon.errors import (ReactionInvalidError, MessageIdInvalidError,
                              ChannelPrivateError, ChatIdInvalidError,
@@ -145,10 +146,9 @@ async def ProcessRequest(req: dict, i: int):
                         updateDailyStats('finished')
                     source.REQS_QUEUE.remove(req)
                     source.FINISHED_REQS.append(req)
-                    user_id = req['initiator'].split(' ')[-1]
         except Exception as e:
-            Stamp(f'Error processing request #{i}: {e}', 'w')
-            BOT.send_message(MY_TG_ID, f'🔴 Ошибка в обработке заявки #{i}: {e}')
+            Stamp(f'Error processing request {i}: {e}, {format_exc()}', 'w')
+            sendMultipleMessages(BOT, f'🔴 Ошибка в обработке заявки {i}: {e}, {format_exc()}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
 
 
 async def ProcessRequests() -> None:
@@ -172,8 +172,8 @@ async def ProcessRequests() -> None:
             SaveRequestsToFile(source.FINISHED_REQS, 'finished', 'finished.json')
 
         except Exception as e:
-            Stamp(f'Uncaught exception in processor happened: {e}', 'w')
-            BOT.send_message(MY_TG_ID, '🔴 Ошибка в ProcessRequests: {e}')
+            Stamp(f'Uncaught exception in processor happened: {e}, {format_exc()}', 'w')
+            sendMultipleMessages(BOT, f'🔴 Ошибка в ProcessRequests: {e}, {format_exc()}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
 
         await AsyncSleep(LONG_SLEEP, 0.5)
 
