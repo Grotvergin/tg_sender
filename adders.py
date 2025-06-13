@@ -20,7 +20,7 @@ async def AddReactions(post_link: str, reactions_needed: int, acc_index: int, em
         index = (acc_index + i) % len(ACCOUNTS)
         acc = ACCOUNTS[index]
         async with source.LOCKS[index]:
-            if not accWorks(acc, index):
+            if not await accWorks(acc, index):
                 return cnt_success_reactions
             try:
                 entity = await acc.get_entity(post_link.split('/')[0])
@@ -48,7 +48,7 @@ async def IncreasePostViews(post_link: str, views_needed: int, acc_index: int) -
         index = (acc_index + i) % len(ACCOUNTS)
         acc = ACCOUNTS[index]
         async with source.LOCKS[index]:
-            if not accWorks(acc, index):
+            if not await accWorks(acc, index):
                 return cnt_success_views
             try:
                 await acc(GetMessagesViewsRequest(peer=post_link.split('/')[0], id=[int(post_link.split('/')[1])], increment=True))
@@ -78,7 +78,7 @@ async def PerformSubscription(link: str, amount: int, channel_type: str, acc_ind
         index = (acc_index + i) % len(ACCOUNTS)
         acc = ACCOUNTS[index]
         async with source.LOCKS[index]:
-            if not accWorks(acc, index):
+            if not await accWorks(acc, index):
                 return cnt_success_subs
             try:
                 if channel_type == 'public':
@@ -109,7 +109,7 @@ async def RepostMessage(post_link: str, reposts_needed: int, acc_index: int) -> 
         index = (acc_index + i) % len(ACCOUNTS)
         acc = ACCOUNTS[index]
         async with source.LOCKS[index]:
-            if not accWorks(acc, index):
+            if not await accWorks(acc, index):
                 return cnt_success_reposts
             try:
                 entity = await acc.get_entity(post_link.split('/')[0])
