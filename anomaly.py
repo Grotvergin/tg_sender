@@ -17,6 +17,7 @@ from os import getcwd
 from datetime import datetime, timezone, timedelta
 from random import randint
 from json import load, dump
+from traceback import format_exc
 # ---
 from telethon import TelegramClient
 
@@ -251,9 +252,16 @@ async def AuthorizeAccounts():
             continue
         session = join(getcwd(), 'sessions', f'{num}')
         client = TelegramClient(session, api_id, api_hash, proxy=(2, ip, port, True, login, password_proxy))
-        await client.start(phone=num, password=password_tg)
-        source.ACCOUNTS.append(client)
-        Stamp(f'Account {num} authorized', 's')
+        try:
+            await client.start(phone=num, password=password_tg)
+            source.ACCOUNTS.append(client)
+            Stamp(f'Account {num} authorized', 's')
+        except Exception as e:
+            Stamp(f'Error while starting client for {num}: {e}, {format_exc()}', 'e')
+            sendMultipleMessages(ANOMALY_BOT, f'❌ Ошибка при старте клиента для {num}: {str(e)}', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
+            continue
+    Stamp(f'{len(source.ACCOUNTS)} accounts authorized', 'b')
+    sendMultipleMessages(ANOMALY_BOT, f'🔹Процедура завершена, авторизовано {len(source.ACCOUNTS)} аккаунтов', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
 
 
 async def MonitorPostAnomalies():
