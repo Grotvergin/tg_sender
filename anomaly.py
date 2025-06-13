@@ -51,7 +51,7 @@ async def handleReactions(channel_name, message):
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    Stamp(f'Reactions {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef})', 'i')
+    Stamp(f'Reactions {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef:.1f})', 'i')
 
     if cur_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - cur_value) / cur_time_coef)
@@ -100,7 +100,7 @@ async def handleReposts(channel_name, message):
     dynamic_min_required = int((1 - spread / 100) * dynamic_target)
     dynamic_max_required = int((1 + spread / 100) * dynamic_target)
     dynamic_rand_amount = randint(dynamic_min_required, dynamic_max_required)
-    Stamp(f'Reposts {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef})', 'i')
+    Stamp(f'Reposts {cur_value}/{dynamic_target} (border: {dynamic_min_required} coef {cur_time_coef:.1f})', 'i')
 
     if cur_value < dynamic_min_required:
         lack = round((dynamic_rand_amount - cur_value) / cur_time_coef)
