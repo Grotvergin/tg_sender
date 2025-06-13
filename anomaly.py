@@ -9,7 +9,8 @@ from source import (MONITOR_INTERVAL_MINS, POSTS_TO_CHECK, EMERGENCY_FILE,
                     TIME_FRACTION, MAX_DIFF_REAC_NORMAL, MIN_DIFF_REAC_DECREASED,
                     MAX_DIFF_REAC_DECREASED, SHORT_SLEEP, CACHE_FILE,
                     MAX_AVG_POSTS_CHECK, POSTS_FOR_AVG, START_ANOMALY_COUNT_HOURS,
-                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, ANOMALY_BOT, SENT_VIEWS_FILE, LAST_ANOMALY_CHECK_FILE)
+                    START_AVG_COUNT_HOURS, THRESHOLD_AVG_ANOMALY_VIEWS, ANOMALY_BOT, SENT_VIEWS_FILE,
+                    LAST_ANOMALY_CHECK_FILE, PERMANENT_LOCK_BUFFER)
 # ---
 from asyncio import sleep as async_sleep, run
 from os.path import join, exists
@@ -18,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 from random import randint
 from json import load, dump
 from traceback import format_exc
+from asyncio import Lock
 # ---
 from telethon import TelegramClient
 from telethon.errors.rpcerrorlist import FloodWaitError
@@ -240,6 +242,7 @@ async def AuthorizeAccounts():
     data = GetSector('A2', f'H{row}', srv, ANOMALY_SHEET_NAME, SHEET_ID)
     accounts_len = len(GetSector('C2', 'C500', srv, SHEET_NAME, SHEET_ID))
     source.ACCOUNTS_LEN = accounts_len
+    source.LOCKS = {i: Lock() for i in range(row * 2 + PERMANENT_LOCK_BUFFER)}
 
     Stamp('Authorization procedure started', 'b')
     sendMultipleMessages(ANOMALY_BOT, '🔸Начата процедура авторизации...', [MY_TG_ID, AR_TG_ID, ADM_TG_ID])
