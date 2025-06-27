@@ -241,7 +241,7 @@ def DistributeReactionsIntoEmojis(diff_reac_num, annual_amount, reac_list):
     shares = [dominant_share] + normalized_shares
     reaction_distribution = {}
     for reaction, share in zip(chosen_reactions, shares):
-        reaction_distribution[reaction] = round(share * annual_amount)
+        reaction_distribution[reaction] = max(1, round(share * annual_amount))
     difference = annual_amount - sum(reaction_distribution.values())
     if difference != 0:
         reaction_distribution[chosen_reactions[0]] += difference
