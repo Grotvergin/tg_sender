@@ -21,4 +21,8 @@ echo "[]" > "$PROJECT_DIR/finished.json"
 echo "{}" > "$PROJECT_DIR/last_main_check.json"
 echo "[]" > "$PROJECT_DIR/sent.json"
 
-echo "Все файлы и директории созданы."
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+echo "Все файлы и директории созданы. Виртуальное окружение настроено."
