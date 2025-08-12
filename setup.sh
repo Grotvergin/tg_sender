@@ -3,6 +3,25 @@
 # Путь к директории, куда клонирован проект
 PROJECT_DIR="."  # можно заменить на путь, например /home/user/project
 
+# --- Проверка и установка Python 3.12 ---
+if ! command -v python3.12 &> /dev/null; then
+    echo "Python 3.12 не найден. Устанавливаю..."
+    sudo apt update
+    sudo apt install -y software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt update
+    sudo apt install -y python3.12 python3.12-venv python3.12-distutils
+    echo "Python 3.12 установлен."
+fi
+
+# --- Проверка и установка screen ---
+if ! command -v screen &> /dev/null; then
+    echo "Утилита 'screen' не найдена. Устанавливаю..."
+    sudo apt update
+    sudo apt install -y screen
+    echo "screen установлен."
+fi
+
 # Список директорий
 mkdir -p "$PROJECT_DIR/anomaly_logs" \
          "$PROJECT_DIR/main_logs" \
