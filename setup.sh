@@ -37,7 +37,8 @@ echo "{}" > "$PROJECT_DIR/cache_views.json"
 echo "{}" > "$PROJECT_DIR/daily.json"
 echo "[]" > "$PROJECT_DIR/emerge.json"
 echo "[]" > "$PROJECT_DIR/finished.json"
-echo "{}" > "$PROJECT_DIR/last_main_check.json"
+echo "{"last_check": "1970-01-01T00:00:00.000000"}" > "$PROJECT_DIR/last_main_check.json"
+echo "{"last_check": "1970-01-01T00:00:00.000000"}" > "$PROJECT_DIR/last_anomaly_check.json"
 echo "[]" > "$PROJECT_DIR/sent.json"
 
 python3.12 -m venv venv
